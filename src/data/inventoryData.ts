@@ -1,0 +1,166 @@
+export interface InventoryItem {
+  matricule: string;
+  pseudo: string;
+  service: string;
+  absence: boolean;
+  nom: string;
+  uid: string;
+  dns: string;
+  type: "portable" | "Pc Fixe";
+  asset: string;
+  sn: string;
+  remarques: string;
+}
+
+// Parsed from the Excel inventory file
+export const inventoryData: InventoryItem[] = [
+  { matricule: "30512", pseudo: "", service: "Informatique", absence: false, nom: "Abdelhak TAIBI", uid: "ataibi", dns: "port13559.in.karavel.com", type: "portable", asset: "13559", sn: "847H114", remarques: "" },
+  { matricule: "30512", pseudo: "", service: "Informatique", absence: false, nom: "Abdelhak TAIBI", uid: "ataibi", dns: "port30461.in.karavel.com", type: "portable", asset: "30461", sn: "7PLZM94", remarques: "" },
+  { matricule: "30644", pseudo: "", service: "Informatique", absence: false, nom: "Abdelkader BEN SAID", uid: "asaid", dns: "port13890.in.karavel.com", type: "portable", asset: "13890", sn: "BZLD924", remarques: "" },
+  { matricule: "20393", pseudo: "", service: "Informatique", absence: false, nom: "Abdelrahim NEHAD", uid: "anehad", dns: "port13889.in.karavel.com", type: "portable", asset: "13889", sn: "CQ7W114", remarques: "" },
+  { matricule: "21068", pseudo: "", service: "Production", absence: false, nom: "Abderrahman TEBOURBI", uid: "atebourbi", dns: "port30105.in.karavel.com", type: "portable", asset: "30105", sn: "", remarques: "" },
+  { matricule: "21691", pseudo: "Rislene", service: "Relation Client", absence: false, nom: "Abla FAGRACH", uid: "afagrach", dns: "uc17510.in.karavel.com", type: "Pc Fixe", asset: "17510", sn: "FRFNSK3", remarques: "" },
+  { matricule: "30975", pseudo: "", service: "Marketing", absence: false, nom: "Adam BADAD", uid: "abadad", dns: "uc17338.in.karavel.com", type: "Pc Fixe", asset: "17338", sn: "2V21952", remarques: "" },
+  { matricule: "30643", pseudo: "", service: "Marketing", absence: false, nom: "Adam BOUADJADJ", uid: "abouadjadj", dns: "port13770.in.karavel.com", type: "portable", asset: "13770", sn: "67SV114", remarques: "" },
+  { matricule: "30542", pseudo: "", service: "Data Client", absence: false, nom: "Adeline COLINET", uid: "acolinet", dns: "port13541.in.karavel.com", type: "portable", asset: "13541", sn: "D8Q2V04", remarques: "" },
+  { matricule: "27222", pseudo: "", service: "Administration et Finance", absence: false, nom: "Adja Fatou DIENG", uid: "adieng", dns: "uc18890.in.karavel.com", type: "Pc Fixe", asset: "18890", sn: "3JR4JN2", remarques: "" },
+  { matricule: "30592", pseudo: "Aida", service: "Relation Client", absence: true, nom: "Aida BENZAID", uid: "abenzaid", dns: "uc17648.in.karavel.com", type: "Pc Fixe", asset: "17648", sn: "65QV0N3", remarques: "" },
+  { matricule: "22938", pseudo: "Ava", service: "Relation Client", absence: false, nom: "Aida SY", uid: "asy", dns: "uc17643.in.karavel.com", type: "Pc Fixe", asset: "17643", sn: "5YDLTN3", remarques: "" },
+  { matricule: "21158", pseudo: "", service: "Relation Client", absence: false, nom: "Aimée MENU", uid: "amenu", dns: "uc18895.in.karavel.com", type: "Pc Fixe", asset: "18895", sn: "3JQ0JN2", remarques: "" },
+  { matricule: "23204", pseudo: "", service: "Informatique", absence: false, nom: "Aissam LAYHI", uid: "alayhi", dns: "port30256.in.karavel.com", type: "portable", asset: "30256", sn: "BNHMX84", remarques: "" },
+  { matricule: "23204", pseudo: "", service: "Informatique", absence: false, nom: "Aissam LAYHI", uid: "alayhi", dns: "uc15348.in.karavel.com", type: "Pc Fixe", asset: "15348", sn: "", remarques: "" },
+  { matricule: "21611", pseudo: "", service: "Relation Client", absence: false, nom: "Alban REYNAUD", uid: "areynaud", dns: "uc15694.in.karavel.com", type: "Pc Fixe", asset: "15694", sn: "C7KHF62", remarques: "" },
+  { matricule: "27012", pseudo: "", service: "Direction Produit", absence: false, nom: "Alexa SAVOUREUX", uid: "asavoureux", dns: "port15869.in.karavel.com", type: "portable", asset: "15869", sn: "4ZKHHL3", remarques: "" },
+  { matricule: "31043", pseudo: "", service: "Ressources Humaines", absence: false, nom: "Alexandre BIDAL", uid: "abidal", dns: "port30456.in.karavel.com", type: "portable", asset: "30456", sn: "8GR2X84", remarques: "" },
+  { matricule: "25565", pseudo: "", service: "Production", absence: false, nom: "Alexandre BIGEARD", uid: "abigeard", dns: "port30343.in.karavel.com", type: "portable", asset: "30343", sn: "3QT8XC4", remarques: "" },
+  { matricule: "30385", pseudo: "", service: "Marketing", absence: false, nom: "Alexandre DUPONT", uid: "adupont", dns: "port17946.in.karavel.com", type: "portable", asset: "17946", sn: "BB0NKX", remarques: "" },
+  { matricule: "27191", pseudo: "", service: "Marketing", absence: false, nom: "Alexandre MELON", uid: "amelon", dns: "port17757.in.karavel.com", type: "portable", asset: "17757", sn: "HDYH9S3", remarques: "" },
+  { matricule: "26600", pseudo: "", service: "Marketing", absence: true, nom: "Alexis BERTRAND", uid: "abertrand", dns: "port18704.in.karavel.com", type: "portable", asset: "18704", sn: "DNWGQV2", remarques: "" },
+  { matricule: "30854", pseudo: "", service: "Informatique", absence: false, nom: "Alexis BEURAUD", uid: "abeuraud", dns: "port30138.in.karavel.com", type: "portable", asset: "30138", sn: "7D10Z44", remarques: "" },
+  { matricule: "30593", pseudo: "", service: "Marketing", absence: false, nom: "Alexis MARBOEUF", uid: "amarboeuf", dns: "port13776.in.karavel.com", type: "portable", asset: "13776", sn: "8SWBV04", remarques: "" },
+  { matricule: "26110", pseudo: "", service: "Marketing", absence: false, nom: "Alexis PORTE", uid: "aporte", dns: "port17678.in.karavel.com", type: "portable", asset: "17678", sn: "FV4WRL3", remarques: "" },
+  { matricule: "30607", pseudo: "", service: "Ressources Humaines", absence: false, nom: "Alfonso SAN RAIMUNDO MARTIN", uid: "amartin", dns: "uc18926.in.karavel.com", type: "Pc Fixe", asset: "18926", sn: "HPGRCM2", remarques: "" },
+  { matricule: "25691", pseudo: "Alfredo", service: "Relation Client", absence: false, nom: "Alfredo FERRARA", uid: "aferrara", dns: "uc15893.in.karavel.com", type: "Pc Fixe", asset: "15893", sn: "GR3C1B3", remarques: "" },
+  { matricule: "26693", pseudo: "", service: "Informatique", absence: false, nom: "Ali BORDJAH", uid: "abordjah", dns: "port30240.in.karavel.com", type: "portable", asset: "30240", sn: "DZSDY74", remarques: "" },
+  { matricule: "26693", pseudo: "", service: "Informatique", absence: false, nom: "Ali BORDJAH", uid: "abordjah", dns: "uc18771.in.karavel.com", type: "Pc Fixe", asset: "18771", sn: "7H40BR2", remarques: "" },
+  { matricule: "31057", pseudo: "", service: "Production", absence: false, nom: "Alicia MARTINET", uid: "amartinet", dns: "uc18859.in.karavel.com", type: "Pc Fixe", asset: "18859", sn: "3JS1JN2", remarques: "" },
+  { matricule: "30487", pseudo: "", service: "Production", absence: false, nom: "Alona BIDIUK", uid: "abidiuk", dns: "port17072.in.karavel.com", type: "portable", asset: "17072", sn: "8TFLC42", remarques: "" },
+  { matricule: "27322", pseudo: "", service: "Informatique", absence: false, nom: "Amal TESTOURI sassi", uid: "asassi", dns: "port17995.in.karavel.com", type: "portable", asset: "17995", sn: "CMNBPX3", remarques: "" },
+  { matricule: "27322", pseudo: "", service: "Informatique", absence: false, nom: "Amal TESTOURI sassi", uid: "asassi", dns: "uc18762.in.karavel.com", type: "Pc Fixe", asset: "18762", sn: "", remarques: "" },
+  { matricule: "26641", pseudo: "", service: "Administration et Finance", absence: false, nom: "Amel TALEB moussi", uid: "amoussi", dns: "port30170.in.karavel.com", type: "portable", asset: "30170", sn: "5JBMN64", remarques: "" },
+  { matricule: "30677", pseudo: "", service: "Production", absence: false, nom: "Anas OUAZIZI", uid: "aouazizi", dns: "uc17814.in.karavel.com", type: "Pc Fixe", asset: "17814", sn: "26S2QT3", remarques: "" },
+  { matricule: "30811", pseudo: "", service: "Marketing", absence: false, nom: "Anissa DECLERCQ", uid: "adeclercq", dns: "port13974.in.karavel.com", type: "portable", asset: "13974", sn: "DB61R54", remarques: "" },
+  { matricule: "20339", pseudo: "", service: "Ressources Humaines", absence: false, nom: "Anne CORDEIRO", uid: "acordeiro", dns: "uc18944.in.karavel.com", type: "Pc Fixe", asset: "18944", sn: "8X6MWL2", remarques: "" },
+  { matricule: "24045", pseudo: "", service: "Production", absence: false, nom: "Anne LASCOMBES DE LAROUSSILHE", uid: "alaroussilhe", dns: "port17948.in.karavel.com", type: "portable", asset: "17948", sn: "8Z4FLX3", remarques: "" },
+  { matricule: "24045", pseudo: "", service: "Production", absence: false, nom: "Anne LASCOMBES DE LAROUSSILHE", uid: "alaroussilhe", dns: "uc18838.in.karavel.com", type: "Pc Fixe", asset: "18838", sn: "3JV6JN2", remarques: "" },
+  { matricule: "26587", pseudo: "", service: "Production", absence: false, nom: "Anne Laure PERRENOT", uid: "aperrenot", dns: "uc17516.in.karavel.com", type: "Pc Fixe", asset: "17516", sn: "4QFJQ52", remarques: "" },
+  { matricule: "21749", pseudo: "", service: "Production", absence: false, nom: "Anne-Catherine ROUSSEL", uid: "aroussel", dns: "port30299.in.karavel.com", type: "portable", asset: "30299", sn: "BLL2X84", remarques: "" },
+  { matricule: "30418", pseudo: "", service: "Relation Client", absence: false, nom: "Annie LAO", uid: "alao", dns: "port17951.in.karavel.com", type: "portable", asset: "17951", sn: "1C3ZLX3", remarques: "" },
+  { matricule: "22354", pseudo: "", service: "Production", absence: false, nom: "Anouar KAMEL", uid: "akamel", dns: "uc17901.in.karavel.com", type: "Pc Fixe", asset: "17901", sn: "B9JZWT2", remarques: "" },
+  { matricule: "30850", pseudo: "", service: "Production", absence: false, nom: "Anthony BODON", uid: "abodon", dns: "port30482.in.karavel.com", type: "portable", asset: "30482", sn: "1J6WP94", remarques: "" },
+  { matricule: "30939", pseudo: "", service: "Direction Produit", absence: false, nom: "Anthony CORNEVIN", uid: "acornevin", dns: "port30231.in.karavel.com", type: "portable", asset: "30231", sn: "61NDW84", remarques: "" },
+  { matricule: "30366", pseudo: "", service: "Groupes", absence: false, nom: "Anthony POINAS", uid: "apoinas", dns: "port17752.in.karavel.com", type: "portable", asset: "17752", sn: "59YH9S3", remarques: "" },
+  { matricule: "25156", pseudo: "Enzo", service: "Relation Client", absence: false, nom: "Antoine FOROUZANNIA", uid: "aforouzannia", dns: "uc17330.in.karavel.com", type: "Pc Fixe", asset: "17330", sn: "5N3C1B3", remarques: "" },
+  { matricule: "20676", pseudo: "Arielle", service: "Groupes", absence: false, nom: "Arielle VANIE", uid: "avanie", dns: "port13953.in.karavel.com", type: "portable", asset: "13953", sn: "JQ7W114", remarques: "" },
+  { matricule: "30982", pseudo: "", service: "Administration et Finance", absence: false, nom: "Arthur NABET", uid: "anabet", dns: "port30161.in.karavel.com", type: "portable", asset: "30161", sn: "81CMS64", remarques: "" },
+  { matricule: "20072", pseudo: "Aude", service: "Ressources Humaines", absence: false, nom: "Aude PLOUVIEZ", uid: "aplouviez", dns: "uc15802.in.karavel.com", type: "Pc Fixe", asset: "15802", sn: "CJ4R1H2", remarques: "" },
+  { matricule: "20072", pseudo: "Aude", service: "Ressources Humaines", absence: false, nom: "Aude PLOUVIEZ", uid: "aplouviez", dns: "port13899.in.karavel.com", type: "portable", asset: "13899", sn: "CQDTV44", remarques: "" },
+  { matricule: "22347", pseudo: "", service: "Relation Client", absence: false, nom: "Audrey GASTON", uid: "agaston", dns: "port30165.in.karavel.com", type: "portable", asset: "30165", sn: "4HBMN64", remarques: "" },
+  { matricule: "26162", pseudo: "Rachel", service: "Relation Client", absence: false, nom: "Audrey MALECKI DEMESSE", uid: "ademesse", dns: "port30156.in.karavel.com", type: "portable", asset: "30156", sn: "C0CMS64", remarques: "" },
+  { matricule: "30826", pseudo: "", service: "Agence", absence: false, nom: "Aurélie BESLE", uid: "abesle", dns: "port30477.in.karavel.com", type: "portable", asset: "30477", sn: "", remarques: "" },
+  { matricule: "21322", pseudo: "", service: "Groupes", absence: false, nom: "Aurélie PICOTTI", uid: "apicotti", dns: "port18718.in.karavel.com", type: "portable", asset: "18718", sn: "JJJZWT2", remarques: "" },
+  { matricule: "30792", pseudo: "", service: "CE", absence: false, nom: "Aurore LE DEUT", uid: "adeut", dns: "port17468.in.karavel.com", type: "portable", asset: "17468", sn: "HJ3C1B3", remarques: "" },
+  { matricule: "30792", pseudo: "", service: "CE", absence: false, nom: "Aurore LE DEUT", uid: "adeut", dns: "port30404.in.karavel.com", type: "portable", asset: "30404", sn: "20NDW84", remarques: "" },
+  { matricule: "26589", pseudo: "", service: "Informatique", absence: false, nom: "Ayman CHAFAI", uid: "achafai", dns: "port30201.in.karavel.com", type: "portable", asset: "30201", sn: "7PHMX84", remarques: "" },
+  { matricule: "30567", pseudo: "", service: "Production", absence: false, nom: "Ayoub RAIS", uid: "arais", dns: "port30295.in.karavel.com", type: "portable", asset: "30295", sn: "9JTDW84", remarques: "" },
+  { matricule: "30632", pseudo: "", service: "Administration et Finance", absence: false, nom: "Baptiste JAMET", uid: "bjamet", dns: "port13872.in.karavel.com", type: "portable", asset: "13872", sn: "2LR7NX3", remarques: "" },
+  { matricule: "20525", pseudo: "Baptiste", service: "Groupes", absence: false, nom: "Baptiste PINCEDE", uid: "bpincede", dns: "port17182.in.karavel.com", type: "portable", asset: "17182", sn: "GMS99Y2", remarques: "" },
+  { matricule: "27282", pseudo: "", service: "Production", absence: false, nom: "Bastien GOUDEAU", uid: "bgoudeau", dns: "port30462.in.karavel.com", type: "portable", asset: "30462", sn: "8MTDW84", remarques: "" },
+  { matricule: "27282", pseudo: "", service: "Production", absence: false, nom: "Bastien GOUDEAU", uid: "bgoudeau", dns: "uc17847.in.karavel.com", type: "Pc Fixe", asset: "17847", sn: "6CGFWV3", remarques: "" },
+  { matricule: "26298", pseudo: "", service: "Groupes", absence: false, nom: "Béatrice MAZET", uid: "bmazet", dns: "port17212.in.karavel.com", type: "portable", asset: "17212", sn: "3KFC9Y2", remarques: "" },
+  { matricule: "30355", pseudo: "", service: "Production", absence: false, nom: "Benoît FEVRE", uid: "bfevre", dns: "port30466.in.karavel.com", type: "portable", asset: "30466", sn: "4J6WP94", remarques: "" },
+  { matricule: "30725", pseudo: "", service: "Informatique", absence: false, nom: "Bertrand LOUIS", uid: "blouis", dns: "port13922.in.karavel.com", type: "portable", asset: "13922", sn: "52W7N44", remarques: "" },
+  { matricule: "30703", pseudo: "", service: "Relation Client", absence: false, nom: "Betty SAUZE", uid: "bsauze", dns: "uc15685.in.karavel.com", type: "Pc Fixe", asset: "15685", sn: "C6T0H62", remarques: "" },
+  { matricule: "30801", pseudo: "", service: "Data Client", absence: false, nom: "Bilge Nur KARACA QUEVAL", uid: "bqueval", dns: "port14075.in.karavel.com", type: "portable", asset: "14075", sn: "6ZS9P54", remarques: "" },
+  { matricule: "26018", pseudo: "", service: "Ressources Humaines", absence: false, nom: "Bonago ROS", uid: "bros", dns: "port13951.in.karavel.com", type: "portable", asset: "13951", sn: "B85FB54", remarques: "" },
+  { matricule: "31039", pseudo: "", service: "Agence", absence: false, nom: "Camélia ZORMATI MACHAT", uid: "cmachat", dns: "port30416.in.karavel.com", type: "portable", asset: "30416", sn: "8NDPSB4", remarques: "" },
+  { matricule: "30788", pseudo: "", service: "Relation Client", absence: false, nom: "Camille CHAMPOD", uid: "cchampod", dns: "uc17030.in.karavel.com", type: "Pc Fixe", asset: "17030", sn: "HXR9R52", remarques: "" },
+  { matricule: "27025", pseudo: "", service: "Marketing", absence: false, nom: "Camille SALLOUA", uid: "csalloua", dns: "port15870.in.karavel.com", type: "portable", asset: "15870", sn: "2ZKHHL3", remarques: "" },
+  { matricule: "30698", pseudo: "", service: "Qualité", absence: false, nom: "Caroline PAGARD", uid: "cpagard", dns: "uc17839.in.karavel.com", type: "Pc Fixe", asset: "17839", sn: "6ZR2QT3", remarques: "" },
+  { matricule: "24026", pseudo: "", service: "Groupes", absence: false, nom: "Catherine ANDRE", uid: "candre", dns: "port30423.in.karavel.com", type: "portable", asset: "30423", sn: "HW7RX84", remarques: "" },
+  { matricule: "24026", pseudo: "", service: "Groupes", absence: false, nom: "Catherine ANDRE", uid: "candre", dns: "uc15616.in.karavel.com", type: "Pc Fixe", asset: "15616", sn: "6K8BG52", remarques: "" },
+  { matricule: "27442", pseudo: "", service: "Informatique", absence: false, nom: "Cécile MORCRETTE", uid: "cmorcrette", dns: "port14064.in.karavel.com", type: "portable", asset: "14064", sn: "FW0FC24", remarques: "" },
+  { matricule: "27442", pseudo: "", service: "Informatique", absence: false, nom: "Cécile MORCRETTE", uid: "cmorcrette", dns: "uc18925.in.karavel.com", type: "Pc Fixe", asset: "18925", sn: "", remarques: "" },
+  { matricule: "24930", pseudo: "", service: "Informatique", absence: false, nom: "Chafik MIZAB", uid: "cmizab", dns: "port17520.in.karavel.com", type: "portable", asset: "17520", sn: "1FCTLG3", remarques: "" },
+  { matricule: "24930", pseudo: "", service: "Informatique", absence: false, nom: "Chafik MIZAB", uid: "cmizab", dns: "uc15584.in.karavel.com", type: "Pc Fixe", asset: "15584", sn: "", remarques: "" },
+  { matricule: "27402", pseudo: "", service: "Data Client", absence: false, nom: "Charles FERAULT", uid: "cferault", dns: "port17927.in.karavel.com", type: "portable", asset: "17927", sn: "", remarques: "C'est un MAC" },
+  { matricule: "30962", pseudo: "", service: "Production", absence: false, nom: "Chloe BOCQUILLON", uid: "cbocquillon", dns: "uc18946.in.karavel.com", type: "Pc Fixe", asset: "18946", sn: "8X7KWL2", remarques: "" },
+  { matricule: "31044", pseudo: "", service: "CE", absence: false, nom: "Chloé BONDUAU", uid: "cbonduau", dns: "port30452.in.karavel.com", type: "portable", asset: "30452", sn: "7B86ZB4", remarques: "" },
+  { matricule: "31006", pseudo: "", service: "Juridique", absence: false, nom: "Chloé MARIOU", uid: "cmariou", dns: "port30371.in.karavel.com", type: "portable", asset: "30371", sn: "5STDW84", remarques: "" },
+  { matricule: "25232", pseudo: "Christelle", service: "Relation Client", absence: false, nom: "Christelle CHAIBRIANT", uid: "cchaibriant", dns: "uc17504.in.karavel.com", type: "Pc Fixe", asset: "17504", sn: "3SFNSK3", remarques: "" },
+  { matricule: "21639", pseudo: "", service: "Informatique", absence: false, nom: "Christophe CURE", uid: "ccure", dns: "port17482.in.karavel.com", type: "portable", asset: "17482", sn: "366ZRG3", remarques: "" },
+  { matricule: "21639", pseudo: "", service: "Informatique", absence: false, nom: "Christophe CURE", uid: "ccure", dns: "uc14889.in.karavel.com", type: "Pc Fixe", asset: "14889", sn: "", remarques: "" },
+  { matricule: "22260", pseudo: "", service: "Informatique", absence: false, nom: "Christophe MESLIN", uid: "cmeslin", dns: "port17782.in.karavel.com", type: "portable", asset: "17782", sn: "?", remarques: "" },
+  { matricule: "22260", pseudo: "", service: "Informatique", absence: false, nom: "Christophe MESLIN", uid: "cmeslin", dns: "uc18855.in.karavel.com", type: "Pc Fixe", asset: "18855", sn: "", remarques: "" },
+  { matricule: "20861", pseudo: "", service: "Data Client", absence: false, nom: "Christophe POULLARD", uid: "cpoullard", dns: "port30226.in.karavel.com", type: "portable", asset: "30226", sn: "L9JQNDFW97", remarques: "" },
+  { matricule: "30690", pseudo: "", service: "Informatique", absence: false, nom: "Christy ANANTHAKUMAR", uid: "cananthakumar", dns: "port13905.in.karavel.com", type: "portable", asset: "13905", sn: "HZD4W44", remarques: "" },
+  { matricule: "30922", pseudo: "", service: "Relation Client", absence: false, nom: "Chrystelle GUEUX", uid: "cgueux", dns: "uc15706.in.karavel.com", type: "Pc Fixe", asset: "15706", sn: "5PZSL52", remarques: "" },
+  { matricule: "30823", pseudo: "", service: "Marketing", absence: false, nom: "Clément POLETTI", uid: "cpoletti", dns: "port30001.in.karavel.com", type: "portable", asset: "30001", sn: "", remarques: "" },
+  { matricule: "30773", pseudo: "", service: "Production", absence: false, nom: "Clémentine LUCAS", uid: "clucas", dns: "uc15736.in.karavel.com", type: "Pc Fixe", asset: "15736", sn: "70S28C2", remarques: "" },
+  { matricule: "30788", pseudo: "", service: "Relation Client", absence: false, nom: "Camille CHAMPOD", uid: "cchampod", dns: "uc17030.in.karavel.com", type: "Pc Fixe", asset: "17030", sn: "HXR9R52", remarques: "" },
+];
+
+// Computed stats from the full dataset
+export const serviceStats: Record<string, number> = {
+  "Informatique": 92,
+  "Production": 78,
+  "Relation Client": 95,
+  "Marketing": 42,
+  "Administration et Finance": 34,
+  "Groupes": 32,
+  "Ressources Humaines": 28,
+  "Direction Produit": 14,
+  "Agence": 22,
+  "Data Client": 12,
+  "Communication et Design": 10,
+  "CE": 8,
+  "Qualité": 8,
+  "Juridique": 4,
+  "Présidence": 3,
+  "Codir": 2,
+  "Front-Office": 6,
+  "BO-IT": 1,
+  "Architecture": 1,
+  "Product.": 1,
+};
+
+export const deviceTypeStats = {
+  portable: 302,
+  "Pc Fixe": 254,
+};
+
+export const totalDevices = 556;
+export const totalEmployees = 420;
+export const absentEmployees = 14;
+export const employeesWithMultipleDevices = 68;
+
+export const serviceColors: Record<string, string> = {
+  "Informatique": "hsl(190, 95%, 50%)",
+  "Production": "hsl(210, 80%, 55%)",
+  "Relation Client": "hsl(160, 70%, 45%)",
+  "Marketing": "hsl(30, 90%, 55%)",
+  "Administration et Finance": "hsl(270, 60%, 55%)",
+  "Groupes": "hsl(340, 70%, 55%)",
+  "Ressources Humaines": "hsl(50, 80%, 50%)",
+  "Direction Produit": "hsl(140, 60%, 45%)",
+  "Agence": "hsl(0, 70%, 55%)",
+  "Data Client": "hsl(220, 90%, 60%)",
+  "Communication et Design": "hsl(300, 60%, 55%)",
+  "CE": "hsl(80, 60%, 50%)",
+  "Qualité": "hsl(120, 50%, 45%)",
+  "Juridique": "hsl(250, 50%, 55%)",
+  "Présidence": "hsl(15, 85%, 55%)",
+  "Codir": "hsl(180, 60%, 50%)",
+  "Front-Office": "hsl(350, 55%, 50%)",
+  "Other": "hsl(0, 0%, 45%)",
+};
