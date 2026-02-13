@@ -1,12 +1,52 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Server } from "lucide-react";
+import StatsCards from "@/components/dashboard/StatsCards";
+import ServiceChart from "@/components/dashboard/ServiceChart";
+import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
+import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
+import InventoryTable from "@/components/dashboard/InventoryTable";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary glow-primary">
+                <Server size={20} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — Karavel</h1>
+                <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                Données à jour
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+        <StatsCards />
+        
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ServiceChart />
+          </div>
+          <div className="space-y-6">
+            <DeviceTypeChart />
+            <TopServicesGrid />
+          </div>
+        </div>
+
+        <InventoryTable />
+      </main>
     </div>
   );
 };
