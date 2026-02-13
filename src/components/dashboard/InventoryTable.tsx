@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { inventoryData, type InventoryItem } from "@/data/inventoryData";
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 
 type SortKey = keyof InventoryItem;
 
@@ -99,6 +100,20 @@ const InventoryTable = () => {
           <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
             {filtered.length} résultats
           </span>
+          <button
+            onClick={() => exportToCSV(filtered)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <FileSpreadsheet size={13} />
+            CSV
+          </button>
+          <button
+            onClick={() => exportToPDF(filtered)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <FileText size={13} />
+            PDF
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto">
