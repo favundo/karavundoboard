@@ -17,7 +17,7 @@ const Index = () => {
                 <Server size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — Karavel</h1>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — Siège</h1>
                 <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
               </div>
             </div>
