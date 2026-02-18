@@ -59,6 +59,11 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "commentaire": "remarques",
   "commentaires": "remarques",
   "notes": "remarques",
+  // windows_version
+  "windows_version": "windows_version",
+  "version de windows": "windows_version",
+  "version windows": "windows_version",
+  "os": "windows_version",
 };
 
 export type ParseResult = {
@@ -150,6 +155,7 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
             matricule: "",
             pseudo: "",
             remarques: "",
+            windows_version: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {
