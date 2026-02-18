@@ -1,34 +1,35 @@
 import { useState } from "react";
-import { Server, Upload } from "lucide-react";
-import StatsCards from "@/components/dashboard/StatsCards";
-import ServiceChart from "@/components/dashboard/ServiceChart";
-import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
-import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
-import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
-import InventoryTable from "@/components/dashboard/InventoryTable";
-import ImportModal from "@/components/dashboard/ImportModal";
+import { Network, Upload } from "lucide-react";
+import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
+import AgencyTopChart from "@/components/agency/AgencyTopChart";
+import AgencyTable from "@/components/agency/AgencyTable";
+import AgencyImportModal from "@/components/agency/AgencyImportModal";
 import PinModal from "@/components/dashboard/PinModal";
 
-const Index = () => {
+const Agency = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={() => { setPinOpen(false); setImportOpen(true); }} />
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <PinModal
+        open={pinOpen}
+        onClose={() => setPinOpen(false)}
+        onSuccess={() => { setPinOpen(false); setImportOpen(true); }}
+      />
+      <AgencyImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary glow-primary">
-                <Server size={20} />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Network size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — Siège</h1>
-                <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Réseau Agences</h1>
+                <p className="text-xs text-muted-foreground">Inventaire du parc informatique agences</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -57,13 +58,13 @@ const Index = () => {
           <nav className="flex gap-1 -mb-px">
             <a
               href="/"
-              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
+              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
             >
               Parc IT — Siège
             </a>
             <a
               href="/agences"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
+              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
             >
               Réseau Agences
             </a>
@@ -73,24 +74,12 @@ const Index = () => {
 
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        <StatsCards />
-        
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ServiceChart />
-          </div>
-          <div className="space-y-6">
-            <DeviceTypeChart />
-            <WindowsVersionChart />
-            <TopServicesGrid />
-          </div>
-        </div>
-
-        <InventoryTable />
+        <AgencyStatsCards />
+        <AgencyTopChart />
+        <AgencyTable />
       </main>
     </div>
   );
 };
 
-export default Index;
-
+export default Agency;
