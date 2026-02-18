@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      agency_inventory: {
+        Row: {
+          agence: string
+          asset: string
+          created_at: string
+          id: string
+          masque: string
+          sn: string
+          sous_reseau: string
+          updated_at: string
+        }
+        Insert: {
+          agence?: string
+          asset?: string
+          created_at?: string
+          id?: string
+          masque?: string
+          sn?: string
+          sous_reseau?: string
+          updated_at?: string
+        }
+        Update: {
+          agence?: string
+          asset?: string
+          created_at?: string
+          id?: string
+          masque?: string
+          sn?: string
+          sous_reseau?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           absence: boolean | null
