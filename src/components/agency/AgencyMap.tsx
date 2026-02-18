@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { useMemo, useState } from "react";
+import { Map, Marker, Overlay } from "pigeon-maps";
 import { useAgencyInventory } from "@/hooks/useAgencyInventory";
 
-// Approximate coordinates for known French agency cities
+// Approximate coordinates [lat, lng] for known French agency cities
 const CITY_COORDS: Record<string, [number, number]> = {
   "Albi": [43.93, 2.15],
   "Arcachon": [44.66, -1.17],
@@ -14,7 +13,7 @@ const CITY_COORDS: Record<string, [number, number]> = {
   "Bordeaux Meriadeck": [44.84, -0.58],
   "Bourges": [47.08, 2.40],
   "Brest": [48.39, -4.49],
-  "Brestphare": [48.38, -4.48],
+  "Brestphare": [48.38, -4.47],
   "Bretigny": [48.61, 2.31],
   "Cergy": [49.04, 2.07],
   "Cesson Bois-senart": [48.61, 2.56],
@@ -99,22 +98,23 @@ const CITY_COORDS: Record<string, [number, number]> = {
 };
 
 const normalizeAgence = (name: string): string => {
-  // Try exact match first
   if (CITY_COORDS[name]) return name;
-  // Try case-insensitive partial match
-  const lower = name.toLowerCase();
+  const lower = name.toLowerCase().trim();
   for (const key of Object.keys(CITY_COORDS)) {
     if (key.toLowerCase() === lower) return key;
-    if (lower.startsWith(key.toLowerCase()) || key.toLowerCase().startsWith(lower.split(" ")[0])) return key;
+    const firstWord = lower.split(/[\s-]/)[0];
+    if (firstWord.length > 3 && key.toLowerCase().startsWith(firstWord)) return key;
   }
   return "";
 };
 
+type TooltipState = { agence: string; count: number } | null;
+
 const AgencyMap = () => {
   const { data, isLoading } = useAgencyInventory();
   const items = data ?? [];
+  const [hovered, setHovered] = useState<TooltipState>(null);
 
-  // Group items by agence and count
   const agencePoints = useMemo(() => {
     const counts = items.reduce<Record<string, number>>((acc, item) => {
       if (item.agence) acc[item.agence] = (acc[item.agence] ?? 0) + 1;
@@ -151,38 +151,57 @@ const AgencyMap = () => {
         </div>
       ) : (
         <div className="h-96 w-full overflow-hidden rounded-lg border border-border">
-          <MapContainer
-            center={[46.5, 2.5]}
-            zoom={5}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
+          <Map
+            defaultCenter={[46.5, 2.5]}
+            defaultZoom={5}
+            attribution={false}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
             {agencePoints.map((point) => (
-              <CircleMarker
+              <Marker
                 key={point.agence}
-                center={[point.lat, point.lng]}
-                radius={7}
-                pathOptions={{
-                  fillColor: "hsl(215 100% 60%)",
-                  fillOpacity: 0.85,
-                  color: "hsl(215 100% 40%)",
-                  weight: 1.5,
-                }}
+                anchor={[point.lat, point.lng]}
+                width={14}
+                onMouseOver={() => setHovered({ agence: point.agence, count: point.count })}
+                onMouseOut={() => setHovered(null)}
               >
-                <Tooltip permanent={false} direction="top" offset={[0, -8]}>
-                  <div className="text-xs font-medium">
-                    <span className="font-semibold">{point.agence}</span>
-                    <br />
-                    {point.count} équipement{point.count > 1 ? "s" : ""}
-                  </div>
-                </Tooltip>
-              </CircleMarker>
+                <div
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    background: "hsl(215 100% 55%)",
+                    border: "2px solid white",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                    cursor: "pointer",
+                  }}
+                />
+              </Marker>
             ))}
-          </MapContainer>
+
+            {hovered && agencePoints.find(p => p.agence === hovered.agence) && (() => {
+              const pt = agencePoints.find(p => p.agence === hovered.agence)!;
+              return (
+                <Overlay anchor={[pt.lat, pt.lng]} offset={[0, 30]}>
+                  <div
+                    style={{
+                      background: "var(--card, white)",
+                      border: "1px solid var(--border, #e2e8f0)",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      transform: "translateX(-50%)",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    <p style={{ fontWeight: 600, marginBottom: 2 }}>{pt.agence}</p>
+                    <p style={{ color: "hsl(215 100% 55%)" }}>{pt.count} équipement{pt.count > 1 ? "s" : ""}</p>
+                  </div>
+                </Overlay>
+              );
+            })()}
+          </Map>
         </div>
       )}
     </div>
