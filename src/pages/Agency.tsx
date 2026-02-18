@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Network, Upload } from "lucide-react";
 import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
-import AgencyTopChart from "@/components/agency/AgencyTopChart";
+import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
 import AgencyImportModal from "@/components/agency/AgencyImportModal";
 import PinModal from "@/components/dashboard/PinModal";
@@ -75,7 +75,7 @@ const Agency = () => {
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
         <AgencyStatsCards />
-        <AgencyTopChart />
+        <AgencyMap />
         <AgencyTable />
       </main>
     </div>
