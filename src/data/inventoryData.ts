@@ -10,6 +10,7 @@ export interface InventoryItem {
   asset: string;
   sn: string;
   remarques: string;
+  windows_version?: string;
 }
 
 export const inventoryData: InventoryItem[] = [

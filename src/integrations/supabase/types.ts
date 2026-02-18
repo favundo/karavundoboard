@@ -30,6 +30,7 @@ export type Database = {
           type: string
           uid: string | null
           updated_at: string
+          windows_version: string | null
         }
         Insert: {
           absence?: boolean | null
@@ -46,6 +47,7 @@ export type Database = {
           type?: string
           uid?: string | null
           updated_at?: string
+          windows_version?: string | null
         }
         Update: {
           absence?: boolean | null
@@ -62,6 +64,7 @@ export type Database = {
           type?: string
           uid?: string | null
           updated_at?: string
+          windows_version?: string | null
         }
         Relationships: []
       }

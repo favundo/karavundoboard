@@ -67,6 +67,7 @@ const InventoryTable = () => {
     { key: "asset", label: "Asset", className: "font-mono" },
     { key: "sn", label: "N° Série", className: "font-mono" },
     { key: "dns", label: "DNS", className: "font-mono text-xs" },
+    { key: "windows_version", label: "Windows" },
   ];
 
   return (
@@ -206,6 +207,21 @@ const InventoryTable = () => {
                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
                     <td className="max-w-[200px] truncate px-4 py-2.5 font-mono text-[10px] text-muted-foreground">
                       {item.dns || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5">
+                      {item.windows_version ? (
+                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                          item.windows_version.includes("11")
+                            ? "bg-primary/10 text-primary"
+                            : item.windows_version.includes("10")
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          {item.windows_version.replace("Microsoft ", "").replace(" Professionnel", " Pro").replace(" N", " N")}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
