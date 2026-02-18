@@ -21,6 +21,8 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "type": "type",
   "type équipement": "type",
   "type equipement": "type",
+  "type_immo": "type",
+  "typeimmo": "type",
   // asset
   "asset": "asset",
   "n° asset": "asset",
@@ -39,6 +41,7 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "dns": "dns",
   "hostname": "dns",
   "nom dns": "dns",
+  "nomdns": "dns",
   // absence
   "absence": "absence",
   "absent": "absence",
