@@ -197,7 +197,7 @@ const AgencyMap = () => {
                       zIndex: 999,
                     }}
                   >
-                    <p style={{ fontWeight: 600, marginBottom: 2 }}>{pt.agence}</p>
+                    <p style={{ fontWeight: 600, marginBottom: 2, color: "#111" }}>{pt.agence}</p>
                     <p style={{ color: "hsl(215, 100%, 55%)" }}>{pt.count} équipement{pt.count > 1 ? "s" : ""}</p>
                   </div>
                 </Overlay>
