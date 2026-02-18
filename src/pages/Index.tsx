@@ -7,12 +7,15 @@ import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
 import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
 import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
+import PinModal from "@/components/dashboard/PinModal";
 
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
+      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={() => { setPinOpen(false); setImportOpen(true); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Header */}
@@ -36,7 +39,7 @@ const Index = () => {
                 </span>
               </div>
               <button
-                onClick={() => setImportOpen(true)}
+                onClick={() => setPinOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
