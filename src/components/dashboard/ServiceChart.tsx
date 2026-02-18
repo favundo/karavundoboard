@@ -1,10 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { serviceStats, serviceColors } from "@/data/inventoryData";
-
-const data = Object.entries(serviceStats)
-  .sort(([, a], [, b]) => b - a)
-  .slice(0, 12)
-  .map(([name, value]) => ({ name: name.length > 18 ? name.slice(0, 16) + "…" : name, fullName: name, value }));
+import { serviceColors } from "@/data/inventoryData";
+import { useInventory } from "@/hooks/useInventory";
+import { useMemo } from "react";
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -19,6 +16,23 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const ServiceChart = () => {
+  const { data: inventory } = useInventory();
+
+  const data = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (inventory ?? []).forEach((item) => {
+      counts[item.service] = (counts[item.service] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 12)
+      .map(([name, value]) => ({
+        name: name.length > 18 ? name.slice(0, 16) + "…" : name,
+        fullName: name,
+        value,
+      }));
+  }, [inventory]);
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">

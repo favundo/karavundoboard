@@ -1,5 +1,5 @@
 import { Monitor, Laptop, Users, UserX, Layers } from "lucide-react";
-import { totalDevices, totalEmployees, absentEmployees, deviceTypeStats, employeesWithMultipleDevices } from "@/data/inventoryData";
+import { useInventory } from "@/hooks/useInventory";
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -26,6 +26,30 @@ const StatCard = ({ icon, label, value, sublabel, glowClass = "glow-primary" }: 
 );
 
 const StatsCards = () => {
+  const { data: inventory, isLoading } = useInventory();
+
+  const items = inventory ?? [];
+  const totalDevices = items.length;
+  const totalEmployees = new Set(items.filter((i) => i.uid).map((i) => i.uid)).size;
+  const absentEmployees = new Set(items.filter((i) => i.absence && i.uid).map((i) => i.uid)).size;
+  const portables = items.filter((i) => i.type === "portable").length;
+  const fixes = items.filter((i) => i.type === "Pc Fixe").length;
+  const employeesWithMultipleDevices = (() => {
+    const counts = new Map<string, number>();
+    items.forEach((i) => { if (i.uid) counts.set(i.uid, (counts.get(i.uid) ?? 0) + 1); });
+    return Array.from(counts.values()).filter((c) => c > 1).length;
+  })();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl border border-border bg-card" />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <StatCard
@@ -43,14 +67,14 @@ const StatsCards = () => {
       <StatCard
         icon={<Laptop size={20} />}
         label="Portables"
-        value={deviceTypeStats.portable}
-        sublabel={`${((deviceTypeStats.portable / totalDevices) * 100).toFixed(0)}% du parc`}
+        value={portables}
+        sublabel={totalDevices ? `${((portables / totalDevices) * 100).toFixed(0)}% du parc` : "—"}
       />
       <StatCard
         icon={<Monitor size={20} />}
         label="PC Fixes"
-        value={deviceTypeStats["Pc Fixe"]}
-        sublabel={`${((deviceTypeStats["Pc Fixe"] / totalDevices) * 100).toFixed(0)}% du parc`}
+        value={fixes}
+        sublabel={totalDevices ? `${((fixes / totalDevices) * 100).toFixed(0)}% du parc` : "—"}
       />
       <StatCard
         icon={<UserX size={20} />}
