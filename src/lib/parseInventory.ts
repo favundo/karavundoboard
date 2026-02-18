@@ -123,7 +123,7 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
 
         // Check required columns
         const mappedFields = new Set(Object.values(mapping));
-        const required: (keyof InventoryItem)[] = ["nom", "service", "asset"];
+        const required: (keyof InventoryItem)[] = ["nom", "service"];
         const missing = required.filter((f) => !mappedFields.has(f));
         if (missing.length > 0) {
           errors.push(`Colonnes requises manquantes : ${missing.join(", ")}`);
@@ -160,13 +160,8 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
             }
           }
 
-          // Skip entirely empty rows
+          // Skip truly empty rows (no name AND no asset)
           if (!item.nom && !item.asset) continue;
-
-          if (!item.asset) {
-            warnings.push(`Ligne ${i + 2} ignorée : champ "asset" vide (nom: ${item.nom})`);
-            continue;
-          }
 
           items.push(item);
         }
