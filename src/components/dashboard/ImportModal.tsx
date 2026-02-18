@@ -197,12 +197,12 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
                 <div className="flex flex-wrap gap-1.5">
                   {["Nom", "Service", "Asset", "Type", "SN", "DNS", "UID", "Matricule", "Absence", "Remarques"].map((col) => (
                     <span key={col} className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                      ["Nom", "Service", "Asset"].includes(col)
+                      ["Nom", "Service"].includes(col)
                         ? "bg-primary/15 text-primary"
                         : "bg-secondary text-secondary-foreground"
                     }`}>
                       {col}
-                      {["Nom", "Service", "Asset"].includes(col) && " *"}
+                      {["Nom", "Service"].includes(col) && " *"}
                     </span>
                   ))}
                 </div>
