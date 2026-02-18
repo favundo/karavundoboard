@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Map, Marker, Overlay } from "pigeon-maps";
+import { Map, Overlay } from "pigeon-maps";
 import { useAgencyInventory } from "@/hooks/useAgencyInventory";
 
 // Approximate coordinates [lat, lng] for known French agency cities
@@ -157,46 +157,48 @@ const AgencyMap = () => {
             attribution={false}
           >
             {agencePoints.map((point) => (
-              <Marker
+              <Overlay
                 key={point.agence}
                 anchor={[point.lat, point.lng]}
-                width={14}
+                offset={[8, 8]}
               >
                 <div
                   onMouseEnter={() => setHovered({ agence: point.agence, count: point.count })}
                   onMouseLeave={() => setHovered(null)}
                   style={{
-                    width: 12,
-                    height: 12,
+                    width: 14,
+                    height: 14,
                     borderRadius: "50%",
                     background: "hsl(215 100% 55%)",
                     border: "2px solid white",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
                     cursor: "pointer",
+                    position: "relative",
+                    zIndex: 1,
                   }}
                 />
-              </Marker>
+              </Overlay>
             ))}
 
             {hovered && agencePoints.find(p => p.agence === hovered.agence) && (() => {
               const pt = agencePoints.find(p => p.agence === hovered.agence)!;
               return (
-                <Overlay anchor={[pt.lat, pt.lng]} offset={[0, 30]}>
+                <Overlay anchor={[pt.lat, pt.lng]} offset={[-60, 45]}>
                   <div
                     style={{
-                      background: "var(--card, white)",
-                      border: "1px solid var(--border, #e2e8f0)",
+                      background: "white",
+                      border: "1px solid #e2e8f0",
                       borderRadius: 8,
                       padding: "6px 10px",
                       fontSize: 11,
                       whiteSpace: "nowrap",
                       pointerEvents: "none",
-                      transform: "translateX(-50%)",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      zIndex: 999,
                     }}
                   >
                     <p style={{ fontWeight: 600, marginBottom: 2 }}>{pt.agence}</p>
-                    <p style={{ color: "hsl(215 100% 55%)" }}>{pt.count} équipement{pt.count > 1 ? "s" : ""}</p>
+                    <p style={{ color: "hsl(215, 100%, 55%)" }}>{pt.count} équipement{pt.count > 1 ? "s" : ""}</p>
                   </div>
                 </Overlay>
               );
