@@ -1,10 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { deviceTypeStats } from "@/data/inventoryData";
-
-const data = [
-  { name: "Portables", value: deviceTypeStats.portable },
-  { name: "PC Fixes", value: deviceTypeStats["Pc Fixe"] },
-];
+import { useInventory } from "@/hooks/useInventory";
+import { useMemo } from "react";
 
 const COLORS = ["hsl(190, 95%, 50%)", "hsl(160, 70%, 45%)"];
 
@@ -21,6 +17,16 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const DeviceTypeChart = () => {
+  const { data: inventory } = useInventory();
+
+  const data = useMemo(() => {
+    const items = inventory ?? [];
+    return [
+      { name: "Portables", value: items.filter((i) => i.type === "portable").length },
+      { name: "PC Fixes", value: items.filter((i) => i.type === "Pc Fixe").length },
+    ];
+  }, [inventory]);
+
   const total = data.reduce((acc, d) => acc + d.value, 0);
 
   return (
@@ -57,7 +63,7 @@ const DeviceTypeChart = () => {
               <div>
                 <p className="text-sm font-medium text-foreground">{entry.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {entry.value} ({((entry.value / total) * 100).toFixed(1)}%)
+                  {entry.value} ({total ? ((entry.value / total) * 100).toFixed(1) : 0}%)
                 </p>
               </div>
             </div>

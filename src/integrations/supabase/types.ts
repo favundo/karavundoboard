@@ -14,7 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inventory_items: {
+        Row: {
+          absence: boolean | null
+          asset: string
+          created_at: string
+          dns: string | null
+          id: string
+          matricule: string | null
+          nom: string
+          pseudo: string | null
+          remarques: string | null
+          service: string
+          sn: string | null
+          type: string
+          uid: string | null
+          updated_at: string
+        }
+        Insert: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

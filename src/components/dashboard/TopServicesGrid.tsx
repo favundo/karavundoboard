@@ -1,5 +1,6 @@
-import { serviceStats } from "@/data/inventoryData";
+import { useInventory } from "@/hooks/useInventory";
 import { Building2, Headphones, Code, Megaphone, Wallet, Users2 } from "lucide-react";
+import { useMemo } from "react";
 
 const iconMap: Record<string, React.ReactNode> = {
   "Informatique": <Code size={18} />,
@@ -10,13 +11,19 @@ const iconMap: Record<string, React.ReactNode> = {
   "Groupes": <Users2 size={18} />,
 };
 
-const top6 = Object.entries(serviceStats)
-  .sort(([, a], [, b]) => b - a)
-  .slice(0, 6);
-
-const maxVal = top6[0][1];
-
 const TopServicesGrid = () => {
+  const { data: inventory } = useInventory();
+
+  const top6 = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (inventory ?? []).forEach((item) => {
+      counts[item.service] = (counts[item.service] ?? 0) + 1;
+    });
+    return Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 6);
+  }, [inventory]);
+
+  const maxVal = top6[0]?.[1] ?? 1;
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
