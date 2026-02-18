@@ -161,10 +161,10 @@ const AgencyMap = () => {
                 key={point.agence}
                 anchor={[point.lat, point.lng]}
                 width={14}
-                onMouseOver={() => setHovered({ agence: point.agence, count: point.count })}
-                onMouseOut={() => setHovered(null)}
               >
                 <div
+                  onMouseEnter={() => setHovered({ agence: point.agence, count: point.count })}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
                     width: 12,
                     height: 12,
