@@ -1,0 +1,1 @@
+ALTER TABLE public.agency_inventory ADD COLUMN IF NOT EXISTS os_version text NOT NULL DEFAULT '';

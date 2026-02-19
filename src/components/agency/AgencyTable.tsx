@@ -54,6 +54,7 @@ const AgencyTable = () => {
     { key: "masque", label: "Masque" },
     { key: "asset", label: "Asset" },
     { key: "sn", label: "N° Série" },
+    { key: "os_version", label: "Version OS" },
   ];
 
   return (
@@ -139,16 +140,17 @@ const AgencyTable = () => {
                 {filtered.slice(0, 100).map((item, idx) => (
                   <tr key={`${item.asset}-${idx}`} className="border-b border-border/50 transition-colors hover:bg-muted/20">
                     <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">{item.agence}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sous_reseau || "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5">
-                      {item.masque ? (
-                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-primary">
-                          /{item.masque}
-                        </span>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-primary">{item.asset || "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
+                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sous_reseau || "—"}</td>
+                     <td className="whitespace-nowrap px-4 py-2.5">
+                       {item.masque ? (
+                         <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-primary">
+                           /{item.masque}
+                         </span>
+                       ) : <span className="text-muted-foreground">—</span>}
+                     </td>
+                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-primary">{item.asset || "—"}</td>
+                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
+                     <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{item.os_version || "—"}</td>
                   </tr>
                 ))}
               </tbody>

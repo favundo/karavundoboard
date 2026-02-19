@@ -8,6 +8,7 @@ export type AgencyItem = {
   agence: string;
   asset: string;
   sn: string;
+  os_version: string;
 };
 
 export const useAgencyInventory = () => {
