@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           id: string
           masque: string
+          os_version: string
           sn: string
           sous_reseau: string
           updated_at: string
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           id?: string
           masque?: string
+          os_version?: string
           sn?: string
           sous_reseau?: string
           updated_at?: string
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           id?: string
           masque?: string
+          os_version?: string
           sn?: string
           sous_reseau?: string
           updated_at?: string

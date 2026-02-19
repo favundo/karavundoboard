@@ -25,6 +25,15 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "serial": "sn",
   "numerodesr": "sn",
   "noserie": "sn",
+  // os_version
+  "os": "os_version",
+  "osversion": "os_version",
+  "versionos": "os_version",
+  "systemeexploitation": "os_version",
+  "os_version": "os_version",
+  "windowsversion": "os_version",
+  "versionwindows": "os_version",
+  "version": "os_version",
 };
 
 export type AgencyParseResult = {
@@ -88,6 +97,7 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             agence: "",
             asset: "",
             sn: "",
+            os_version: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {
