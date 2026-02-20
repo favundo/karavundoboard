@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      abcroisiere_inventory: {
+        Row: {
+          absence: boolean | null
+          asset: string
+          created_at: string
+          dns: string | null
+          id: string
+          matricule: string | null
+          nom: string
+          pseudo: string | null
+          remarques: string | null
+          service: string
+          sn: string | null
+          type: string
+          uid: string | null
+          updated_at: string
+          windows_version: string | null
+        }
+        Insert: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          windows_version?: string | null
+        }
+        Update: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          windows_version?: string | null
+        }
+        Relationships: []
+      }
       agency_inventory: {
         Row: {
           agence: string

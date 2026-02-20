@@ -1,33 +1,30 @@
 import { useState } from "react";
 import { Server, Upload } from "lucide-react";
-import StatsCards from "@/components/dashboard/StatsCards";
-import ServiceChart from "@/components/dashboard/ServiceChart";
-import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
-import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
-import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
-import InventoryTable from "@/components/dashboard/InventoryTable";
-import ImportModal from "@/components/dashboard/ImportModal";
-import PinModal from "@/components/dashboard/PinModal";
+import AbcroisiereStatsCards from "@/components/abcroisiere/AbcroisiereStatsCards";
+import AbcroisiereServiceChart from "@/components/abcroisiere/AbcroisiereServiceChart";
+import AbcroisiereDeviceTypeChart from "@/components/abcroisiere/AbcroisiereDeviceTypeChart";
+import AbcroisiereTopServicesGrid from "@/components/abcroisiere/AbcroisiereTopServicesGrid";
+import AbcroisiereWindowsVersionChart from "@/components/abcroisiere/AbcroisiereWindowsVersionChart";
+import AbcroisiereInventoryTable from "@/components/abcroisiere/AbcroisiereInventoryTable";
+import AbcroisiereImportModal from "@/components/abcroisiere/AbcroisiereImportModal";
 
-const Index = () => {
+const Abcroisiere = () => {
   const [importOpen, setImportOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={() => { setPinOpen(false); setImportOpen(true); }} />
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <AbcroisiereImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary glow-primary">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Server size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — Siège</h1>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc IT — ABcroisière</h1>
                 <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
               </div>
             </div>
@@ -39,7 +36,7 @@ const Index = () => {
                 </span>
               </div>
               <button
-                onClick={() => setPinOpen(true)}
+                onClick={() => setImportOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
@@ -55,22 +52,13 @@ const Index = () => {
       <div className="border-b border-border bg-card/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <nav className="flex gap-1 -mb-px">
-            <a
-              href="/"
-              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
-            >
+            <a href="/" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
               Parc IT — Siège
             </a>
-            <a
-              href="/agences"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
-            >
+            <a href="/agences" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
               Réseau Agences
             </a>
-            <a
-              href="/abcroisiere"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
-            >
+            <a href="/abcroisiere" className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary">
               ABcroisière
             </a>
           </nav>
@@ -79,24 +67,23 @@ const Index = () => {
 
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        <StatsCards />
-        
+        <AbcroisiereStatsCards />
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <ServiceChart />
+            <AbcroisiereServiceChart />
           </div>
           <div className="space-y-6">
-            <DeviceTypeChart />
-            <WindowsVersionChart />
-            <TopServicesGrid />
+            <AbcroisiereDeviceTypeChart />
+            <AbcroisiereWindowsVersionChart />
+            <AbcroisiereTopServicesGrid />
           </div>
         </div>
 
-        <InventoryTable />
+        <AbcroisiereInventoryTable />
       </main>
     </div>
   );
 };
 
-export default Index;
-
+export default Abcroisiere;
