@@ -49,16 +49,11 @@ export const useAbcroisiereInventory = () => {
   });
 };
 
-export const useReplaceAbcroisiereInventory = () => {
+// Append new items to existing inventory (no deletion)
+export const useAppendAbcroisiereInventory = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (items: InventoryItem[]) => {
-      const { error: deleteError } = await supabase
-        .from("abcroisiere_inventory")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      if (deleteError) throw deleteError;
-
       const BATCH = 200;
       for (let i = 0; i < items.length; i += BATCH) {
         const batch = items.slice(i, i + BATCH).map((item) => ({
@@ -84,3 +79,6 @@ export const useReplaceAbcroisiereInventory = () => {
     },
   });
 };
+
+// Keep for backward compatibility
+export const useReplaceAbcroisiereInventory = useAppendAbcroisiereInventory;

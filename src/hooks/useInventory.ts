@@ -50,18 +50,11 @@ export const useInventory = () => {
   });
 };
 
-export const useReplaceInventory = () => {
+// Append new items to existing inventory (no deletion)
+export const useAppendInventory = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (items: InventoryItem[]) => {
-      // Delete all existing rows
-      const { error: deleteError } = await supabase
-        .from("inventory_items")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all
-      if (deleteError) throw deleteError;
-
-      // Insert new rows in batches of 200
       const BATCH = 200;
       for (let i = 0; i < items.length; i += BATCH) {
         const batch = items.slice(i, i + BATCH).map((item) => ({
@@ -87,3 +80,6 @@ export const useReplaceInventory = () => {
     },
   });
 };
+
+// Keep for backward compatibility (full replace)
+export const useReplaceInventory = useAppendInventory;
