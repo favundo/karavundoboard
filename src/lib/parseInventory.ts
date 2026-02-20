@@ -22,6 +22,7 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "type équipement": "type",
   "type equipement": "type",
   "type_immo": "type",
+  "type-immo": "type",
   "typeimmo": "type",
   // asset
   "asset": "asset",
