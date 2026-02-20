@@ -117,7 +117,7 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
                 </button>
               </div>
               {warnings.length > 0 && (
-                <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+                <div className="mb-3 rounded-lg border border-border bg-muted/30 p-3">
               {warnings.map((w, i) => (
                     <p key={i} className="text-xs text-muted-foreground">{w}</p>
                   ))}
@@ -152,8 +152,8 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
                   </p>
                 )}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                ⚠️ L'import remplacera intégralement l'inventaire réseau agences existant.
+              <p className="mt-3 text-xs text-primary">
+                ✅ Ces équipements seront <strong>ajoutés</strong> à l'inventaire existant, sans supprimer les données actuelles.
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <button onClick={handleClose} className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">Annuler</button>

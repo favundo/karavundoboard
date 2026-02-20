@@ -287,9 +287,9 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-                <p className="text-xs text-destructive">
-                  ⚠️ Cette action <strong>remplacera toutes les données existantes</strong> par les {parseResult.items.length} équipements du fichier importé.
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                <p className="text-xs text-primary">
+                  ✅ Ces {parseResult.items.length} équipements seront <strong>ajoutés</strong> à l'inventaire existant, sans supprimer les données actuelles.
                 </p>
               </div>
             </div>
