@@ -7,12 +7,19 @@ import AbcroisiereTopServicesGrid from "@/components/abcroisiere/AbcroisiereTopS
 import AbcroisiereWindowsVersionChart from "@/components/abcroisiere/AbcroisiereWindowsVersionChart";
 import AbcroisiereInventoryTable from "@/components/abcroisiere/AbcroisiereInventoryTable";
 import AbcroisiereImportModal from "@/components/abcroisiere/AbcroisiereImportModal";
+import PinModal from "@/components/dashboard/PinModal";
 
 const Abcroisiere = () => {
   const [importOpen, setImportOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
+      <PinModal
+        open={pinOpen}
+        onClose={() => setPinOpen(false)}
+        onSuccess={() => { setPinOpen(false); setImportOpen(true); }}
+      />
       <AbcroisiereImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Header */}
@@ -36,7 +43,7 @@ const Abcroisiere = () => {
                 </span>
               </div>
               <button
-                onClick={() => setImportOpen(true)}
+                onClick={() => setPinOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
