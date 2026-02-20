@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload } from "lucide-react";
+import { Server, Upload, Trash2 } from "lucide-react";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
@@ -8,15 +8,32 @@ import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
 import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
 import PinModal from "@/components/dashboard/PinModal";
+import ResetModal from "@/components/dashboard/ResetModal";
+
+type PinAction = "import" | "reset";
 
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<PinAction>("import");
+
+  const openPinFor = (action: PinAction) => {
+    setPinAction(action);
+    setPinOpen(true);
+  };
+
+  const handlePinSuccess = () => {
+    setPinOpen(false);
+    if (pinAction === "import") setImportOpen(true);
+    else setResetOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={() => { setPinOpen(false); setImportOpen(true); }} />
+      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -39,7 +56,14 @@ const Index = () => {
                 </span>
               </div>
               <button
-                onClick={() => setPinOpen(true)}
+                onClick={() => openPinFor("reset")}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+              >
+                <Trash2 size={15} />
+                <span className="hidden sm:inline">Vider</span>
+              </button>
+              <button
+                onClick={() => openPinFor("import")}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
