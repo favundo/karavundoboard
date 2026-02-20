@@ -1,23 +1,36 @@
 import { useState } from "react";
-import { Network, Upload } from "lucide-react";
+import { Network, Upload, Trash2 } from "lucide-react";
 import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
 import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
 import AgencyImportModal from "@/components/agency/AgencyImportModal";
+import AgencyResetModal from "@/components/agency/AgencyResetModal";
 import PinModal from "@/components/dashboard/PinModal";
+
+type PinAction = "import" | "reset";
 
 const Agency = () => {
   const [importOpen, setImportOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<PinAction>("import");
+
+  const openPinFor = (action: PinAction) => {
+    setPinAction(action);
+    setPinOpen(true);
+  };
+
+  const handlePinSuccess = () => {
+    setPinOpen(false);
+    if (pinAction === "import") setImportOpen(true);
+    else setResetOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal
-        open={pinOpen}
-        onClose={() => setPinOpen(false)}
-        onSuccess={() => { setPinOpen(false); setImportOpen(true); }}
-      />
+      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <AgencyImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <AgencyResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -40,7 +53,14 @@ const Agency = () => {
                 </span>
               </div>
               <button
-                onClick={() => setPinOpen(true)}
+                onClick={() => openPinFor("reset")}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+              >
+                <Trash2 size={15} />
+                <span className="hidden sm:inline">Vider</span>
+              </button>
+              <button
+                onClick={() => openPinFor("import")}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
@@ -56,22 +76,13 @@ const Agency = () => {
       <div className="border-b border-border bg-card/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <nav className="flex gap-1 -mb-px">
-            <a
-              href="/"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
-            >
+            <a href="/" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
               Parc IT — Siège
             </a>
-            <a
-              href="/agences"
-              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
-            >
+            <a href="/agences" className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary">
               Réseau Agences
             </a>
-            <a
-              href="/abcroisiere"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
-            >
+            <a href="/abcroisiere" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
               ABcroisière
             </a>
           </nav>
