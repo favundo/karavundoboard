@@ -77,7 +77,7 @@ const Agency = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <nav className="flex gap-1 -mb-px">
             <a href="/" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
-              Parc IT — Siège
+              Parc - Siège et Groupes
             </a>
             <a href="/agences" className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary">
               Réseau Agences
