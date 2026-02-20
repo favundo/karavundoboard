@@ -78,7 +78,9 @@ const normalizeHeader = (h: string) =>
 
 const normalizeType = (val: string): "portable" | "Pc Fixe" => {
   const v = val.trim().toLowerCase();
-  if (v.includes("fixe") || v.includes("desktop") || v.includes("uc")) return "Pc Fixe";
+  // "uc" doit être un mot entier (début ou après espace/tiret) pour éviter les faux positifs
+  const isUC = /(?:^|[\s\-_])uc(?:$|[\s\-_\d])/.test(v) || v === "uc";
+  if (v.includes("fixe") || v.includes("desktop") || isUC) return "Pc Fixe";
   return "portable";
 };
 
