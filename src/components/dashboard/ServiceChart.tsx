@@ -38,7 +38,7 @@ const ServiceChart = () => {
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Équipements par service
       </h3>
-      <div className="h-[300px]">
+      <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20, top: 0, bottom: 0 }}>
             <XAxis type="number" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -49,6 +49,7 @@ const ServiceChart = () => {
               tick={{ fill: "hsl(210, 10%, 20%)", fontSize: 12, fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
+              interval={0}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(220, 15%, 14%)" }} />
             <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={24}>
