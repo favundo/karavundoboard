@@ -27,7 +27,7 @@ const ServiceChart = () => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 12)
       .map(([name, value]) => ({
-        name: name.length > 18 ? name.slice(0, 16) + "…" : name,
+        name: name.length > 24 ? name.slice(0, 22) + "…" : name,
         fullName: name,
         value,
       }));
@@ -45,8 +45,8 @@ const ServiceChart = () => {
             <YAxis
               dataKey="name"
               type="category"
-              width={120}
-              tick={{ fill: "hsl(210, 20%, 85%)", fontSize: 11 }}
+              width={160}
+              tick={{ fill: "hsl(210, 10%, 20%)", fontSize: 12, fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
             />
