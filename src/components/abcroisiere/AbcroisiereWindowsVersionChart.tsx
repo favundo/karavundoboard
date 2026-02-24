@@ -28,14 +28,15 @@ const FALLBACK_COLORS = [
   "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--muted-foreground))", "hsl(var(--border))",
 ];
 
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number; payload: { percent: number } }[] }) => {
+const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?: any[]; total: number }) => {
   if (!active || !payload?.length) return null;
-  const { name, value, payload: p } = payload[0];
+  const { name, value } = payload[0];
+  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-foreground">{name}</p>
       <p className="text-muted-foreground">{value} équipement{value > 1 ? "s" : ""}</p>
-      <p className="text-primary font-medium">{(p.percent * 100).toFixed(1)}%</p>
+      <p className="text-primary font-medium">{pct}%</p>
     </div>
   );
 };
@@ -77,7 +78,7 @@ const AbcroisiereWindowsVersionChart = () => {
                   <Cell key={entry.name} fill={COLORS[entry.name] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip total={total} />} />
             </PieChart>
           </ResponsiveContainer>
           <div className="mt-3 space-y-1.5">
