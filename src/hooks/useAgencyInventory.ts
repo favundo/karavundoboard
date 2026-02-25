@@ -34,7 +34,10 @@ export const useAppendAgencyInventory = () => {
 
       const batchSize = 500;
       for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
+        const batch = items.slice(i, i + batchSize).map((item) => ({
+          ...item,
+          asset: item.asset || `EMPTY-${crypto.randomUUID()}`,
+        }));
         const { error: insertError } = await supabase
           .from("agency_inventory")
           .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });

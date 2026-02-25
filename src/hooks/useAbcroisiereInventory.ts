@@ -63,7 +63,7 @@ export const useAppendAbcroisiereInventory = () => {
           uid: item.uid ?? "",
           service: item.service ?? "",
           type: item.type ?? "portable",
-          asset: item.asset ?? "",
+          asset: item.asset || `EMPTY-${crypto.randomUUID()}`,
           sn: item.sn ?? "",
           dns: item.dns ?? "",
           absence: item.absence ?? false,
