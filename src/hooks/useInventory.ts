@@ -64,14 +64,13 @@ export const useAppendInventory = () => {
           uid: item.uid ?? "",
           service: item.service ?? "",
           type: item.type ?? "portable",
-          asset: item.asset ?? "",
+          asset: item.asset || `EMPTY-${crypto.randomUUID()}`,
           sn: item.sn ?? "",
           dns: item.dns ?? "",
           absence: item.absence ?? false,
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
         }));
-        // Upsert: if asset already exists, update all other fields
         const { error: insertError } = await supabase
           .from("inventory_items")
           .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
