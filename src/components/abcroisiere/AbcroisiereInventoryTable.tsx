@@ -76,13 +76,13 @@ const AbcroisiereInventoryTable = () => {
                 placeholder="Rechercher..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-secondary pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="h-8 rounded-lg border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
-            <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none">
+            <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none">
               {services.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none">
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none">
               <option value="Tous">Tous types</option>
               <option value="portable">Portable</option>
               <option value="Pc Fixe">PC Fixe</option>
