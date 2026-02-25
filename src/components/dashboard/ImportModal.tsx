@@ -59,10 +59,16 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
     [handleFile]
   );
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!parseResult) return;
-    await replaceInventory.mutateAsync(parseResult.items);
-    setStep("success");
+    try {
+      await replaceInventory.mutateAsync(parseResult.items);
+      setStep("success");
+    } catch (err) {
+      console.error("Import error:", err);
+      alert("Erreur lors de l'import : " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   if (!open) return null;
