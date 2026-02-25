@@ -71,7 +71,10 @@ export const useAppendInventory = () => {
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
         }));
-        const { error: insertError } = await supabase.from("inventory_items").insert(batch);
+        // Upsert: if asset already exists, update all other fields
+        const { error: insertError } = await supabase
+          .from("inventory_items")
+          .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
         if (insertError) throw insertError;
       }
     },

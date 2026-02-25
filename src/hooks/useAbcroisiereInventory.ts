@@ -70,7 +70,9 @@ export const useAppendAbcroisiereInventory = () => {
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
         }));
-        const { error: insertError } = await supabase.from("abcroisiere_inventory").insert(batch);
+        const { error: insertError } = await supabase
+          .from("abcroisiere_inventory")
+          .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
         if (insertError) throw insertError;
       }
     },

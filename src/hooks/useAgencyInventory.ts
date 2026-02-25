@@ -37,7 +37,7 @@ export const useAppendAgencyInventory = () => {
         const batch = items.slice(i, i + batchSize);
         const { error: insertError } = await supabase
           .from("agency_inventory")
-          .insert(batch);
+          .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
         if (insertError) throw insertError;
       }
     },
