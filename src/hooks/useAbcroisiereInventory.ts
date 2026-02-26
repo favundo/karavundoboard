@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { triggerWebhook } from "@/lib/zapierWebhook";
 import { type InventoryItem } from "@/data/inventoryData";
 
 export type DbAbcroisiereItem = {
@@ -76,8 +77,9 @@ export const useAppendAbcroisiereInventory = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["abcroisiere_inventory"] });
+      triggerWebhook("import", { table: "ABcroisière", count: variables.length });
     },
   });
 };
