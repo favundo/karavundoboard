@@ -25,7 +25,7 @@ const ServiceChart = () => {
     });
     return Object.entries(counts)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 12)
+      .slice(0, 15)
       .map(([name, value]) => ({
         name: name.length > 24 ? name.slice(0, 22) + "…" : name,
         fullName: name,

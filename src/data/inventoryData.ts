@@ -615,6 +615,8 @@ export const serviceColors: Record<string, string> = {
   "Marketing": "hsl(30, 90%, 55%)",
   "Administration et Finance": "hsl(270, 60%, 55%)",
   "Groupes": "hsl(340, 70%, 55%)",
+  "Groupes - Plateforme Lille": "hsl(345, 55%, 45%)",
+  "Groupes - Plateforme Nante": "hsl(335, 55%, 65%)",
   "Ressources Humaines": "hsl(50, 80%, 50%)",
   "Direction Produit": "hsl(140, 60%, 45%)",
   "Agence": "hsl(0, 70%, 55%)",
