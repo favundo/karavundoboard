@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
-  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Absent"];
+  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Windows", "Absent"];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -13,6 +13,7 @@ export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
     item.dns || "",
     item.uid,
     item.matricule,
+    item.windows_version || "",
     item.absence ? "Oui" : "Non",
   ]);
 
@@ -40,7 +41,7 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS"]];
+  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "Windows"]];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -48,6 +49,7 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
     item.asset,
     item.sn || "—",
     item.dns || "—",
+    item.windows_version || "—",
   ]);
 
   autoTable(doc, {
