@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { triggerWebhook } from "@/lib/zapierWebhook";
 
 export type AgencyItem = {
   id?: string;
@@ -44,8 +45,9 @@ export const useAppendAgencyInventory = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["agency_inventory"] });
+      triggerWebhook("import", { table: "Réseau Agences", count: variables.length });
     },
   });
 };
