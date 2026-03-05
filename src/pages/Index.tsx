@@ -6,6 +6,7 @@ import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
 import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
 import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
+import MultiDeviceGauge from "@/components/dashboard/MultiDeviceGauge";
 import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
 import PinModal from "@/components/dashboard/PinModal";
@@ -112,6 +113,7 @@ const Index = () => {
             <ServiceChart />
           </div>
           <div className="space-y-6">
+            <MultiDeviceGauge />
             <DeviceTypeChart />
             <WindowsVersionChart />
             <TopServicesGrid />
