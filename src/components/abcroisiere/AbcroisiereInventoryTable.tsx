@@ -1,15 +1,17 @@
 import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, FileText, FileSpreadsheet, Upload } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, FileText, FileSpreadsheet, Upload, Users } from "lucide-react";
 import { type InventoryItem } from "@/data/inventoryData";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { useAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
 import AbcroisiereImportModal from "./AbcroisiereImportModal";
+import MultiDeviceModal from "@/components/dashboard/MultiDeviceModal";
 
 type SortKey = keyof InventoryItem;
 
 const AbcroisiereInventoryTable = () => {
   const { data: inventoryFromDb, isLoading } = useAbcroisiereInventory();
   const [importOpen, setImportOpen] = useState(false);
+  const [multiDeviceOpen, setMultiDeviceOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState("Tous");
   const [typeFilter, setTypeFilter] = useState("Tous");
@@ -65,6 +67,7 @@ const AbcroisiereInventoryTable = () => {
   return (
     <>
       <AbcroisiereImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <MultiDeviceModal open={multiDeviceOpen} onClose={() => setMultiDeviceOpen(false)} data={inventoryData} />
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Inventaire détaillé</h3>
@@ -95,6 +98,9 @@ const AbcroisiereInventoryTable = () => {
             </button>
             <button onClick={() => exportToPDF(filtered)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground">
               <FileText size={13} />PDF
+            </button>
+            <button onClick={() => setMultiDeviceOpen(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <Users size={13} />Multi-devices
             </button>
             <button onClick={() => setImportOpen(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/20">
               <Upload size={13} />Importer
