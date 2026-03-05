@@ -1,11 +1,14 @@
 import { useInventory } from "@/hooks/useInventory";
 import { Target, TrendingDown } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const BASELINE_KEY = "multi-device-baseline";
 
 const MultiDeviceGauge = () => {
   const { data: inventory, isLoading } = useInventory();
+  const [baseline, setBaseline] = useState<number | null>(null);
 
   const items = inventory ?? [];
-  const totalEmployees = new Set(items.filter((i) => i.uid).map((i) => i.uid)).size;
 
   const multiDeviceCount = (() => {
     const counts = new Map<string, number>();
@@ -15,10 +18,29 @@ const MultiDeviceGauge = () => {
     return Array.from(counts.values()).filter((c) => c > 1).length;
   })();
 
-  // 0 multi-device = 100% objective reached
-  const percentage = totalEmployees > 0
-    ? Math.round(((totalEmployees - multiDeviceCount) / totalEmployees) * 100)
-    : 100;
+  // Store baseline on first load (highest seen value)
+  useEffect(() => {
+    if (isLoading || items.length === 0) return;
+    const stored = localStorage.getItem(BASELINE_KEY);
+    if (stored) {
+      const storedVal = parseInt(stored, 10);
+      // Update baseline if current count is higher (new import with more multi-devices)
+      if (multiDeviceCount > storedVal) {
+        localStorage.setItem(BASELINE_KEY, String(multiDeviceCount));
+        setBaseline(multiDeviceCount);
+      } else {
+        setBaseline(storedVal);
+      }
+    } else {
+      localStorage.setItem(BASELINE_KEY, String(multiDeviceCount));
+      setBaseline(multiDeviceCount);
+    }
+  }, [isLoading, multiDeviceCount, items.length]);
+
+  // percentage: 0% when at baseline, 100% when 0
+  const percentage = baseline && baseline > 0
+    ? Math.round(((baseline - multiDeviceCount) / baseline) * 100)
+    : multiDeviceCount === 0 ? 100 : 0;
 
   // SVG arc calculations
   const size = 120;
@@ -27,7 +49,6 @@ const MultiDeviceGauge = () => {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  // Color based on progress
   const getColor = () => {
     if (percentage >= 90) return "hsl(var(--glow-success))";
     if (percentage >= 70) return "hsl(var(--glow-warning))";
@@ -44,7 +65,6 @@ const MultiDeviceGauge = () => {
     <div className="relative overflow-hidden rounded-xl border border-border bg-card p-5">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
       <div className="relative">
-        {/* Header */}
         <div className="flex items-center gap-2 mb-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Target size={16} />
@@ -56,12 +76,9 @@ const MultiDeviceGauge = () => {
           </div>
         </div>
 
-        {/* Content: gauge + KPI */}
         <div className="flex items-center gap-5">
-          {/* Circular gauge */}
           <div className="relative flex-shrink-0">
             <svg width={size} height={size} className="-rotate-90">
-              {/* Background circle */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -70,7 +87,6 @@ const MultiDeviceGauge = () => {
                 stroke="hsl(var(--border))"
                 strokeWidth={strokeWidth}
               />
-              {/* Progress arc */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -84,14 +100,12 @@ const MultiDeviceGauge = () => {
                 className="transition-all duration-1000 ease-out"
               />
             </svg>
-            {/* Center text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-2xl font-bold text-foreground">{percentage}%</span>
               <span className="text-[10px] text-muted-foreground">atteint</span>
             </div>
           </div>
 
-          {/* KPI details */}
           <div className="flex-1 space-y-3">
             <div>
               <div className="flex items-center gap-1.5">
@@ -105,8 +119,8 @@ const MultiDeviceGauge = () => {
             </div>
             <div className="h-px bg-border" />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Total collaborateurs</span>
-              <span className="font-medium text-foreground">{totalEmployees}</span>
+              <span>Référence initiale</span>
+              <span className="font-medium text-foreground">{baseline ?? "—"}</span>
             </div>
           </div>
         </div>
