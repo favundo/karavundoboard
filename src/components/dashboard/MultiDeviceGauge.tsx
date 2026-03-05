@@ -55,6 +55,9 @@ const MultiDeviceGauge = () => {
     return "hsl(var(--glow-danger))";
   };
 
+  // Fill color for the background arc (red that fills as progress increases)
+  const fillDashoffset = circumference - (percentage / 100) * circumference;
+
   if (isLoading) {
     return (
       <div className="h-48 animate-pulse rounded-xl border border-border bg-card" />
@@ -86,6 +89,18 @@ const MultiDeviceGauge = () => {
                 fill="none"
                 stroke="hsl(var(--border))"
                 strokeWidth={strokeWidth}
+              />
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke="hsl(var(--glow-danger) / 0.25)"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={fillDashoffset}
+                className="transition-all duration-1000 ease-out"
               />
               <circle
                 cx={size / 2}
