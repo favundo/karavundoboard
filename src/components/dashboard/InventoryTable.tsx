@@ -135,13 +135,6 @@ const InventoryTable = () => {
               <Users size={13} />
               Multi-devices
             </button>
-            <button
-              onClick={() => setImportOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-            >
-              <Upload size={13} />
-              Importer
-            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
