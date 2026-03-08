@@ -3,6 +3,7 @@ import { Target, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const BASELINE_KEY = "multi-device-baseline";
+const INITIAL_BASELINE = 48; // Valeur de référence initiale historique
 
 const MultiDeviceGauge = () => {
   const { data: inventory, isLoading } = useInventory();
