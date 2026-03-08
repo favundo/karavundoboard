@@ -20,11 +20,15 @@ const MultiDeviceGauge = () => {
 
   // Store baseline on first load (highest seen value)
   useEffect(() => {
-    if (isLoading || items.length === 0) return;
+    if (isLoading) return;
     const stored = localStorage.getItem(BASELINE_KEY);
+    if (items.length === 0) {
+      // Even with no data, restore saved baseline for display
+      if (stored) setBaseline(parseInt(stored, 10));
+      return;
+    }
     if (stored) {
       const storedVal = parseInt(stored, 10);
-      // Update baseline if current count is higher (new import with more multi-devices)
       if (multiDeviceCount > storedVal) {
         localStorage.setItem(BASELINE_KEY, String(multiDeviceCount));
         setBaseline(multiDeviceCount);
