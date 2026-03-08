@@ -24,8 +24,8 @@ const MultiDeviceGauge = () => {
     if (isLoading) return;
     const stored = localStorage.getItem(BASELINE_KEY);
     if (items.length === 0) {
-      // Even with no data, restore saved baseline for display
       if (stored) setBaseline(parseInt(stored, 10));
+      else setBaseline(INITIAL_BASELINE);
       return;
     }
     if (stored) {
@@ -37,8 +37,10 @@ const MultiDeviceGauge = () => {
         setBaseline(storedVal);
       }
     } else {
-      localStorage.setItem(BASELINE_KEY, String(multiDeviceCount));
-      setBaseline(multiDeviceCount);
+      // First time: use the higher of current count or historical baseline
+      const initial = Math.max(multiDeviceCount, INITIAL_BASELINE);
+      localStorage.setItem(BASELINE_KEY, String(initial));
+      setBaseline(initial);
     }
   }, [isLoading, multiDeviceCount, items.length]);
 
