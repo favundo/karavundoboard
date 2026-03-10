@@ -13,7 +13,7 @@ const normalizeOs = (v: string): "win11" | "win10" | "other" => {
 type AgencyStatus = "Windows 11" | "Windows 10" | "Mixte";
 
 const STATUS_COLORS: Record<AgencyStatus, string> = {
-  "Windows 11": "hsl(var(--primary))",
+  "Windows 11": "hsl(var(--chart-1))",
   "Windows 10": "hsl(var(--chart-2))",
   "Mixte": "hsl(var(--chart-4))",
 };
