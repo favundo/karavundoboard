@@ -100,19 +100,10 @@ const AgencyOsMigrationChart = () => {
                   {chartData.map((entry) => (
                     <Cell key={entry.name} fill={STATUS_COLORS[entry.name]} />
                   ))}
+                  <LabelList dataKey="value" position="inside" fill="#fff" fontSize={11} fontWeight={700} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          <div className="mt-2 flex gap-3 flex-wrap">
-            {chartData.map((entry) => (
-              <div key={entry.name} className="flex items-center gap-1.5 text-xs">
-                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: STATUS_COLORS[entry.name] }} />
-                <span className="text-muted-foreground">{entry.name}</span>
-                <span className="font-semibold text-foreground">{entry.value}</span>
-              </div>
-            ))}
           </div>
         </>
       )}
