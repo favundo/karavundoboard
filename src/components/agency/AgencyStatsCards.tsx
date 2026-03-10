@@ -1,6 +1,7 @@
-import { Network, Building2, Server } from "lucide-react";
+import { Network, Server } from "lucide-react";
 import { useAgencyInventory } from "@/hooks/useAgencyInventory";
 import AgencyOsChart from "./AgencyOsChart";
+import AgencyOsMigrationChart from "./AgencyOsMigrationChart";
 
 const AgencyStatsCards = () => {
   const { data, isLoading } = useAgencyInventory();
@@ -12,13 +13,12 @@ const AgencyStatsCards = () => {
 
   const cards = [
     { label: "Équipements", value: totalEquipements, icon: Server, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Agences", value: totalAgences, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10" },
     { label: "Sous-réseaux", value: totalReseaux, icon: Network, color: "text-violet-500", bg: "bg-violet-500/10" },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-      {/* 3 stat cards */}
+      {/* 2 stat cards + migration chart */}
       <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((card) => (
           <div key={card.label} className="rounded-xl border border-border bg-card p-4">
@@ -35,6 +35,8 @@ const AgencyStatsCards = () => {
             </div>
           </div>
         ))}
+        {/* Agency OS migration bar chart */}
+        <AgencyOsMigrationChart />
       </div>
       {/* OS chart taking 1 column */}
       <div className="lg:col-span-1">
