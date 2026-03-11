@@ -111,11 +111,12 @@ export const exportAgencyToPDF = (data: AgencyExportItem[], filename = "inventai
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Agence", "Sous-réseau", "Masque", "Asset", "N° Série", "Version OS"]];
+  const headers = [["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS"]];
   const rows = data.map((item) => [
     item.agence,
     item.sous_reseau || "—",
     item.masque ? `/${item.masque}` : "—",
+    item.type || "—",
     item.asset || "—",
     item.sn || "—",
     item.os_version || "—",

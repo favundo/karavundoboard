@@ -157,6 +157,13 @@ const AgencyTable = () => {
                          </span>
                        ) : <span className="text-muted-foreground">—</span>}
                      </td>
+                     <td className="whitespace-nowrap px-4 py-2.5">
+                       {item.type ? (
+                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${item.type === "AIO" ? "bg-accent/20 text-accent-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                           {item.type}
+                         </span>
+                       ) : <span className="text-muted-foreground">—</span>}
+                     </td>
                      <td className="whitespace-nowrap px-4 py-2.5 font-mono text-primary">{item.asset || "—"}</td>
                      <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
                      <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{item.os_version || "—"}</td>
