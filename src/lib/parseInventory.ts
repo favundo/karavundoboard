@@ -14,9 +14,9 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "login": "uid",
   // service
   "service": "service",
-  "département": "service",
   "departement": "service",
   "department": "service",
+  "département": "service",
   // type
   "type": "type",
   "type équipement": "type",
