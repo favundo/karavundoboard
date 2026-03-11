@@ -11,6 +11,11 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "reseau": "sous_reseau",
   "subnet": "sous_reseau",
   "network": "sous_reseau",
+  // masque (standalone column)
+  "masque": "masque",
+  "mask": "masque",
+  "netmask": "masque",
+  "subnetmask": "masque",
   // agence
   "agence": "agence",
   "agency": "agence",
@@ -34,6 +39,11 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "windowsversion": "os_version",
   "versionwindows": "os_version",
   "version": "os_version",
+  // type
+  "type": "type",
+  "typeposte": "type",
+  "typeequipement": "type",
+  "typemateriel": "type",
 };
 
 export type AgencyParseResult = {
