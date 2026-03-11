@@ -70,6 +70,7 @@ interface AgencyExportItem {
   agence: string;
   sous_reseau: string;
   masque: string;
+  type: string;
   asset: string;
   sn: string;
   os_version: string;
