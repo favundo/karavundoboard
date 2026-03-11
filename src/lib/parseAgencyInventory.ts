@@ -11,6 +11,11 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "reseau": "sous_reseau",
   "subnet": "sous_reseau",
   "network": "sous_reseau",
+  // masque (standalone column)
+  "masque": "masque",
+  "mask": "masque",
+  "netmask": "masque",
+  "subnetmask": "masque",
   // agence
   "agence": "agence",
   "agency": "agence",
@@ -34,6 +39,11 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "windowsversion": "os_version",
   "versionwindows": "os_version",
   "version": "os_version",
+  // type
+  "type": "type",
+  "typeposte": "type",
+  "typeequipement": "type",
+  "typemateriel": "type",
 };
 
 export type AgencyParseResult = {
@@ -106,7 +116,12 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             if (field === "sous_reseau") {
               const parsed = parseSubnetMask(val);
               item.sous_reseau = parsed.sous_reseau;
-              item.masque = parsed.masque;
+              // Only set masque from subnet if no dedicated masque column exists
+              if (parsed.masque && !mapping[Object.keys(mapping).find(k => mapping[k] === "masque") ?? ""]) {
+                item.masque = parsed.masque;
+              } else if (parsed.masque && !item.masque) {
+                item.masque = parsed.masque;
+              }
             } else {
               (item as unknown as Record<string, unknown>)[field] = val;
             }
