@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload, totalAgencies }: { active?: boolean; p
   );
 };
 
-type AgencyDetail = { agence: string; status: AgencyStatus; versions: string[] };
+type AgencyDetail = { agence: string; status: AgencyStatus; versions: string[]; assets: string[] };
 
 const exportDetailCSV = (list: AgencyDetail[]) => {
   const headers = ["Agence", "Statut", "Versions OS"];
