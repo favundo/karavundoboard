@@ -78,6 +78,7 @@ export type Database = {
           os_version: string
           sn: string
           sous_reseau: string
+          type: string
           updated_at: string
         }
         Insert: {
@@ -89,6 +90,7 @@ export type Database = {
           os_version?: string
           sn?: string
           sous_reseau?: string
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -100,6 +102,7 @@ export type Database = {
           os_version?: string
           sn?: string
           sous_reseau?: string
+          type?: string
           updated_at?: string
         }
         Relationships: []

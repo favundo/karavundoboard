@@ -98,6 +98,7 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             asset: "",
             sn: "",
             os_version: "",
+            type: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {

@@ -10,6 +10,7 @@ export type AgencyItem = {
   asset: string;
   sn: string;
   os_version: string;
+  type: string;
 };
 
 export const useAgencyInventory = () => {

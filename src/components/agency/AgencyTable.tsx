@@ -53,6 +53,7 @@ const AgencyTable = () => {
     { key: "agence", label: "Agence" },
     { key: "sous_reseau", label: "Sous-réseau" },
     { key: "masque", label: "Masque" },
+    { key: "type", label: "Type" },
     { key: "asset", label: "Asset" },
     { key: "sn", label: "N° Série" },
     { key: "os_version", label: "Version OS" },
@@ -153,6 +154,13 @@ const AgencyTable = () => {
                        {item.masque ? (
                          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-primary">
                            /{item.masque}
+                         </span>
+                       ) : <span className="text-muted-foreground">—</span>}
+                     </td>
+                     <td className="whitespace-nowrap px-4 py-2.5">
+                       {item.type ? (
+                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${item.type === "AIO" ? "bg-accent/20 text-accent-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                           {item.type}
                          </span>
                        ) : <span className="text-muted-foreground">—</span>}
                      </td>

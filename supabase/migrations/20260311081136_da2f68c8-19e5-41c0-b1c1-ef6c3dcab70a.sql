@@ -1,0 +1,1 @@
+ALTER TABLE public.agency_inventory ADD COLUMN type text NOT NULL DEFAULT '';
