@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Upload, Network } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Upload, Network, FileSpreadsheet, FileText } from "lucide-react";
 import { useAgencyInventory, type AgencyItem } from "@/hooks/useAgencyInventory";
+import { exportAgencyToCSV, exportAgencyToPDF } from "@/lib/exportUtils";
 import AgencyImportModal from "./AgencyImportModal";
 
 type SortKey = keyof AgencyItem;

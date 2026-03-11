@@ -64,6 +64,74 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
   doc.save(`${filename}_${new Date().toISOString().slice(0, 10)}.pdf`);
 };
 
+// --- Agency exports ---
+
+interface AgencyExportItem {
+  agence: string;
+  sous_reseau: string;
+  masque: string;
+  asset: string;
+  sn: string;
+  os_version: string;
+}
+
+export const exportAgencyToCSV = (data: AgencyExportItem[], filename = "inventaire_agences") => {
+  const headers = ["Agence", "Sous-réseau", "Masque", "Asset", "N° Série", "Version OS"];
+  const rows = data.map((item) => [
+    item.agence,
+    item.sous_reseau || "",
+    item.masque || "",
+    item.asset || "",
+    item.sn || "",
+    item.os_version || "",
+  ]);
+
+  const BOM = "\uFEFF";
+  const csvContent = BOM + [headers.join(";"), ...rows.map((r) => r.map((c) => `"${c}"`).join(";"))].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+export const exportAgencyToPDF = (data: AgencyExportItem[], filename = "inventaire_agences") => {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+  doc.setFontSize(16);
+  doc.setTextColor(40);
+  doc.text("Inventaire Réseau Agences — Karavel", 14, 15);
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
+
+  const headers = [["Agence", "Sous-réseau", "Masque", "Asset", "N° Série", "Version OS"]];
+  const rows = data.map((item) => [
+    item.agence,
+    item.sous_reseau || "—",
+    item.masque ? `/${item.masque}` : "—",
+    item.asset || "—",
+    item.sn || "—",
+    item.os_version || "—",
+  ]);
+
+  autoTable(doc, {
+    head: headers,
+    body: rows,
+    startY: 28,
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [20, 30, 45], textColor: [0, 210, 210], fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(`${filename}_${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
 // --- Multi-device exports ---
 
 interface MultiDeviceGroup {
