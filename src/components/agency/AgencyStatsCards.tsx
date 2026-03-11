@@ -1,4 +1,4 @@
-import { Network, Server } from "lucide-react";
+import { Building2, Server } from "lucide-react";
 import { useAgencyInventory } from "@/hooks/useAgencyInventory";
 import AgencyOsChart from "./AgencyOsChart";
 import AgencyOsMigrationChart from "./AgencyOsMigrationChart";
@@ -8,12 +8,11 @@ const AgencyStatsCards = () => {
   const items = data ?? [];
 
   const totalEquipements = items.length;
-  const totalAgences = new Set(items.map((i) => i.agence)).size;
-  const totalReseaux = new Set(items.map((i) => i.sous_reseau).filter(Boolean)).size;
+  const totalAgences = new Set(items.map((i) => i.agence).filter(Boolean)).size;
 
   const cards = [
     { label: "Équipements", value: totalEquipements, icon: Server, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Sous-réseaux", value: totalReseaux, icon: Network, color: "text-violet-500", bg: "bg-violet-500/10" },
+    { label: "Agences", value: totalAgences, icon: Building2, color: "text-violet-500", bg: "bg-violet-500/10" },
   ];
 
   return (
