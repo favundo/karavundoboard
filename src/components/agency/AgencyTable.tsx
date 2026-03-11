@@ -53,6 +53,7 @@ const AgencyTable = () => {
     { key: "agence", label: "Agence" },
     { key: "sous_reseau", label: "Sous-réseau" },
     { key: "masque", label: "Masque" },
+    { key: "type", label: "Type" },
     { key: "asset", label: "Asset" },
     { key: "sn", label: "N° Série" },
     { key: "os_version", label: "Version OS" },
