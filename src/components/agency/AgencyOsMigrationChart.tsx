@@ -33,11 +33,11 @@ const CustomTooltip = ({ active, payload, totalAgencies }: { active?: boolean; p
   );
 };
 
-type AgencyDetail = { agence: string; status: AgencyStatus; versions: string[] };
+type AgencyDetail = { agence: string; status: AgencyStatus; versions: string[]; assets: string[] };
 
 const exportDetailCSV = (list: AgencyDetail[]) => {
-  const headers = ["Agence", "Statut", "Versions OS"];
-  const rows = list.map((a) => [a.agence, a.status, a.versions.join(", ")]);
+  const headers = ["Agence", "Statut", "Assets", "Versions OS"];
+  const rows = list.map((a) => [a.agence, a.status, a.assets.join(", "), a.versions.join(", ")]);
   const BOM = "\uFEFF";
   const csv = BOM + [headers.join(";"), ...rows.map((r) => r.map((c) => `"${c}"`).join(";"))].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -58,8 +58,8 @@ const exportDetailPDF = (list: AgencyDetail[]) => {
 
   autoTable(doc, {
     startY: 30,
-    head: [["Agence", "Statut", "Versions OS"]],
-    body: list.map((a) => [a.agence, a.status, a.versions.join(", ")]),
+    head: [["Agence", "Statut", "Assets", "Versions OS"]],
+    body: list.map((a) => [a.agence, a.status, a.assets.join(", "), a.versions.join(", ")]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [59, 130, 246] },
   });
@@ -73,16 +73,19 @@ const AgencyOsMigrationChart = () => {
   const [showDetail, setShowDetail] = useState(false);
 
   const { chartData, totalAgencies, nonMigratedAgencies } = useMemo(() => {
-    const agencyAssets: Record<string, Set<string>> = {};
+    const agencyOsNorm: Record<string, Set<string>> = {};
     const agencyRawVersions: Record<string, Set<string>> = {};
+    const agencyAssetList: Record<string, Set<string>> = {};
     for (const item of items) {
       if (!item.agence) continue;
-      if (!agencyAssets[item.agence]) {
-        agencyAssets[item.agence] = new Set();
+      if (!agencyOsNorm[item.agence]) {
+        agencyOsNorm[item.agence] = new Set();
         agencyRawVersions[item.agence] = new Set();
+        agencyAssetList[item.agence] = new Set();
       }
-      agencyAssets[item.agence].add(normalizeOs(item.os_version ?? ""));
+      agencyOsNorm[item.agence].add(normalizeOs(item.os_version ?? ""));
       if (item.os_version) agencyRawVersions[item.agence].add(item.os_version);
+      if (item.asset && !item.asset.startsWith("EMPTY-")) agencyAssetList[item.agence].add(item.asset);
     }
 
     let win11 = 0;
@@ -90,19 +93,20 @@ const AgencyOsMigrationChart = () => {
     let mixte = 0;
     const nonMigrated: AgencyDetail[] = [];
 
-    for (const [agence, versions] of Object.entries(agencyAssets)) {
+    for (const [agence, versions] of Object.entries(agencyOsNorm)) {
       const hasW11 = versions.has("win11");
       const hasW10 = versions.has("win10");
       const hasOther = versions.has("other");
+      const assets = Array.from(agencyAssetList[agence] || []);
 
       if (hasW11 && !hasW10 && !hasOther) {
         win11++;
       } else if (hasW10 && !hasW11 && !hasOther) {
         win10++;
-        nonMigrated.push({ agence, status: "Windows 10", versions: Array.from(agencyRawVersions[agence] || []) });
+        nonMigrated.push({ agence, status: "Windows 10", versions: Array.from(agencyRawVersions[agence] || []), assets });
       } else {
         mixte++;
-        nonMigrated.push({ agence, status: "Mixte", versions: Array.from(agencyRawVersions[agence] || []) });
+        nonMigrated.push({ agence, status: "Mixte", versions: Array.from(agencyRawVersions[agence] || []), assets });
       }
     }
 
@@ -114,7 +118,7 @@ const AgencyOsMigrationChart = () => {
         { name: "Windows 10" as AgencyStatus, value: win10 },
         { name: "Mixte" as AgencyStatus, value: mixte },
       ],
-      totalAgencies: Object.keys(agencyAssets).length,
+      totalAgencies: Object.keys(agencyOsNorm).length,
       nonMigratedAgencies: nonMigrated,
     };
   }, [items]);
