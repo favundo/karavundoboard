@@ -156,7 +156,12 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
           return;
         }
 
-        const items: InventoryItem[] = [];
+        // Warn if windows_version not detected
+        if (!mappedFields.has("windows_version")) {
+          warnings.push("Colonne 'Version Windows' non détectée — vérifiez le nom de la colonne dans votre fichier.");
+          console.warn("[parseInventory] Headers found:", headers, "Mapping:", mapping);
+}
+
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
