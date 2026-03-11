@@ -164,7 +164,7 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
 
         const items: InventoryItem[] = [];
 
-
+        for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           const item: InventoryItem = {
             nom: "",
