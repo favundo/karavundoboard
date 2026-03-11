@@ -58,8 +58,8 @@ const exportDetailPDF = (list: AgencyDetail[]) => {
 
   autoTable(doc, {
     startY: 30,
-    head: [["Agence", "Statut", "Versions OS"]],
-    body: list.map((a) => [a.agence, a.status, a.versions.join(", ")]),
+    head: [["Agence", "Statut", "Assets", "Versions OS"]],
+    body: list.map((a) => [a.agence, a.status, a.assets.join(", "), a.versions.join(", ")]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [59, 130, 246] },
   });
