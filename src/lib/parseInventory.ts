@@ -14,9 +14,9 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "login": "uid",
   // service
   "service": "service",
-  "département": "service",
   "departement": "service",
   "department": "service",
+  "département": "service",
   // type
   "type": "type",
   "type équipement": "type",
@@ -65,6 +65,13 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "version de windows": "windows_version",
   "version windows": "windows_version",
   "os": "windows_version",
+  "os version": "windows_version",
+  "version os": "windows_version",
+  "windows": "windows_version",
+  "version": "windows_version",
+  "systeme exploitation": "windows_version",
+  "systeme d'exploitation": "windows_version",
+  "systeme d exploitation": "windows_version",
 };
 
 export type ParseResult = {
@@ -75,7 +82,7 @@ export type ParseResult = {
 };
 
 const normalizeHeader = (h: string) =>
-  h.trim().toLowerCase().replace(/\s+/g, " ");
+  h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_\-]+/g, " ").replace(/\s+/g, " ");
 
 const normalizeType = (val: string): "portable" | "Pc Fixe" => {
   const v = val.trim().toLowerCase();
@@ -126,6 +133,13 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
           if (COLUMN_MAP[norm]) {
             mapping[h] = COLUMN_MAP[norm];
             columnMapping[h] = COLUMN_MAP[norm];
+          } else {
+            // Fallback: try "contains" matching for unrecognized headers
+            const match = Object.entries(COLUMN_MAP).find(([key]) => norm.includes(key) || key.includes(norm));
+            if (match) {
+              mapping[h] = match[1];
+              columnMapping[h] = match[1];
+            }
           }
         }
 
@@ -140,6 +154,12 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
           errors.push(`Colonnes requises manquantes : ${missing.join(", ")}`);
           resolve({ items: [], errors, warnings, columnMapping });
           return;
+        }
+
+        // Warn if windows_version not detected
+        if (!mappedFields.has("windows_version")) {
+          warnings.push("Colonne 'Version Windows' non détectée — vérifiez le nom de la colonne dans votre fichier.");
+          console.warn("[parseInventory] Headers found:", headers, "Mapping:", mapping);
         }
 
         const items: InventoryItem[] = [];
