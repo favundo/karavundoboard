@@ -118,7 +118,7 @@ const AgencyOsMigrationChart = () => {
         { name: "Windows 10" as AgencyStatus, value: win10 },
         { name: "Mixte" as AgencyStatus, value: mixte },
       ],
-      totalAgencies: Object.keys(agencyAssets).length,
+      totalAgencies: Object.keys(agencyOsNorm).length,
       nonMigratedAgencies: nonMigrated,
     };
   }, [items]);
