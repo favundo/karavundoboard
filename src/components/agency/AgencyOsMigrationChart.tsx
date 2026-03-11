@@ -36,8 +36,8 @@ const CustomTooltip = ({ active, payload, totalAgencies }: { active?: boolean; p
 type AgencyDetail = { agence: string; status: AgencyStatus; versions: string[]; assets: string[] };
 
 const exportDetailCSV = (list: AgencyDetail[]) => {
-  const headers = ["Agence", "Statut", "Versions OS"];
-  const rows = list.map((a) => [a.agence, a.status, a.versions.join(", ")]);
+  const headers = ["Agence", "Statut", "Assets", "Versions OS"];
+  const rows = list.map((a) => [a.agence, a.status, a.assets.join(", "), a.versions.join(", ")]);
   const BOM = "\uFEFF";
   const csv = BOM + [headers.join(";"), ...rows.map((r) => r.map((c) => `"${c}"`).join(";"))].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
