@@ -65,6 +65,13 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "version de windows": "windows_version",
   "version windows": "windows_version",
   "os": "windows_version",
+  "os version": "windows_version",
+  "version os": "windows_version",
+  "windows": "windows_version",
+  "version": "windows_version",
+  "systeme exploitation": "windows_version",
+  "systeme d'exploitation": "windows_version",
+  "systeme d exploitation": "windows_version",
 };
 
 export type ParseResult = {
