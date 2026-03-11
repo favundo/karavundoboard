@@ -133,6 +133,13 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
           if (COLUMN_MAP[norm]) {
             mapping[h] = COLUMN_MAP[norm];
             columnMapping[h] = COLUMN_MAP[norm];
+          } else {
+            // Fallback: try "contains" matching for unrecognized headers
+            const match = Object.entries(COLUMN_MAP).find(([key]) => norm.includes(key) || key.includes(norm));
+            if (match) {
+              mapping[h] = match[1];
+              columnMapping[h] = match[1];
+            }
           }
         }
 
