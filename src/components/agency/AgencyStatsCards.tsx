@@ -2,6 +2,7 @@ import { Building2, Server } from "lucide-react";
 import { useAgencyInventory } from "@/hooks/useAgencyInventory";
 import AgencyOsChart from "./AgencyOsChart";
 import AgencyOsMigrationChart from "./AgencyOsMigrationChart";
+import AgencyAioMigrationChart from "./AgencyAioMigrationChart";
 
 const AgencyStatsCards = () => {
   const { data, isLoading } = useAgencyInventory();
@@ -17,8 +18,8 @@ const AgencyStatsCards = () => {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-      {/* 2 stat cards + migration chart */}
-      <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* 2 stat cards + 2 migration charts */}
+      <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
         {cards.map((card) => (
           <div key={card.label} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
@@ -34,8 +35,8 @@ const AgencyStatsCards = () => {
             </div>
           </div>
         ))}
-        {/* Agency OS migration bar chart */}
         <AgencyOsMigrationChart />
+        <AgencyAioMigrationChart />
       </div>
       {/* OS chart taking 1 column */}
       <div className="lg:col-span-1">
