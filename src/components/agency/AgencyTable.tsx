@@ -84,6 +84,20 @@ const AgencyTable = () => {
             >
               {agences.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
+            <button
+              onClick={() => exportAgencyToCSV(filtered)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <FileSpreadsheet size={13} />
+              CSV
+            </button>
+            <button
+              onClick={() => exportAgencyToPDF(filtered)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <FileText size={13} />
+              PDF
+            </button>
             <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
               {isLoading ? "…" : `${filtered.length} résultats`}
             </span>
