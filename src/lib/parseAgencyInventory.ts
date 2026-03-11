@@ -116,7 +116,12 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             if (field === "sous_reseau") {
               const parsed = parseSubnetMask(val);
               item.sous_reseau = parsed.sous_reseau;
-              item.masque = parsed.masque;
+              // Only set masque from subnet if no dedicated masque column exists
+              if (parsed.masque && !mapping[Object.keys(mapping).find(k => mapping[k] === "masque") ?? ""]) {
+                item.masque = parsed.masque;
+              } else if (parsed.masque && !item.masque) {
+                item.masque = parsed.masque;
+              }
             } else {
               (item as unknown as Record<string, unknown>)[field] = val;
             }
