@@ -73,16 +73,19 @@ const AgencyOsMigrationChart = () => {
   const [showDetail, setShowDetail] = useState(false);
 
   const { chartData, totalAgencies, nonMigratedAgencies } = useMemo(() => {
-    const agencyAssets: Record<string, Set<string>> = {};
+    const agencyOsNorm: Record<string, Set<string>> = {};
     const agencyRawVersions: Record<string, Set<string>> = {};
+    const agencyAssetList: Record<string, Set<string>> = {};
     for (const item of items) {
       if (!item.agence) continue;
-      if (!agencyAssets[item.agence]) {
-        agencyAssets[item.agence] = new Set();
+      if (!agencyOsNorm[item.agence]) {
+        agencyOsNorm[item.agence] = new Set();
         agencyRawVersions[item.agence] = new Set();
+        agencyAssetList[item.agence] = new Set();
       }
-      agencyAssets[item.agence].add(normalizeOs(item.os_version ?? ""));
+      agencyOsNorm[item.agence].add(normalizeOs(item.os_version ?? ""));
       if (item.os_version) agencyRawVersions[item.agence].add(item.os_version);
+      if (item.asset && !item.asset.startsWith("EMPTY-")) agencyAssetList[item.agence].add(item.asset);
     }
 
     let win11 = 0;
@@ -90,19 +93,20 @@ const AgencyOsMigrationChart = () => {
     let mixte = 0;
     const nonMigrated: AgencyDetail[] = [];
 
-    for (const [agence, versions] of Object.entries(agencyAssets)) {
+    for (const [agence, versions] of Object.entries(agencyOsNorm)) {
       const hasW11 = versions.has("win11");
       const hasW10 = versions.has("win10");
       const hasOther = versions.has("other");
+      const assets = Array.from(agencyAssetList[agence] || []);
 
       if (hasW11 && !hasW10 && !hasOther) {
         win11++;
       } else if (hasW10 && !hasW11 && !hasOther) {
         win10++;
-        nonMigrated.push({ agence, status: "Windows 10", versions: Array.from(agencyRawVersions[agence] || []) });
+        nonMigrated.push({ agence, status: "Windows 10", versions: Array.from(agencyRawVersions[agence] || []), assets });
       } else {
         mixte++;
-        nonMigrated.push({ agence, status: "Mixte", versions: Array.from(agencyRawVersions[agence] || []) });
+        nonMigrated.push({ agence, status: "Mixte", versions: Array.from(agencyRawVersions[agence] || []), assets });
       }
     }
 
