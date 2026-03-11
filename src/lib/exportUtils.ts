@@ -77,11 +77,12 @@ interface AgencyExportItem {
 }
 
 export const exportAgencyToCSV = (data: AgencyExportItem[], filename = "inventaire_agences") => {
-  const headers = ["Agence", "Sous-réseau", "Masque", "Asset", "N° Série", "Version OS"];
+  const headers = ["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS"];
   const rows = data.map((item) => [
     item.agence,
     item.sous_reseau || "",
     item.masque || "",
+    item.type || "",
     item.asset || "",
     item.sn || "",
     item.os_version || "",
