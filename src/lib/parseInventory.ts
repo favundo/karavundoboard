@@ -82,7 +82,7 @@ export type ParseResult = {
 };
 
 const normalizeHeader = (h: string) =>
-  h.trim().toLowerCase().replace(/\s+/g, " ");
+  h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_\-]+/g, " ").replace(/\s+/g, " ");
 
 const normalizeType = (val: string): "portable" | "Pc Fixe" => {
   const v = val.trim().toLowerCase();
