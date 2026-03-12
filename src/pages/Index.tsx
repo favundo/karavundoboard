@@ -39,6 +39,7 @@ const Index = () => {
       <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
+      <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
