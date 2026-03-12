@@ -1,0 +1,158 @@
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { triggerWebhook } from "@/lib/zapierWebhook";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AlertTriangle, Search, Trash2 } from "lucide-react";
+
+type Step = "input" | "confirm";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+const DecommissionModal = ({ open, onClose }: Props) => {
+  const [step, setStep] = useState<Step>("input");
+  const [asset, setAsset] = useState("");
+  const [foundName, setFoundName] = useState("");
+  const queryClient = useQueryClient();
+
+  const lookupMutation = useMutation({
+    mutationFn: async (assetCode: string) => {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("nom, service, asset")
+        .eq("asset", assetCode.trim())
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (assetCode: string) => {
+      const { error } = await supabase
+        .from("inventory_items")
+        .delete()
+        .eq("asset", assetCode.trim());
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      triggerWebhook("decommission", { table: "Siège et Groupes", count: 1 });
+      toast.success(`Asset ${asset.trim()} décommissionné avec succès`);
+      handleClose();
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
+    },
+  });
+
+  const handleClose = () => {
+    setStep("input");
+    setAsset("");
+    setFoundName("");
+    lookupMutation.reset();
+    onClose();
+  };
+
+  const handleSearch = async () => {
+    if (!asset.trim()) return;
+    const result = await lookupMutation.mutateAsync(asset.trim());
+    if (result) {
+      setFoundName(`${result.nom} — ${result.service}`);
+      setStep("confirm");
+    } else {
+      toast.error(`Aucun équipement trouvé avec l'asset "${asset.trim()}"`);
+    }
+  };
+
+  const handleConfirm = () => {
+    deleteMutation.mutate(asset.trim());
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="sm:max-w-md">
+        {step === "input" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Trash2 size={18} className="text-destructive" />
+                Décommissionner un PC
+              </DialogTitle>
+              <DialogDescription>
+                Saisissez le numéro d'asset de l'équipement à retirer de l'inventaire.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Numéro d'asset (ex: ABC12345)"
+                value={asset}
+                onChange={(e) => setAsset(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Annuler
+              </Button>
+              <Button
+                onClick={handleSearch}
+                disabled={!asset.trim() || lookupMutation.isPending}
+              >
+                <Search size={14} />
+                Rechercher
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle size={18} />
+                Confirmer la suppression
+              </DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir décommissionner cet équipement ? Cette action est irréversible.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Asset : <span className="font-mono text-primary">{asset.trim()}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">{foundName}</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("input")}>
+                Retour
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirm}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 size={14} />
+                {deleteMutation.isPending ? "Suppression…" : "Confirmer la suppression"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default DecommissionModal;

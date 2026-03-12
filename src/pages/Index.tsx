@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2 } from "lucide-react";
+import { Server, Upload, Trash2, MonitorX } from "lucide-react";
 import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
@@ -11,13 +11,15 @@ import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
 import PinModal from "@/components/dashboard/PinModal";
 import ResetModal from "@/components/dashboard/ResetModal";
+import DecommissionModal from "@/components/dashboard/DecommissionModal";
 
-type PinAction = "import" | "reset";
+type PinAction = "import" | "reset" | "decommission";
 
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [decommissionOpen, setDecommissionOpen] = useState(false);
   const [pinAction, setPinAction] = useState<PinAction>("import");
 
   const openPinFor = (action: PinAction) => {
@@ -28,7 +30,8 @@ const Index = () => {
   const handlePinSuccess = () => {
     setPinOpen(false);
     if (pinAction === "import") setImportOpen(true);
-    else setResetOpen(true);
+    else if (pinAction === "reset") setResetOpen(true);
+    else if (pinAction === "decommission") setDecommissionOpen(true);
   };
 
   return (
@@ -36,6 +39,7 @@ const Index = () => {
       <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
+      <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -64,6 +68,13 @@ const Index = () => {
               >
                 <Trash2 size={15} />
                 <span className="hidden sm:inline">Vider</span>
+              </button>
+              <button
+                onClick={() => openPinFor("decommission")}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 text-sm font-medium text-orange-600 dark:text-orange-400 transition-colors hover:bg-orange-500/20"
+              >
+                <MonitorX size={15} />
+                <span className="hidden sm:inline">Décommissionner</span>
               </button>
               <button
                 onClick={() => openPinFor("import")}
