@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2 } from "lucide-react";
+import { Server, Upload, Trash2, MonitorX } from "lucide-react";
 import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
@@ -11,13 +11,15 @@ import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
 import PinModal from "@/components/dashboard/PinModal";
 import ResetModal from "@/components/dashboard/ResetModal";
+import DecommissionModal from "@/components/dashboard/DecommissionModal";
 
-type PinAction = "import" | "reset";
+type PinAction = "import" | "reset" | "decommission";
 
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [decommissionOpen, setDecommissionOpen] = useState(false);
   const [pinAction, setPinAction] = useState<PinAction>("import");
 
   const openPinFor = (action: PinAction) => {
