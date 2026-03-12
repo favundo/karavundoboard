@@ -70,6 +70,13 @@ const Index = () => {
                 <span className="hidden sm:inline">Vider</span>
               </button>
               <button
+                onClick={() => openPinFor("decommission")}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 text-sm font-medium text-orange-600 dark:text-orange-400 transition-colors hover:bg-orange-500/20"
+              >
+                <MonitorX size={15} />
+                <span className="hidden sm:inline">Décommissionner</span>
+              </button>
+              <button
                 onClick={() => openPinFor("import")}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
