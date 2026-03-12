@@ -50,7 +50,7 @@ const DecommissionModal = ({ open, onClose }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      triggerWebhook("decommission", { table: "Siège et Groupes", asset: asset.trim() });
+      triggerWebhook("decommission", { table: "Siège et Groupes", count: 1 });
       toast.success(`Asset ${asset.trim()} décommissionné avec succès`);
       handleClose();
     },

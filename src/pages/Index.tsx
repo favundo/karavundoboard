@@ -30,7 +30,8 @@ const Index = () => {
   const handlePinSuccess = () => {
     setPinOpen(false);
     if (pinAction === "import") setImportOpen(true);
-    else setResetOpen(true);
+    else if (pinAction === "reset") setResetOpen(true);
+    else if (pinAction === "decommission") setDecommissionOpen(true);
   };
 
   return (
