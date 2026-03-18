@@ -3,7 +3,7 @@ set -e
 
 SERVER="ext-favundo@karinventaire01.in.karavel.com"
 APP_DIR="/opt/karavundoboard"
-PM2_APP="karavundobard-front"
+PM2_APP="karavundoboard-front"
 
 echo "╔══════════════════════════════════════╗"
 echo "║        Déploiement en production     ║"
@@ -25,7 +25,10 @@ echo ""
 echo "▶ Déploiement sur le serveur..."
 ssh "$SERVER" "
   set -e
+  git config --global --add safe.directory $APP_DIR
   cd $APP_DIR
+  echo '  → git reset...'
+  git reset --hard HEAD
   echo '  → git pull...'
   git pull
   echo '  → npm ci...'
