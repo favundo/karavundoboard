@@ -11,6 +11,8 @@ export interface InventoryItem {
   sn: string;
   remarques: string;
   windows_version?: string;
+  pret?: boolean;
+  pret_utilisateur?: string;
 }
 
 export const inventoryData: InventoryItem[] = [

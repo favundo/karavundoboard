@@ -17,6 +17,8 @@ export type DbInventoryItem = {
   absence: boolean;
   remarques: string;
   windows_version: string;
+  pret: boolean;
+  pret_utilisateur: string;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +37,8 @@ export const dbToInventoryItem = (row: DbInventoryItem): InventoryItem => ({
   absence: row.absence ?? false,
   remarques: row.remarques ?? "",
   windows_version: row.windows_version ?? "",
+  pret: row.pret ?? false,
+  pret_utilisateur: row.pret_utilisateur ?? "",
 });
 
 export const useInventory = () => {

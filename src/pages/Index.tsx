@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2, MonitorX, PlusCircle } from "lucide-react";
+import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck } from "lucide-react";
 import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
@@ -13,6 +13,8 @@ import PinModal from "@/components/dashboard/PinModal";
 import ResetModal from "@/components/dashboard/ResetModal";
 import DecommissionModal from "@/components/dashboard/DecommissionModal";
 import AddAssetModal from "@/components/dashboard/AddAssetModal";
+import PretModal from "@/components/dashboard/PretModal";
+import AffecterModal from "@/components/dashboard/AffecterModal";
 
 type PinAction = "import" | "reset" | "decommission";
 
@@ -22,6 +24,8 @@ const Index = () => {
   const [resetOpen, setResetOpen] = useState(false);
   const [decommissionOpen, setDecommissionOpen] = useState(false);
   const [addAssetOpen, setAddAssetOpen] = useState(false);
+  const [pretOpen, setPretOpen] = useState(false);
+  const [affecterOpen, setAffecterOpen] = useState(false);
   const [pinAction, setPinAction] = useState<PinAction>("import");
 
   const openPinFor = (action: PinAction) => {
@@ -43,9 +47,12 @@ const Index = () => {
       <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
       <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
       <AddAssetModal open={addAssetOpen} onClose={() => setAddAssetOpen(false)} />
+      <PretModal open={pretOpen} onClose={() => setPretOpen(false)} />
+      <AffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
 
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      {/* Header + Navigation tabs — bloc sticky unique */}
+      <div className="sticky top-0 z-50 bg-card/50 backdrop-blur-sm border-b border-border">
+      <header className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -73,6 +80,20 @@ const Index = () => {
                 <span className="hidden sm:inline">Ajouter</span>
               </button>
               <button
+                onClick={() => setAffecterOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 text-sm font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/20"
+              >
+                <UserCheck size={15} />
+                <span className="hidden sm:inline">Affecter</span>
+              </button>
+              <button
+                onClick={() => setPretOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 text-sm font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-500/20"
+              >
+                <Handshake size={15} />
+                <span className="hidden sm:inline">Prêt</span>
+              </button>
+              <button
                 onClick={() => openPinFor("decommission")}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 text-sm font-medium text-orange-600 dark:text-orange-400 transition-colors hover:bg-orange-500/20"
               >
@@ -93,7 +114,7 @@ const Index = () => {
       </header>
 
       {/* Navigation tabs */}
-      <div className="border-b border-border bg-card/30">
+      <div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <nav className="flex gap-1 -mb-px">
             <a
@@ -117,11 +138,14 @@ const Index = () => {
           </nav>
         </div>
       </div>
+      </div>
 
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
         <StatsCards />
-        
+
+        <InventoryTable />
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <ServiceChart />
@@ -133,8 +157,6 @@ const Index = () => {
             <TopServicesGrid />
           </div>
         </div>
-
-        <InventoryTable />
       </main>
     </div>
   );
