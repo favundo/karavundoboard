@@ -11,6 +11,7 @@ export interface InventoryItem {
   sn: string;
   remarques: string;
   windows_version?: string;
+  eset_app?: string;
   pret?: boolean;
   pret_utilisateur?: string;
 }

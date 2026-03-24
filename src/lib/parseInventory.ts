@@ -60,6 +60,13 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "commentaire": "remarques",
   "commentaires": "remarques",
   "notes": "remarques",
+  // eset_app
+  "eset_app": "eset_app",
+  "eset": "eset_app",
+  "application eset": "eset_app",
+  "app eset": "eset_app",
+  "securite eset": "eset_app",
+  "antivirus": "eset_app",
   // windows_version
   "windows_version": "windows_version",
   "version de windows": "windows_version",
@@ -179,6 +186,7 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
             pseudo: "",
             remarques: "",
             windows_version: "",
+            eset_app: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {

@@ -20,6 +20,7 @@ export type Database = {
           asset: string
           created_at: string
           dns: string | null
+          eset_app: string | null
           id: string
           matricule: string | null
           nom: string
@@ -37,6 +38,7 @@ export type Database = {
           asset?: string
           created_at?: string
           dns?: string | null
+          eset_app?: string | null
           id?: string
           matricule?: string | null
           nom?: string
@@ -54,6 +56,7 @@ export type Database = {
           asset?: string
           created_at?: string
           dns?: string | null
+          eset_app?: string | null
           id?: string
           matricule?: string | null
           nom?: string
@@ -73,6 +76,7 @@ export type Database = {
           agence: string
           asset: string
           created_at: string
+          eset_app: string | null
           id: string
           masque: string
           os_version: string
@@ -85,6 +89,7 @@ export type Database = {
           agence?: string
           asset?: string
           created_at?: string
+          eset_app?: string | null
           id?: string
           masque?: string
           os_version?: string
@@ -97,6 +102,7 @@ export type Database = {
           agence?: string
           asset?: string
           created_at?: string
+          eset_app?: string | null
           id?: string
           masque?: string
           os_version?: string
@@ -113,6 +119,7 @@ export type Database = {
           asset: string
           created_at: string
           dns: string | null
+          eset_app: string | null
           id: string
           matricule: string | null
           nom: string
@@ -130,6 +137,7 @@ export type Database = {
           asset?: string
           created_at?: string
           dns?: string | null
+          eset_app?: string | null
           id?: string
           matricule?: string | null
           nom?: string
@@ -147,6 +155,7 @@ export type Database = {
           asset?: string
           created_at?: string
           dns?: string | null
+          eset_app?: string | null
           id?: string
           matricule?: string | null
           nom?: string

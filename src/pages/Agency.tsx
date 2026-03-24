@@ -7,6 +7,7 @@ import AgencyTable from "@/components/agency/AgencyTable";
 import AgencyImportModal from "@/components/agency/AgencyImportModal";
 import AgencyResetModal from "@/components/agency/AgencyResetModal";
 import PinModal from "@/components/dashboard/PinModal";
+import AgencyEsetChart from "@/components/agency/AgencyEsetChart";
 
 type PinAction = "import" | "reset";
 
@@ -96,6 +97,9 @@ const Agency = () => {
         <AgencyStatsCards />
         <AgencyMap />
         <AgencyTable />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <AgencyEsetChart />
+        </div>
       </main>
     </div>
   );

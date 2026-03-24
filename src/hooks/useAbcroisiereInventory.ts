@@ -17,6 +17,7 @@ export type DbAbcroisiereItem = {
   absence: boolean;
   remarques: string;
   windows_version: string;
+  eset_app: string;
   created_at: string;
   updated_at: string;
 };
@@ -34,6 +35,7 @@ export const dbToInventoryItem = (row: DbAbcroisiereItem): InventoryItem => ({
   absence: row.absence ?? false,
   remarques: row.remarques ?? "",
   windows_version: row.windows_version ?? "",
+  eset_app: row.eset_app ?? "",
 });
 
 export const useAbcroisiereInventory = () => {
@@ -70,6 +72,7 @@ export const useAppendAbcroisiereInventory = () => {
           absence: item.absence ?? false,
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
+          eset_app: item.eset_app ?? "",
         }));
         const { error: insertError } = await supabase
           .from("abcroisiere_inventory")

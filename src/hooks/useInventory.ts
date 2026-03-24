@@ -17,6 +17,7 @@ export type DbInventoryItem = {
   absence: boolean;
   remarques: string;
   windows_version: string;
+  eset_app: string;
   pret: boolean;
   pret_utilisateur: string;
   created_at: string;
@@ -37,6 +38,7 @@ export const dbToInventoryItem = (row: DbInventoryItem): InventoryItem => ({
   absence: row.absence ?? false,
   remarques: row.remarques ?? "",
   windows_version: row.windows_version ?? "",
+  eset_app: row.eset_app ?? "",
   pret: row.pret ?? false,
   pret_utilisateur: row.pret_utilisateur ?? "",
 });
@@ -75,6 +77,7 @@ export const useAppendInventory = () => {
           absence: item.absence ?? false,
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
+          eset_app: item.eset_app ?? "",
         }));
         const { error: insertError } = await supabase
           .from("inventory_items")

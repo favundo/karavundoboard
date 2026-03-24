@@ -6,6 +6,7 @@ import AbcroisiereServiceChart from "@/components/abcroisiere/AbcroisiereService
 import AbcroisiereDeviceTypeChart from "@/components/abcroisiere/AbcroisiereDeviceTypeChart";
 import AbcroisiereTopServicesGrid from "@/components/abcroisiere/AbcroisiereTopServicesGrid";
 import AbcroisiereWindowsVersionChart from "@/components/abcroisiere/AbcroisiereWindowsVersionChart";
+import AbcroisiereEsetChart from "@/components/abcroisiere/AbcroisiereEsetChart";
 import AbcroisiereInventoryTable from "@/components/abcroisiere/AbcroisiereInventoryTable";
 import AbcroisiereImportModal from "@/components/abcroisiere/AbcroisiereImportModal";
 import AbcroisiereResetModal from "@/components/abcroisiere/AbcroisiereResetModal";
@@ -105,6 +106,7 @@ const Abcroisiere = () => {
           <div className="space-y-6">
             <AbcroisiereDeviceTypeChart />
             <AbcroisiereWindowsVersionChart />
+            <AbcroisiereEsetChart />
             <AbcroisiereTopServicesGrid />
           </div>
         </div>
