@@ -44,6 +44,13 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "typeposte": "type",
   "typeequipement": "type",
   "typemateriel": "type",
+  // eset_app
+  "esetapp": "eset_app",
+  "eset": "eset_app",
+  "applicationeset": "eset_app",
+  "appeset": "eset_app",
+  "antivirus": "eset_app",
+  "securiteeset": "eset_app",
 };
 
 export type AgencyParseResult = {
@@ -109,6 +116,7 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             sn: "",
             os_version: "",
             type: "",
+            eset_app: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {
