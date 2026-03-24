@@ -51,6 +51,9 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "appeset": "eset_app",
   "antivirus": "eset_app",
   "securiteeset": "eset_app",
+  "applicationdesecuriteeset": "eset_app",
+  "applicationdesecuriteset": "eset_app",
+  "appdesecuriteeset": "eset_app",
 };
 
 export type AgencyParseResult = {
