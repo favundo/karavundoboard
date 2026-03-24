@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
-  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Windows", "Absent"];
+  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Windows", "App. ESET", "Absent"];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -14,6 +14,7 @@ export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
     item.uid,
     item.matricule,
     item.windows_version || "",
+    item.eset_app || "",
     item.absence ? "Oui" : "Non",
   ]);
 
@@ -40,7 +41,7 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "Windows"]];
+  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "Windows", "App. ESET"]];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -49,6 +50,7 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
     item.sn || "—",
     item.dns || "—",
     item.windows_version || "—",
+    item.eset_app || "—",
   ]);
 
   autoTable(doc, {
@@ -74,10 +76,11 @@ interface AgencyExportItem {
   asset: string;
   sn: string;
   os_version: string;
+  eset_app?: string;
 }
 
 export const exportAgencyToCSV = (data: AgencyExportItem[], filename = "inventaire_agences") => {
-  const headers = ["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS"];
+  const headers = ["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS", "App. ESET"];
   const rows = data.map((item) => [
     item.agence,
     item.sous_reseau || "",
@@ -86,6 +89,7 @@ export const exportAgencyToCSV = (data: AgencyExportItem[], filename = "inventai
     item.asset || "",
     item.sn || "",
     item.os_version || "",
+    item.eset_app || "",
   ]);
 
   const BOM = "\uFEFF";
@@ -111,7 +115,7 @@ export const exportAgencyToPDF = (data: AgencyExportItem[], filename = "inventai
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS"]];
+  const headers = [["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS", "App. ESET"]];
   const rows = data.map((item) => [
     item.agence,
     item.sous_reseau || "—",
@@ -120,6 +124,7 @@ export const exportAgencyToPDF = (data: AgencyExportItem[], filename = "inventai
     item.asset || "—",
     item.sn || "—",
     item.os_version || "—",
+    item.eset_app || "—",
   ]);
 
   autoTable(doc, {

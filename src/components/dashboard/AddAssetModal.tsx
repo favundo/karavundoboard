@@ -25,6 +25,7 @@ interface FormData {
   type: string;
   dns: string;
   windows_version: string;
+  eset_app: string;
   matricule: string;
   pseudo: string;
   service: string;
@@ -40,6 +41,7 @@ const EMPTY_FORM: FormData = {
   type: "",
   dns: "",
   windows_version: "",
+  eset_app: "",
   matricule: "",
   pseudo: "",
   service: "",
@@ -80,6 +82,7 @@ const AddAssetModal = ({ open, onClose }: Props) => {
         type: payload.type.trim(),
         dns: payload.dns.trim(),
         windows_version: payload.windows_version.trim(),
+        eset_app: payload.eset_app.trim() || null,
         matricule: payload.matricule.trim() || null,
         pseudo: payload.pseudo.trim() || null,
         service: payload.service.trim() || undefined,
@@ -128,7 +131,8 @@ const AddAssetModal = ({ open, onClose }: Props) => {
     form.sn.trim() &&
     form.type.trim() &&
     form.dns.trim() &&
-    form.windows_version.trim();
+    form.windows_version.trim() &&
+    form.eset_app.trim();
 
   const handleSubmit = () => {
     if (!isFormValid()) return;
@@ -241,6 +245,18 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                     onChange={(e) => handleField("windows_version", e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="eset_app">
+                  App. ESET <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="eset_app"
+                  placeholder="ex: ESET Endpoint Security"
+                  value={form.eset_app}
+                  onChange={(e) => handleField("eset_app", e.target.value)}
+                />
               </div>
 
               {/* Optional fields */}
