@@ -43,6 +43,13 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "hostname": "dns",
   "nom dns": "dns",
   "nomdns": "dns",
+  "nom de l'ordinateur": "dns",
+  "nom de l ordinateur": "dns",
+  "nom ordinateur": "dns",
+  "nom machine": "dns",
+  "nom poste": "dns",
+  "nom du poste": "dns",
+  "nom du pc": "dns",
   // absence
   "absence": "absence",
   "absent": "absence",
@@ -66,6 +73,8 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "application eset": "eset_app",
   "app eset": "eset_app",
   "securite eset": "eset_app",
+  "application de securite": "eset_app",
+  "application securite": "eset_app",
   "antivirus": "eset_app",
   // windows_version
   "windows_version": "windows_version",
@@ -142,7 +151,8 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
             columnMapping[h] = COLUMN_MAP[norm];
           } else {
             // Fallback: try "contains" matching for unrecognized headers
-            const match = Object.entries(COLUMN_MAP).find(([key]) => norm.includes(key) || key.includes(norm));
+            // Sort by key length descending so longer keys (e.g. "nom dns") match before shorter ones (e.g. "nom")
+            const match = Object.entries(COLUMN_MAP).sort((a, b) => b[0].length - a[0].length).find(([key]) => norm.includes(key) || key.includes(norm));
             if (match) {
               mapping[h] = match[1];
               columnMapping[h] = match[1];
