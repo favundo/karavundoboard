@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Network, Upload, Trash2 } from "lucide-react";
-import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
 import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
@@ -54,7 +53,6 @@ const Agency = () => {
                   Données à jour
                 </span>
               </div>
-              <WebhookSettings />
               <button
                 onClick={() => openPinFor("reset")}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"

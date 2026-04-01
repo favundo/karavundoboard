@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive } from "lucide-react";
-import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
@@ -75,7 +74,7 @@ const Index = () => {
                   Données à jour
                 </span>
               </div>
-              <WebhookSettings />
+
 <button
                 onClick={() => setAddAssetOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"

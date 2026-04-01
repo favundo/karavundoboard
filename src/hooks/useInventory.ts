@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { triggerWebhook } from "@/lib/zapierWebhook";
 import { type InventoryItem } from "@/data/inventoryData";
 
 export type DbInventoryItem = {
@@ -87,7 +86,6 @@ export const useAppendInventory = () => {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      triggerWebhook("import", { table: "Siège et Groupes", count: variables.length });
     },
   });
 };

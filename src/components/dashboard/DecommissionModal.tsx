@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { triggerWebhook } from "@/lib/zapierWebhook";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -50,7 +49,6 @@ const DecommissionModal = ({ open, onClose }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      triggerWebhook("decommission", { table: "Siège et Groupes", count: 1 });
       toast.success(`Asset ${asset.trim()} décommissionné avec succès`);
       handleClose();
     },
