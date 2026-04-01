@@ -15,6 +15,7 @@ const InventoryTable = () => {
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState("Tous");
   const [typeFilter, setTypeFilter] = useState("Tous");
+  const [osFilter, setOsFilter] = useState("Tous");
   const [sortKey, setSortKey] = useState<SortKey>("nom");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -23,6 +24,11 @@ const InventoryTable = () => {
 
   const services = useMemo(
     () => ["Tous", ...Array.from(new Set(inventoryData.map((i) => i.service))).sort()],
+    [inventoryData]
+  );
+
+  const osVersions = useMemo(
+    () => ["Tous", ...Array.from(new Set(inventoryData.map((i) => i.windows_version ?? "").filter(Boolean))).sort()],
     [inventoryData]
   );
 
@@ -37,7 +43,8 @@ const InventoryTable = () => {
           item.sn.toLowerCase().includes(search.toLowerCase());
         const matchService = serviceFilter === "Tous" || item.service === serviceFilter;
         const matchType = typeFilter === "Tous" || item.type === typeFilter;
-        return matchSearch && matchService && matchType;
+        const matchOs = osFilter === "Tous" || (item.windows_version ?? "") === osFilter;
+        return matchSearch && matchService && matchType && matchOs;
       })
       .sort((a, b) => {
         const valA = a[sortKey] ?? "";
@@ -45,7 +52,7 @@ const InventoryTable = () => {
         const cmp = String(valA).localeCompare(String(valB));
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [inventoryData, search, serviceFilter, typeFilter, sortKey, sortDir]);
+  }, [inventoryData, search, serviceFilter, typeFilter, osFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -72,7 +79,7 @@ const InventoryTable = () => {
     { key: "windows_version", label: "Windows" },
   ];
 
-  const isExpanded = search !== "" || serviceFilter !== "Tous" || typeFilter !== "Tous";
+  const isExpanded = search !== "" || serviceFilter !== "Tous" || typeFilter !== "Tous" || osFilter !== "Tous";
 
   return (
     <>
@@ -112,6 +119,15 @@ const InventoryTable = () => {
             <option value="Tous">Tous types</option>
             <option value="portable">Portable</option>
             <option value="Pc Fixe">PC Fixe</option>
+          </select>
+          <select
+            value={osFilter}
+            onChange={(e) => setOsFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+          >
+            {osVersions.map((v) => (
+              <option key={v} value={v}>{v === "Tous" ? "Toutes versions" : v}</option>
+            ))}
           </select>
           {isExpanded && (
             <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary whitespace-nowrap">

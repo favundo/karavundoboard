@@ -12,11 +12,17 @@ const AgencyTable = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [agenceFilter, setAgenceFilter] = useState("Toutes");
+  const [osFilter, setOsFilter] = useState("Tous");
   const [sortKey, setSortKey] = useState<SortKey>("agence");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const agences = useMemo(
     () => ["Toutes", ...Array.from(new Set(items.map((i) => i.agence))).sort()],
+    [items]
+  );
+
+  const osVersions = useMemo(
+    () => ["Tous", ...Array.from(new Set(items.map((i) => i.os_version ?? "").filter(Boolean))).sort()],
     [items]
   );
 
@@ -31,13 +37,14 @@ const AgencyTable = () => {
           item.sn.toLowerCase().includes(s) ||
           item.sous_reseau.toLowerCase().includes(s);
         const matchAgence = agenceFilter === "Toutes" || item.agence === agenceFilter;
-        return matchSearch && matchAgence;
+        const matchOs = osFilter === "Tous" || (item.os_version ?? "") === osFilter;
+        return matchSearch && matchAgence && matchOs;
       })
       .sort((a, b) => {
         const cmp = String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? ""));
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [items, search, agenceFilter, sortKey, sortDir]);
+  }, [items, search, agenceFilter, osFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -84,6 +91,15 @@ const AgencyTable = () => {
               className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none"
             >
               {agences.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select
+              value={osFilter}
+              onChange={(e) => setOsFilter(e.target.value)}
+              className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+            >
+              {osVersions.map((v) => (
+                <option key={v} value={v}>{v === "Tous" ? "Toutes versions OS" : v}</option>
+              ))}
             </select>
             <button
               onClick={() => exportAgencyToCSV(filtered)}
