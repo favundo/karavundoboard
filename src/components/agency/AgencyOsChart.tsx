@@ -11,16 +11,8 @@ const COLORS = [
   "hsl(var(--muted-foreground))",
 ];
 
-const normalizeOs = (v: string): string => {
-  if (!v || v.trim() === "") return "Inconnu";
-  const l = v.toLowerCase();
-  if (l.includes("11")) return "Windows 11";
-  if (l.includes("10")) return "Windows 10";
-  if (l.includes("8.1")) return "Windows 8.1";
-  if (l.includes("7")) return "Windows 7";
-  if (l.includes("server")) return "Windows Server";
-  return v.trim();
-};
+const normalizeOs = (v: string): string =>
+  v && v.trim() !== "" ? v.trim() : "Inconnu";
 
 const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?: any[]; total: number }) => {
   if (!active || !payload?.length) return null;

@@ -2,28 +2,10 @@ import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
 
-const normalizeVersion = (v: string): string => {
-  if (!v || v.trim() === "") return "Inconnu";
-  const lower = v.toLowerCase();
-  if (lower.includes("11")) return "Windows 11";
-  if (lower.includes("10")) return "Windows 10";
-  if (lower.includes("8.1")) return "Windows 8.1";
-  if (lower.includes("8")) return "Windows 8";
-  if (lower.includes("7")) return "Windows 7";
-  return "Autre";
-};
+const normalizeVersion = (v: string): string =>
+  v && v.trim() !== "" ? v.trim() : "Inconnu";
 
-const COLORS: Record<string, string> = {
-  "Windows 11": "hsl(var(--primary))",
-  "Windows 10": "hsl(var(--chart-2))",
-  "Windows 8.1": "hsl(var(--chart-3))",
-  "Windows 8": "hsl(var(--chart-4))",
-  "Windows 7": "hsl(var(--chart-5))",
-  "Autre": "hsl(var(--muted-foreground))",
-  "Inconnu": "hsl(var(--border))",
-};
-
-const FALLBACK_COLORS = [
+const COLORS = [
   "hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
   "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--muted-foreground))", "hsl(var(--border))",
 ];
@@ -75,7 +57,7 @@ const AbcroisiereWindowsVersionChart = () => {
             <PieChart>
               <Pie data={chartData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">
                 {chartData.map((entry, index) => (
-                  <Cell key={entry.name} fill={COLORS[entry.name] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length]} />
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip total={total} />} />
@@ -83,7 +65,7 @@ const AbcroisiereWindowsVersionChart = () => {
           </ResponsiveContainer>
           <div className="mt-3 space-y-1.5">
             {chartData.map((entry, index) => {
-              const color = COLORS[entry.name] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+              const color = COLORS[index % COLORS.length];
               const pct = ((entry.value / total) * 100).toFixed(1);
               return (
                 <div key={entry.name} className="flex items-center justify-between text-xs">
