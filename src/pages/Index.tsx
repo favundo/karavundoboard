@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck } from "lucide-react";
+import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive } from "lucide-react";
 import WebhookSettings from "@/components/dashboard/WebhookSettings";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
@@ -16,6 +16,7 @@ import DecommissionModal from "@/components/dashboard/DecommissionModal";
 import AddAssetModal from "@/components/dashboard/AddAssetModal";
 import PretModal from "@/components/dashboard/PretModal";
 import AffecterModal from "@/components/dashboard/AffecterModal";
+import StockModal from "@/components/dashboard/StockModal";
 
 type PinAction = "import" | "reset" | "decommission";
 
@@ -27,6 +28,7 @@ const Index = () => {
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [pretOpen, setPretOpen] = useState(false);
   const [affecterOpen, setAffecterOpen] = useState(false);
+  const [stockOpen, setStockOpen] = useState(false);
   const [pinAction, setPinAction] = useState<PinAction>("import");
 
   const openPinFor = (action: PinAction) => {
@@ -50,6 +52,7 @@ const Index = () => {
       <AddAssetModal open={addAssetOpen} onClose={() => setAddAssetOpen(false)} />
       <PretModal open={pretOpen} onClose={() => setPretOpen(false)} />
       <AffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
+      <StockModal open={stockOpen} onClose={() => setStockOpen(false)} />
 
       {/* Header + Navigation tabs — bloc sticky unique */}
       <div className="sticky top-0 z-50 bg-card/50 backdrop-blur-sm border-b border-border">
@@ -86,6 +89,13 @@ const Index = () => {
               >
                 <UserCheck size={15} />
                 <span className="hidden sm:inline">Affecter</span>
+              </button>
+              <button
+                onClick={() => setStockOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-500/30 bg-slate-500/10 px-4 text-sm font-medium text-slate-600 dark:text-slate-400 transition-colors hover:bg-slate-500/20"
+              >
+                <Archive size={15} />
+                <span className="hidden sm:inline">Stock</span>
               </button>
               <button
                 onClick={() => setPretOpen(true)}
