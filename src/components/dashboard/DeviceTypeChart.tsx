@@ -34,16 +34,16 @@ const DeviceTypeChart = () => {
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Répartition par type
       </h3>
-      <div className="flex items-center gap-6">
-        <div className="h-[200px] w-[200px] flex-shrink-0">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-[160px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={85}
+                innerRadius={45}
+                outerRadius={70}
                 paddingAngle={4}
                 dataKey="value"
                 strokeWidth={0}
@@ -56,10 +56,10 @@ const DeviceTypeChart = () => {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="space-y-4">
+        <div className="flex justify-center gap-6">
           {data.map((entry, index) => (
-            <div key={entry.name} className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+            <div key={entry.name} className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index] }} />
               <div>
                 <p className="text-sm font-medium text-foreground">{entry.name}</p>
                 <p className="text-xs text-muted-foreground">

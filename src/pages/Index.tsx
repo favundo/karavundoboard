@@ -3,7 +3,6 @@ import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Arc
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
-import TopServicesGrid from "@/components/dashboard/TopServicesGrid";
 import WindowsVersionChart from "@/components/dashboard/WindowsVersionChart";
 import EsetChart from "@/components/dashboard/EsetChart";
 import MultiDeviceGauge from "@/components/dashboard/MultiDeviceGauge";
@@ -138,18 +137,14 @@ const Index = () => {
 
         <InventoryTable />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ServiceChart />
-          </div>
-          <div className="space-y-6">
-            <MultiDeviceGauge />
-            <DeviceTypeChart />
-            <WindowsVersionChart />
-            <EsetChart />
-            <TopServicesGrid />
-          </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <MultiDeviceGauge />
+          <DeviceTypeChart />
+          <WindowsVersionChart />
+          <EsetChart />
         </div>
+
+        <ServiceChart />
       </main>
     </div>
   );
