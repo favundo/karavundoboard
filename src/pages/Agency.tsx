@@ -146,7 +146,7 @@ const Agency = () => {
 
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        <AgencyStatsCards />
+        <AgencyStatsCards totalAgences={allAgences.length} />
         <AgencyMap />
         <AgencyTable />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

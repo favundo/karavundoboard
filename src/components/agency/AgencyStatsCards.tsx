@@ -4,12 +4,16 @@ import AgencyOsChart from "./AgencyOsChart";
 import AgencyOsMigrationChart from "./AgencyOsMigrationChart";
 import AgencyAioMigrationChart from "./AgencyAioMigrationChart";
 
-const AgencyStatsCards = () => {
+interface Props {
+  totalAgences?: number;
+}
+
+const AgencyStatsCards = ({ totalAgences: totalAgencesProp }: Props) => {
   const { data, isLoading } = useAgencyInventory();
   const items = data ?? [];
 
   const totalEquipements = items.length;
-  const totalAgences = new Set(items.map((i) => i.agence).filter(Boolean)).size;
+  const totalAgences = totalAgencesProp ?? new Set(items.map((i) => i.agence).filter(Boolean)).size;
 
   const cards = [
     { label: "Équipements", value: totalEquipements, icon: Server, color: "text-primary", bg: "bg-primary/10" },

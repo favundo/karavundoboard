@@ -82,20 +82,20 @@ const AgencyTable = () => {
                 placeholder="Rechercher…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-secondary pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="h-8 rounded-lg border border-border bg-white pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
             <select
               value={agenceFilter}
               onChange={(e) => setAgenceFilter(e.target.value)}
-              className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+              className="h-8 rounded-lg border border-border bg-white px-2 text-xs text-foreground focus:border-primary focus:outline-none"
             >
               {agences.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             <select
               value={osFilter}
               onChange={(e) => setOsFilter(e.target.value)}
-              className="h-8 rounded-lg border border-border bg-secondary px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+              className="h-8 rounded-lg border border-border bg-white px-2 text-xs text-foreground focus:border-primary focus:outline-none"
             >
               {osVersions.map((v) => (
                 <option key={v} value={v}>{v === "Tous" ? "Toutes versions OS" : v}</option>
