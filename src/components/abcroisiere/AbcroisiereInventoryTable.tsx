@@ -32,6 +32,7 @@ const AbcroisiereInventoryTable = () => {
   );
 
   const filtered = useMemo(() => {
+    if (!search && serviceFilter === "Tous" && typeFilter === "Tous" && osFilter === "Tous") return [];
     return inventoryData
       .filter((item) => {
         const matchSearch =
@@ -120,6 +121,10 @@ const AbcroisiereInventoryTable = () => {
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">Chargement de l'inventaire…</div>
+          ) : !search && serviceFilter === "Tous" && typeFilter === "Tous" && osFilter === "Tous" ? (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Utilisez la recherche ou les filtres pour afficher les équipements.
+            </div>
           ) : inventoryData.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-muted-foreground">
