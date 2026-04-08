@@ -213,12 +213,16 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                   <Label htmlFor="type">
                     Type immo <span className="text-destructive">*</span>
                   </Label>
-                  <Input
+                  <select
                     id="type"
-                    placeholder="ex: Laptop"
                     value={form.type}
                     onChange={(e) => handleField("type", e.target.value)}
-                  />
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                  >
+                    <option value="">— Choisir —</option>
+                    <option value="portable">Portable</option>
+                    <option value="Pc Fixe">Pc Fixe</option>
+                  </select>
                 </div>
               </div>
 
@@ -238,12 +242,20 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                   <Label htmlFor="windows_version">
                     Version de Windows <span className="text-destructive">*</span>
                   </Label>
-                  <Input
+                  <select
                     id="windows_version"
-                    placeholder="ex: Windows 11"
                     value={form.windows_version}
                     onChange={(e) => handleField("windows_version", e.target.value)}
-                  />
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                  >
+                    <option value="">— Choisir —</option>
+                    <option>Microsoft Windows 11 Professionnel</option>
+                    <option>Microsoft Windows 11 Professionnel N</option>
+                    <option>Microsoft Windows 10 Professionnel</option>
+                    <option>Microsoft Windows 10 Professionnel N</option>
+                    <option>Linux</option>
+                    <option>Autres</option>
+                  </select>
                 </div>
               </div>
 
@@ -251,12 +263,16 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                 <Label htmlFor="eset_app">
                   App. ESET <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <select
                   id="eset_app"
-                  placeholder="ex: ESET Endpoint Security"
                   value={form.eset_app}
                   onChange={(e) => handleField("eset_app", e.target.value)}
-                />
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="">— Choisir —</option>
+                  <option>ESET Endpoint Security</option>
+                  <option>ESET Endpoint ANTIVIRUS</option>
+                </select>
               </div>
 
               {/* Optional fields */}
@@ -296,12 +312,35 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="service">Service</Label>
-                    <Input
+                    <select
                       id="service"
-                      placeholder="Service"
                       value={form.service}
                       onChange={(e) => handleField("service", e.target.value)}
-                    />
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                    >
+                      <option value="">— Choisir —</option>
+                      <option>Administration et Finance</option>
+                      <option>Agence</option>
+                      <option>Comex</option>
+                      <option>Communication et Design</option>
+                      <option>Data Client</option>
+                      <option>Direction Produit</option>
+                      <option>Externe</option>
+                      <option>Fram</option>
+                      <option>Groupes</option>
+                      <option>Groupes - Plateforme Lille</option>
+                      <option>Groupes - Plateforme Nord</option>
+                      <option>Indiv CE</option>
+                      <option>Informatique</option>
+                      <option>Juridique</option>
+                      <option>Marketing</option>
+                      <option>Présidence</option>
+                      <option>Production</option>
+                      <option>Qualité</option>
+                      <option>Relation Client</option>
+                      <option>Ressources Humaines</option>
+                      <option>Stock</option>
+                    </select>
                   </div>
                 </div>
 

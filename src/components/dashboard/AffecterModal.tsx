@@ -205,7 +205,34 @@ const AffecterModal = ({ open, onClose }: Props) => {
               </div>
               <div className="space-y-1">
                 <Label>Service</Label>
-                <Input value={form.service} onChange={set("service")} placeholder="Service" />
+                <select
+                  value={form.service}
+                  onChange={set("service")}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="">— Choisir —</option>
+                  <option>Administration et Finance</option>
+                  <option>Agence</option>
+                  <option>Comex</option>
+                  <option>Communication et Design</option>
+                  <option>Data Client</option>
+                  <option>Direction Produit</option>
+                  <option>Externe</option>
+                  <option>Fram</option>
+                  <option>Groupes</option>
+                  <option>Groupes - Plateforme Lille</option>
+                  <option>Groupes - Plateforme Nord</option>
+                  <option>Indiv CE</option>
+                  <option>Informatique</option>
+                  <option>Juridique</option>
+                  <option>Marketing</option>
+                  <option>Présidence</option>
+                  <option>Production</option>
+                  <option>Qualité</option>
+                  <option>Relation Client</option>
+                  <option>Ressources Humaines</option>
+                  <option>Stock</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <Label>Type</Label>
@@ -229,7 +256,19 @@ const AffecterModal = ({ open, onClose }: Props) => {
               </div>
               <div className="col-span-2 space-y-1">
                 <Label>Version Windows</Label>
-                <Input value={form.windows_version} onChange={set("windows_version")} placeholder="Windows 11 Pro" />
+                <select
+                  value={form.windows_version}
+                  onChange={set("windows_version")}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="">— Choisir —</option>
+                  <option>Microsoft Windows 11 Professionnel</option>
+                  <option>Microsoft Windows 11 Professionnel N</option>
+                  <option>Microsoft Windows 10 Professionnel</option>
+                  <option>Microsoft Windows 10 Professionnel N</option>
+                  <option>Linux</option>
+                  <option>Autres</option>
+                </select>
               </div>
               <div className="col-span-2 space-y-1">
                 <Label>Remarques</Label>
