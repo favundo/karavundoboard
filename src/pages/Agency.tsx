@@ -5,31 +5,14 @@ import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
 import AgencyImportModal from "@/components/agency/AgencyImportModal";
 import AgencyResetModal from "@/components/agency/AgencyResetModal";
-import PinModal from "@/components/dashboard/PinModal";
 import AgencyEsetChart from "@/components/agency/AgencyEsetChart";
-
-type PinAction = "import" | "reset";
 
 const Agency = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<PinAction>("import");
-
-  const openPinFor = (action: PinAction) => {
-    setPinAction(action);
-    setPinOpen(true);
-  };
-
-  const handlePinSuccess = () => {
-    setPinOpen(false);
-    if (pinAction === "import") setImportOpen(true);
-    else setResetOpen(true);
-  };
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <AgencyImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <AgencyResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
 
@@ -54,14 +37,14 @@ const Agency = () => {
                 </span>
               </div>
               <button
-                onClick={() => openPinFor("reset")}
+                onClick={() => setResetOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
               >
                 <Trash2 size={15} />
                 <span className="hidden sm:inline">Vider</span>
               </button>
               <button
-                onClick={() => openPinFor("import")}
+                onClick={() => setImportOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />

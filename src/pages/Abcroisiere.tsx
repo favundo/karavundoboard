@@ -9,30 +9,13 @@ import AbcroisiereEsetChart from "@/components/abcroisiere/AbcroisiereEsetChart"
 import AbcroisiereInventoryTable from "@/components/abcroisiere/AbcroisiereInventoryTable";
 import AbcroisiereImportModal from "@/components/abcroisiere/AbcroisiereImportModal";
 import AbcroisiereResetModal from "@/components/abcroisiere/AbcroisiereResetModal";
-import PinModal from "@/components/dashboard/PinModal";
-
-type PinAction = "import" | "reset";
 
 const Abcroisiere = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<PinAction>("import");
-
-  const openPinFor = (action: PinAction) => {
-    setPinAction(action);
-    setPinOpen(true);
-  };
-
-  const handlePinSuccess = () => {
-    setPinOpen(false);
-    if (pinAction === "import") setImportOpen(true);
-    else setResetOpen(true);
-  };
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <AbcroisiereImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <AbcroisiereResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
 
@@ -57,14 +40,14 @@ const Abcroisiere = () => {
                 </span>
               </div>
               <button
-                onClick={() => openPinFor("reset")}
+                onClick={() => setResetOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
               >
                 <Trash2 size={15} />
                 <span className="hidden sm:inline">Vider</span>
               </button>
               <button
-                onClick={() => openPinFor("import")}
+                onClick={() => setImportOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />

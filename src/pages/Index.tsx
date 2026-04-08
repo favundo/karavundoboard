@@ -9,7 +9,6 @@ import EsetChart from "@/components/dashboard/EsetChart";
 import MultiDeviceGauge from "@/components/dashboard/MultiDeviceGauge";
 import InventoryTable from "@/components/dashboard/InventoryTable";
 import ImportModal from "@/components/dashboard/ImportModal";
-import PinModal from "@/components/dashboard/PinModal";
 import ResetModal from "@/components/dashboard/ResetModal";
 import DecommissionModal from "@/components/dashboard/DecommissionModal";
 import AddAssetModal from "@/components/dashboard/AddAssetModal";
@@ -17,34 +16,17 @@ import PretModal from "@/components/dashboard/PretModal";
 import AffecterModal from "@/components/dashboard/AffecterModal";
 import StockModal from "@/components/dashboard/StockModal";
 
-type PinAction = "import" | "reset" | "decommission";
-
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [decommissionOpen, setDecommissionOpen] = useState(false);
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [pretOpen, setPretOpen] = useState(false);
   const [affecterOpen, setAffecterOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<PinAction>("import");
-
-  const openPinFor = (action: PinAction) => {
-    setPinAction(action);
-    setPinOpen(true);
-  };
-
-  const handlePinSuccess = () => {
-    setPinOpen(false);
-    if (pinAction === "import") setImportOpen(true);
-    else if (pinAction === "reset") setResetOpen(true);
-    else if (pinAction === "decommission") setDecommissionOpen(true);
-  };
 
   return (
     <div className="min-h-screen bg-background">
-      <PinModal open={pinOpen} onClose={() => setPinOpen(false)} onSuccess={handlePinSuccess} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
       <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
@@ -104,14 +86,14 @@ const Index = () => {
                 <span className="hidden sm:inline">Prêt</span>
               </button>
               <button
-                onClick={() => openPinFor("decommission")}
+                onClick={() => setDecommissionOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 text-sm font-medium text-orange-600 dark:text-orange-400 transition-colors hover:bg-orange-500/20"
               >
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
               </button>
               <button
-                onClick={() => openPinFor("import")}
+                onClick={() => setImportOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Upload size={15} />
