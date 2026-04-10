@@ -34,8 +34,7 @@ const AgencyTable = () => {
           !search ||
           item.agence.toLowerCase().includes(s) ||
           item.asset.toLowerCase().includes(s) ||
-          item.sn.toLowerCase().includes(s) ||
-          item.sous_reseau.toLowerCase().includes(s);
+          item.sn.toLowerCase().includes(s);
         const matchAgence = agenceFilter === "Toutes" || item.agence === agenceFilter;
         const matchOs = osFilter === "Tous" || (item.os_version ?? "") === osFilter;
         return matchSearch && matchAgence && matchOs;
@@ -58,8 +57,6 @@ const AgencyTable = () => {
 
   const columns: { key: SortKey; label: string }[] = [
     { key: "agence", label: "Agence" },
-    { key: "sous_reseau", label: "Sous-réseau" },
-    { key: "masque", label: "Masque" },
     { key: "type", label: "Type" },
     { key: "asset", label: "Asset" },
     { key: "sn", label: "N° Série" },
@@ -165,14 +162,6 @@ const AgencyTable = () => {
                 {filtered.slice(0, 100).map((item, idx) => (
                   <tr key={`${item.asset}-${idx}`} className="border-b border-border/50 transition-colors hover:bg-muted/20">
                     <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">{item.agence}</td>
-                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sous_reseau || "—"}</td>
-                     <td className="whitespace-nowrap px-4 py-2.5">
-                       {item.masque ? (
-                         <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-primary">
-                           /{item.masque}
-                         </span>
-                       ) : <span className="text-muted-foreground">—</span>}
-                     </td>
                      <td className="whitespace-nowrap px-4 py-2.5">
                        {item.type ? (
                          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${item.type === "AIO" ? "bg-accent/20 text-accent-foreground" : "bg-secondary text-secondary-foreground"}`}>

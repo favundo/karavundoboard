@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, ChevronRight, Loader2 } from "lucide-react";
 import { parseFile, type ParseResult } from "@/lib/parseInventory";
-import { useReplaceAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
+import { useAppendAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
 import { type InventoryItem } from "@/data/inventoryData";
+import { toast } from "sonner";
 
 interface AbcroisiereImportModalProps {
   open: boolean;
@@ -18,7 +19,7 @@ const AbcroisiereImportModal = ({ open, onClose }: AbcroisiereImportModalProps) 
   const [parsing, setParsing] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceInventory = useReplaceAbcroisiereInventory();
+  const replaceInventory = useAppendAbcroisiereInventory();
 
   const reset = () => {
     setStep("upload");
@@ -36,7 +37,11 @@ const AbcroisiereImportModal = ({ open, onClose }: AbcroisiereImportModalProps) 
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!["xlsx", "xls", "csv"].includes(ext ?? "")) {
-      alert("Format non supporté. Utilisez un fichier .xlsx, .xls ou .csv");
+      toast.error("Format non supporté. Utilisez un fichier .xlsx, .xls ou .csv");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (max 20 Mo)");
       return;
     }
     setFileName(file.name);

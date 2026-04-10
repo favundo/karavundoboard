@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, ChevronRight, Loader2 } from "lucide-react";
 import { parseFile, type ParseResult } from "@/lib/parseInventory";
-import { useReplaceInventory } from "@/hooks/useInventory";
+import { useAppendInventory } from "@/hooks/useInventory";
 import { type InventoryItem } from "@/data/inventoryData";
+import { toast } from "sonner";
 
 interface ImportModalProps {
   open: boolean;
@@ -18,7 +19,7 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
   const [parsing, setParsing] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceInventory = useReplaceInventory();
+  const replaceInventory = useAppendInventory();
 
   const reset = () => {
     setStep("upload");
@@ -36,7 +37,11 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!["xlsx", "xls", "csv"].includes(ext ?? "")) {
-      alert("Format non supporté. Utilisez un fichier .xlsx, .xls ou .csv");
+      toast.error("Format non supporté. Utilisez un fichier .xlsx, .xls ou .csv");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (max 20 Mo)");
       return;
     }
     setFileName(file.name);
@@ -67,7 +72,7 @@ const ImportModal = ({ open, onClose }: ImportModalProps) => {
       setStep("success");
     } catch (err) {
       console.error("Import error:", err);
-      alert("Erreur lors de l'import : " + (err instanceof Error ? err.message : String(err)));
+      toast.error("Erreur lors de l'import : " + (err instanceof Error ? err.message : String(err)));
     }
   };
 

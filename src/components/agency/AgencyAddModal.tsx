@@ -79,12 +79,11 @@ const AgencyAddModal = ({ open, onClose, extraAgences = [] }: Props) => {
         sn: form.sn.trim(),
         os_version: form.os_version,
         eset_app: form.eset_app,
-        sous_reseau: "",
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agency-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["agency_inventory"] });
       toast.success(`Asset ${form.asset.trim()} ajouté avec succès`);
       handleClose();
     },

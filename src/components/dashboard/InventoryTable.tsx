@@ -191,6 +191,12 @@ const InventoryTable = () => {
                 Aucun résultat pour cette recherche.
               </div>
             ) : (
+              <>
+              {filtered.length > 50 && (
+                <div className="border-b border-border bg-amber-50/60 dark:bg-amber-900/10 px-4 py-2 text-center text-xs text-amber-700 dark:text-amber-400">
+                  Affichage limité à 50 sur {filtered.length} résultats — affinez les filtres pour voir plus.
+                </div>
+              )}
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -270,11 +276,7 @@ const InventoryTable = () => {
                   ))}
                 </tbody>
               </table>
-            )}
-            {!isLoading && filtered.length > 50 && (
-              <div className="border-t border-border px-4 py-3 text-center text-xs text-muted-foreground">
-                Affichage de 50 sur {filtered.length} résultats. Utilisez les filtres pour affiner.
-              </div>
+              </>
             )}
           </div>
         )}

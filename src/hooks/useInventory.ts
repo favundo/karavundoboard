@@ -84,11 +84,9 @@ export const useAppendInventory = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
   });
 };
 
-// Keep for backward compatibility (full replace)
-export const useReplaceInventory = useAppendInventory;

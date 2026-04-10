@@ -69,7 +69,7 @@ const AgencyStockModal = ({ open, onClose }: Props) => {
       if (deleteError) throw deleteError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agency-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["agency_inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast.success(`Asset ${found?.asset} transféré en stock siège`);
       handleClose();

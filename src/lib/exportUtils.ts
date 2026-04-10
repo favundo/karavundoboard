@@ -70,8 +70,6 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
 
 interface AgencyExportItem {
   agence: string;
-  sous_reseau: string;
-  masque: string;
   type: string;
   asset: string;
   sn: string;
@@ -80,11 +78,9 @@ interface AgencyExportItem {
 }
 
 export const exportAgencyToCSV = (data: AgencyExportItem[], filename = "inventaire_agences") => {
-  const headers = ["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS", "App. ESET"];
+  const headers = ["Agence", "Type", "Asset", "N° Série", "Version OS", "App. ESET"];
   const rows = data.map((item) => [
     item.agence,
-    item.sous_reseau || "",
-    item.masque || "",
     item.type || "",
     item.asset || "",
     item.sn || "",
@@ -115,11 +111,9 @@ export const exportAgencyToPDF = (data: AgencyExportItem[], filename = "inventai
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Agence", "Sous-réseau", "Masque", "Type", "Asset", "N° Série", "Version OS", "App. ESET"]];
+  const headers = [["Agence", "Type", "Asset", "N° Série", "Version OS", "App. ESET"]];
   const rows = data.map((item) => [
     item.agence,
-    item.sous_reseau || "—",
-    item.masque ? `/${item.masque}` : "—",
     item.type || "—",
     item.asset || "—",
     item.sn || "—",

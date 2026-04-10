@@ -79,11 +79,9 @@ export const useAppendAbcroisiereInventory = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["abcroisiere_inventory"] });
     },
   });
 };
 
-// Keep for backward compatibility
-export const useReplaceAbcroisiereInventory = useAppendAbcroisiereInventory;

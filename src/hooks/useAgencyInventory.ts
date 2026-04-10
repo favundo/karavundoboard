@@ -2,8 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 export type AgencyItem = {
   id?: string;
-  sous_reseau: string;
-  masque: string;
   agence: string;
   asset: string;
   sn: string;
@@ -45,11 +43,9 @@ export const useAppendAgencyInventory = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agency_inventory"] });
     },
   });
 };
 
-// Keep for backward compatibility
-export const useReplaceAgencyInventory = useAppendAgencyInventory;

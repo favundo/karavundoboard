@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { Upload, X, CheckCircle2, AlertCircle, Loader2, Network } from "lucide-react";
 import { parseAgencyFile } from "@/lib/parseAgencyInventory";
-import { useReplaceAgencyInventory, type AgencyItem } from "@/hooks/useAgencyInventory";
+import { useAppendAgencyInventory, type AgencyItem } from "@/hooks/useAgencyInventory";
+import { toast } from "sonner";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -14,9 +15,13 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
   const [parsing, setParsing] = useState(false);
   const [step, setStep] = useState<"upload" | "preview" | "done">("upload");
 
-  const replace = useReplaceAgencyInventory();
+  const replace = useAppendAgencyInventory();
 
   const handleFile = useCallback(async (f: File) => {
+    if (f.size > 20 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (max 20 Mo)");
+      return;
+    }
     setFile(f);
     setParsing(true);
     const result = await parseAgencyFile(f);
@@ -84,7 +89,7 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
                     {parsing ? "Analyse en cours…" : "Glissez votre fichier Excel ici"}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Colonnes attendues : Sous-réseau / Masque, Agence, Asset, SN
+                    Colonnes attendues : Agence, Asset, SN, Type, Version OS, App. ESET
                   </p>
                 </div>
                 {!parsing && (
@@ -128,20 +133,20 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
                   <thead className="sticky top-0 bg-muted">
                     <tr>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Agence</th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Sous-réseau</th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Masque</th>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Asset</th>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">SN</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Type</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">OS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {preview.slice(0, 50).map((item, i) => (
                       <tr key={i} className="border-t border-border/50 hover:bg-muted/20">
                         <td className="px-3 py-1.5 font-medium text-foreground">{item.agence}</td>
-                        <td className="px-3 py-1.5 font-mono text-muted-foreground">{item.sous_reseau}</td>
-                        <td className="px-3 py-1.5 font-mono text-muted-foreground">/{item.masque}</td>
                         <td className="px-3 py-1.5 font-mono text-primary">{item.asset}</td>
                         <td className="px-3 py-1.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{item.type || "—"}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{item.os_version || "—"}</td>
                       </tr>
                     ))}
                   </tbody>

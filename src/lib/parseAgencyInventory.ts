@@ -5,17 +5,6 @@ const normalizeHeader = (h: string) =>
   h.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const COLUMN_MAP: Record<string, keyof AgencyItem> = {
-  // sous_reseau
-  "sousrseaumasque": "sous_reseau",
-  "sousreseau": "sous_reseau",
-  "reseau": "sous_reseau",
-  "subnet": "sous_reseau",
-  "network": "sous_reseau",
-  // masque (standalone column)
-  "masque": "masque",
-  "mask": "masque",
-  "netmask": "masque",
-  "subnetmask": "masque",
   // agence
   "agence": "agence",
   "agency": "agence",
@@ -62,15 +51,6 @@ export type AgencyParseResult = {
   warnings: string[];
 };
 
-const parseSubnetMask = (raw: string): { sous_reseau: string; masque: string } => {
-  const trimmed = raw.trim();
-  const parts = trimmed.split("/");
-  if (parts.length === 2) {
-    return { sous_reseau: parts[0].trim(), masque: parts[1].trim() };
-  }
-  return { sous_reseau: trimmed, masque: "" };
-};
-
 export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -94,15 +74,8 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
 
         for (const h of headers) {
           const norm = normalizeHeader(h);
-          // Check exact match or partial match for subnet column
           if (COLUMN_MAP[norm]) {
             mapping[h] = COLUMN_MAP[norm];
-          } else {
-            // Partial match for combined "Sous-réseau / Masque" style columns
-            const normPartial = norm.replace(/masque|mask/, "");
-            if (normPartial.includes("sousreseau") || normPartial.includes("sousrse") || normPartial.includes("subnet")) {
-              mapping[h] = "sous_reseau";
-            }
           }
         }
 
@@ -112,8 +85,6 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
 
         for (const row of rows) {
           const item: AgencyItem = {
-            sous_reseau: "",
-            masque: "",
             agence: "",
             asset: "",
             sn: "",
@@ -123,22 +94,10 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
           };
 
           for (const [col, field] of Object.entries(mapping)) {
-            const val = String(row[col] ?? "").trim();
-            if (field === "sous_reseau") {
-              const parsed = parseSubnetMask(val);
-              item.sous_reseau = parsed.sous_reseau;
-              // Only set masque from subnet if no dedicated masque column exists
-              if (parsed.masque && !mapping[Object.keys(mapping).find(k => mapping[k] === "masque") ?? ""]) {
-                item.masque = parsed.masque;
-              } else if (parsed.masque && !item.masque) {
-                item.masque = parsed.masque;
-              }
-            } else {
-              (item as unknown as Record<string, unknown>)[field] = val;
-            }
+            (item as unknown as Record<string, unknown>)[field] = String(row[col] ?? "").trim();
           }
 
-          // Clean agence name: remove "Agence_" prefix
+          // Clean agence name: remove "Agence_" or "Agence " prefix
           if (item.agence.startsWith("Agence_")) {
             item.agence = item.agence.replace("Agence_", "").replace(/_/g, " ");
           } else if (item.agence.startsWith("Agence ")) {
