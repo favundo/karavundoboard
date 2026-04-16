@@ -113,6 +113,33 @@ export type Database = {
         }
         Relationships: []
       }
+      decommissioned_items: {
+        Row: {
+          id: string
+          asset: string
+          serial_number: string | null
+          source: string
+          traite: boolean
+          decommissioned_at: string
+        }
+        Insert: {
+          id?: string
+          asset: string
+          serial_number?: string | null
+          source: string
+          traite?: boolean
+          decommissioned_at?: string
+        }
+        Update: {
+          id?: string
+          asset?: string
+          serial_number?: string | null
+          source?: string
+          traite?: boolean
+          decommissioned_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           absence: boolean | null

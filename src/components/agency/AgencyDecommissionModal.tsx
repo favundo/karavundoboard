@@ -15,13 +15,14 @@ const AgencyDecommissionModal = ({ open, onClose }: Props) => {
   const [step, setStep] = useState<Step>("input");
   const [asset, setAsset] = useState("");
   const [foundInfo, setFoundInfo] = useState("");
+  const [foundSn, setFoundSn] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
         .from("agency_inventory")
-        .select("asset, agence, type")
+        .select("asset, agence, type, sn")
         .eq("asset", assetCode.trim())
         .maybeSingle();
       if (error) throw error;
@@ -31,6 +32,10 @@ const AgencyDecommissionModal = ({ open, onClose }: Props) => {
 
   const deleteMutation = useMutation({
     mutationFn: async (assetCode: string) => {
+      const { error: insertError } = await supabase
+        .from("decommissioned_items")
+        .insert({ asset: assetCode, serial_number: foundSn, source: "agences" });
+      if (insertError) throw insertError;
       const { error } = await supabase
         .from("agency_inventory")
         .delete()
@@ -51,6 +56,7 @@ const AgencyDecommissionModal = ({ open, onClose }: Props) => {
     setStep("input");
     setAsset("");
     setFoundInfo("");
+    setFoundSn(null);
     lookupMutation.reset();
     onClose();
   };
@@ -60,6 +66,7 @@ const AgencyDecommissionModal = ({ open, onClose }: Props) => {
     const result = await lookupMutation.mutateAsync(asset.trim());
     if (result) {
       setFoundInfo(`${result.agence} — ${result.type}`);
+      setFoundSn(result.sn ?? null);
       setStep("confirm");
     } else {
       toast.error(`Aucun équipement trouvé avec l'asset "${asset.trim()}"`);

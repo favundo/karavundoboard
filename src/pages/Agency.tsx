@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Network, Upload, Trash2, PlusCircle, MapPin, MapPinOff, Archive, MonitorX } from "lucide-react";
+import { Network, Upload, PlusCircle, MapPin, MapPinOff, Archive, MonitorX, ClipboardList } from "lucide-react";
 import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
 import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
 import AgencyImportModal from "@/components/agency/AgencyImportModal";
-import AgencyResetModal from "@/components/agency/AgencyResetModal";
 import AgencyAddModal from "@/components/agency/AgencyAddModal";
 import AgencyNouvelleAgenceModal from "@/components/agency/AgencyNouvelleAgenceModal";
 import AgencySupprimerAgenceModal from "@/components/agency/AgencySupprimerAgenceModal";
 import AgencyStockModal from "@/components/agency/AgencyStockModal";
 import AgencyDecommissionModal from "@/components/agency/AgencyDecommissionModal";
 import AgencyEsetChart from "@/components/agency/AgencyEsetChart";
+import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 import { AGENCES as BASE_AGENCES } from "@/components/agency/agencesBase";
 
 const CUSTOM_AGENCES_KEY = "kar-custom-agences";
@@ -23,12 +23,12 @@ const loadList = (key: string): string[] => {
 
 const Agency = () => {
   const [importOpen, setImportOpen] = useState(false);
-  const [resetOpen, setResetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [nouvelleAgenceOpen, setNouvelleAgenceOpen] = useState(false);
   const [supprimerAgenceOpen, setSupprimerAgenceOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [decommissionOpen, setDecommissionOpen] = useState(false);
+  const [decommListOpen, setDecommListOpen] = useState(false);
   const [customAgences, setCustomAgences] = useState<string[]>(() => loadList(CUSTOM_AGENCES_KEY));
   const [suppressedAgences, setSuppressedAgences] = useState<string[]>(() => loadList(SUPPRESSED_AGENCES_KEY));
 
@@ -55,12 +55,12 @@ const Agency = () => {
   return (
     <div className="min-h-screen bg-background">
       <AgencyImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <AgencyResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
       <AgencyAddModal open={addOpen} onClose={() => setAddOpen(false)} extraAgences={allAgences} />
       <AgencyNouvelleAgenceModal open={nouvelleAgenceOpen} onClose={() => setNouvelleAgenceOpen(false)} onAdd={handleAddAgence} />
       <AgencySupprimerAgenceModal open={supprimerAgenceOpen} onClose={() => setSupprimerAgenceOpen(false)} agences={allAgences} onSupprimer={handleSupprimerAgence} />
       <AgencyStockModal open={stockOpen} onClose={() => setStockOpen(false)} />
       <AgencyDecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
+      <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -82,6 +82,14 @@ const Agency = () => {
                   Données à jour
                 </span>
               </div>
+              <button
+                onClick={() => setDecommListOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+                title="PC Décommissionnés"
+              >
+                <ClipboardList size={15} />
+                <span className="hidden sm:inline">Rebut</span>
+              </button>
               <button
                 onClick={() => setNouvelleAgenceOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 text-sm font-medium text-sky-600 dark:text-sky-400 transition-colors hover:bg-sky-500/20"
@@ -116,13 +124,6 @@ const Agency = () => {
               >
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
-              </button>
-              <button
-                onClick={() => setResetOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
-              >
-                <Trash2 size={15} />
-                <span className="hidden sm:inline">Vider</span>
               </button>
               <button
                 onClick={() => setImportOpen(true)}

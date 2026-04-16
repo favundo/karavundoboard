@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2, PlusCircle, UserCheck, Archive, MonitorX } from "lucide-react";
+import { Server, Upload, PlusCircle, UserCheck, Archive, MonitorX, ClipboardList } from "lucide-react";
 import AbcroisiereStatsCards from "@/components/abcroisiere/AbcroisiereStatsCards";
 import AbcroisiereServiceChart from "@/components/abcroisiere/AbcroisiereServiceChart";
 import AbcroisiereDeviceTypeChart from "@/components/abcroisiere/AbcroisiereDeviceTypeChart";
@@ -7,28 +7,28 @@ import AbcroisiereWindowsVersionChart from "@/components/abcroisiere/Abcroisiere
 import AbcroisiereEsetChart from "@/components/abcroisiere/AbcroisiereEsetChart";
 import AbcroisiereInventoryTable from "@/components/abcroisiere/AbcroisiereInventoryTable";
 import AbcroisiereImportModal from "@/components/abcroisiere/AbcroisiereImportModal";
-import AbcroisiereResetModal from "@/components/abcroisiere/AbcroisiereResetModal";
 import AbcroisiereAddAssetModal from "@/components/abcroisiere/AbcroisiereAddAssetModal";
 import AbcroisiereAffecterModal from "@/components/abcroisiere/AbcroisiereAffecterModal";
 import AbcroisiereStockModal from "@/components/abcroisiere/AbcroisiereStockModal";
 import AbcroisiereDecommissionModal from "@/components/abcroisiere/AbcroisiereDecommissionModal";
+import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 
 const Abcroisiere = () => {
   const [importOpen, setImportOpen] = useState(false);
-  const [resetOpen, setResetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [affecterOpen, setAffecterOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [decommissionOpen, setDecommissionOpen] = useState(false);
+  const [decommListOpen, setDecommListOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
       <AbcroisiereImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <AbcroisiereResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
       <AbcroisiereAddAssetModal open={addOpen} onClose={() => setAddOpen(false)} />
       <AbcroisiereAffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
       <AbcroisiereStockModal open={stockOpen} onClose={() => setStockOpen(false)} />
       <AbcroisiereDecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
+      <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -50,6 +50,14 @@ const Abcroisiere = () => {
                   Données à jour
                 </span>
               </div>
+              <button
+                onClick={() => setDecommListOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+                title="PC Décommissionnés"
+              >
+                <ClipboardList size={15} />
+                <span className="hidden sm:inline">Rebut</span>
+              </button>
               <button
                 onClick={() => setAddOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"
@@ -77,13 +85,6 @@ const Abcroisiere = () => {
               >
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
-              </button>
-              <button
-                onClick={() => setResetOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
-              >
-                <Trash2 size={15} />
-                <span className="hidden sm:inline">Vider</span>
               </button>
               <button
                 onClick={() => setImportOpen(true)}

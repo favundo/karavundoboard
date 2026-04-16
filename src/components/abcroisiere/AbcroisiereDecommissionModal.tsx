@@ -17,12 +17,13 @@ const AbcroisiereDecommissionModal = ({ open, onClose }: Props) => {
   const [step, setStep] = useState<Step>("input");
   const [asset, setAsset] = useState("");
   const [foundName, setFoundName] = useState("");
+  const [foundSn, setFoundSn] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
-        .from("abcroisiere_inventory").select("nom, service, asset").eq("asset", assetCode.trim()).maybeSingle();
+        .from("abcroisiere_inventory").select("nom, service, asset, sn").eq("asset", assetCode.trim()).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -30,6 +31,10 @@ const AbcroisiereDecommissionModal = ({ open, onClose }: Props) => {
 
   const deleteMutation = useMutation({
     mutationFn: async (assetCode: string) => {
+      const { error: insertError } = await supabase
+        .from("decommissioned_items")
+        .insert({ asset: assetCode, serial_number: foundSn, source: "abcroisiere" });
+      if (insertError) throw insertError;
       const { error } = await supabase.from("abcroisiere_inventory").delete().eq("asset", assetCode.trim());
       if (error) throw error;
     },
@@ -42,7 +47,7 @@ const AbcroisiereDecommissionModal = ({ open, onClose }: Props) => {
   });
 
   const handleClose = () => {
-    setStep("input"); setAsset(""); setFoundName(""); lookupMutation.reset(); onClose();
+    setStep("input"); setAsset(""); setFoundName(""); setFoundSn(null); lookupMutation.reset(); onClose();
   };
 
   const handleSearch = async () => {
@@ -50,6 +55,7 @@ const AbcroisiereDecommissionModal = ({ open, onClose }: Props) => {
     const result = await lookupMutation.mutateAsync(asset.trim());
     if (result) {
       setFoundName(`${result.nom} — ${result.service}`);
+      setFoundSn(result.sn ?? null);
       setStep("confirm");
     } else {
       toast.error(`Aucun équipement trouvé avec l'asset "${asset.trim()}"`);

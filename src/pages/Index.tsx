@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive } from "lucide-react";
+import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive, ClipboardList } from "lucide-react";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
@@ -14,6 +14,7 @@ import AddAssetModal from "@/components/dashboard/AddAssetModal";
 import PretModal from "@/components/dashboard/PretModal";
 import AffecterModal from "@/components/dashboard/AffecterModal";
 import StockModal from "@/components/dashboard/StockModal";
+import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 
 const Index = () => {
   const [importOpen, setImportOpen] = useState(false);
@@ -23,6 +24,7 @@ const Index = () => {
   const [pretOpen, setPretOpen] = useState(false);
   const [affecterOpen, setAffecterOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
+  const [decommListOpen, setDecommListOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,6 +35,7 @@ const Index = () => {
       <PretModal open={pretOpen} onClose={() => setPretOpen(false)} />
       <AffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
       <StockModal open={stockOpen} onClose={() => setStockOpen(false)} />
+      <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header + Navigation tabs — bloc sticky unique */}
       <div className="sticky top-0 z-50 bg-card/50 backdrop-blur-sm border-b border-border">
@@ -56,6 +59,14 @@ const Index = () => {
                 </span>
               </div>
 
+<button
+                onClick={() => setDecommListOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+                title="PC Décommissionnés"
+              >
+                <ClipboardList size={15} />
+                <span className="hidden sm:inline">Rebut</span>
+              </button>
 <button
                 onClick={() => setAddAssetOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"
