@@ -10,7 +10,7 @@ app.use(express.json());
 // ─── Config ───────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.in.karavel.com',
   port: parseInt(process.env.SMTP_PORT || '25'),
   secure: false,
