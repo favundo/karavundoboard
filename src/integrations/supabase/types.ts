@@ -113,6 +113,57 @@ export type Database = {
         }
         Relationships: []
       }
+      support_appointments: {
+        Row: {
+          id: string
+          uid_user: string
+          email_user: string
+          uid_technicien: string
+          service: string
+          asset: string
+          type_intervention: string
+          date_rdv: string
+          duree_minutes: number
+          statut: string
+          notes: string | null
+          rappel_envoye: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          uid_user: string
+          email_user: string
+          uid_technicien: string
+          service: string
+          asset: string
+          type_intervention: string
+          date_rdv: string
+          duree_minutes?: number
+          statut?: string
+          notes?: string | null
+          rappel_envoye?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          uid_user?: string
+          email_user?: string
+          uid_technicien?: string
+          service?: string
+          asset?: string
+          type_intervention?: string
+          date_rdv?: string
+          duree_minutes?: number
+          statut?: string
+          notes?: string | null
+          rappel_envoye?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       decommissioned_items: {
         Row: {
           id: string

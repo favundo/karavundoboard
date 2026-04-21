@@ -31,12 +31,16 @@ ssh "$SERVER" "
   git reset --hard HEAD
   echo '  → git pull...'
   git pull
-  echo '  → npm ci...'
+  echo '  → npm ci (frontend)...'
   npm ci
   echo '  → npm run build...'
   npm run build
-  echo '  → redémarrage PM2...'
+  echo '  → npm ci (serveur email)...'
+  cd server && npm ci && cd ..
+  echo '  → redémarrage PM2 frontend...'
   pm2 restart $PM2_APP
+  echo '  → redémarrage PM2 API email...'
+  pm2 restart karavundoboard-api 2>/dev/null || echo '  ⚠ karavundoboard-api non encore démarré — lancer manuellement la première fois'
 "
 
 echo ""
