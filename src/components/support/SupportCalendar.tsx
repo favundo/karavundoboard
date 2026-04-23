@@ -9,6 +9,7 @@ import {
   useSupportAppointments,
   useCreateAppointment,
   useUpdateAppointment,
+  useDeleteAppointment,
   type SupportAppointment,
   type AppointmentInsert,
 } from '@/hooks/useSupportAppointments';
@@ -59,6 +60,7 @@ const SupportCalendar = () => {
   const { data: appointments = [], isLoading, refetch } = useSupportAppointments();
   const createAppt = useCreateAppointment();
   const updateAppt = useUpdateAppointment();
+  const deleteAppt = useDeleteAppointment();
 
   const [createOpen, setCreateOpen]         = useState(false);
   const [editAppt, setEditAppt]             = useState<SupportAppointment | null>(null);
@@ -123,6 +125,17 @@ const SupportCalendar = () => {
       await sendAppointmentEmail('update', updated as SupportAppointment);
     } catch {
       setEmailError('RDV modifié, mais l\'envoi de l\'email a échoué.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editAppt) return;
+    setEmailError('');
+    await deleteAppt.mutateAsync(editAppt.id);
+    try {
+      await sendAppointmentEmail('delete', editAppt);
+    } catch {
+      setEmailError('RDV supprimé, mais l\'envoi de l\'email a échoué.');
     }
   };
 
@@ -234,6 +247,7 @@ const SupportCalendar = () => {
         open={!!editAppt}
         onClose={() => setEditAppt(null)}
         onSubmit={handleUpdate}
+        onDelete={handleDelete}
         existing={editAppt}
       />
 

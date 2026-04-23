@@ -1,7 +1,7 @@
 import type { SupportAppointment } from '@/hooks/useSupportAppointments';
 
 export const sendAppointmentEmail = async (
-  type: 'create' | 'update' | 'close',
+  type: 'create' | 'update' | 'close' | 'delete',
   appointment: SupportAppointment,
 ): Promise<void> => {
   const res = await fetch('/api/send-email', {

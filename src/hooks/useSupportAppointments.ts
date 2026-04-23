@@ -74,6 +74,20 @@ export const useUpdateAppointment = () => {
   });
 };
 
+export const useDeleteAppointment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('support_appointments')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK }),
+  });
+};
+
 export const useServices = () =>
   useQuery({
     queryKey: ['services_list'],

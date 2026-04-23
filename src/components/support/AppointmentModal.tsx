@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, CalendarPlus } from 'lucide-react';
+import { X, Loader2, CalendarPlus, Trash2 } from 'lucide-react';
 import { TECHNICIANS } from '@/lib/technicians';
 import { isBusinessDay } from '@/lib/frenchHolidays';
 import { useServices } from '@/hooks/useSupportAppointments';
@@ -30,6 +30,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: AppointmentInsert) => Promise<void>;
+  onDelete?: () => Promise<void>;
   existing?: SupportAppointment | null;
 }
 
@@ -37,9 +38,11 @@ const inputCls =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-colors';
 const labelCls = 'block text-xs font-medium text-muted-foreground mb-1';
 
-const AppointmentModal = ({ open, onClose, onSubmit, existing }: Props) => {
+const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props) => {
   const { data: services = [] } = useServices();
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
 
   const [uidUser, setUidUser]         = useState('');
@@ -75,6 +78,7 @@ const AppointmentModal = ({ open, onClose, onSubmit, existing }: Props) => {
       setDate(''); setHeure('09:00'); setDuree(60); setNotes('');
     }
     setError('');
+    setConfirmDelete(false);
   }, [open, existing]);
 
   // Auto-fill email from uid
@@ -292,22 +296,63 @@ const AppointmentModal = ({ open, onClose, onSubmit, existing }: Props) => {
             <p className="text-xs text-destructive">{error}</p>
           )}
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-9 rounded-lg px-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loading && <Loader2 size={14} className="animate-spin" />}
-              {isEdit ? 'Enregistrer' : 'Créer le rendez-vous'}
-            </button>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <div>
+              {isEdit && onDelete && (
+                confirmDelete ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-destructive font-medium">Confirmer la suppression ?</span>
+                    <button
+                      type="button"
+                      disabled={deleteLoading}
+                      onClick={async () => {
+                        setDeleteLoading(true);
+                        try { await onDelete(); onClose(); }
+                        catch { setError('Erreur lors de la suppression.'); setConfirmDelete(false); }
+                        finally { setDeleteLoading(false); }
+                      }}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-destructive px-3 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    >
+                      {deleteLoading && <Loader2 size={12} className="animate-spin" />}
+                      Oui, supprimer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="h-8 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Non
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-destructive/50 px-3 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    Supprimer
+                  </button>
+                )
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-9 rounded-lg px-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {loading && <Loader2 size={14} className="animate-spin" />}
+                {isEdit ? 'Enregistrer' : 'Créer le rendez-vous'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

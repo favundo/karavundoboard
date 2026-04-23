@@ -27,7 +27,7 @@ const supabase = createClient(
 const TECHNICIANS = {
   nehad:         { label: 'Nehad',          email: 'nehad@karavel.com' },
   zkarroum:      { label: 'Z. Karroum',      email: 'zkarroum@karavel.com' },
-  maabid:        { label: 'M. Aabid',        email: 'maabid@karavel.com' },
+  maabid:        { label: 'M. Abid',          email: 'maabid@karavel.com' },
   cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com' },
   rrinville:     { label: 'R. Rinville',     email: 'rrinville@karavel.com' },
 };
@@ -103,6 +103,16 @@ L'équipe du support informatique Karavel`;
 const sendEmail = async (appt, type) => {
   const tech = TECHNICIANS[appt.uid_technicien] || { email: '' };
   const typeLabel = TYPE_LABELS[appt.type_intervention] || appt.type_intervention;
+
+  if (type === 'delete') {
+    await transporter.sendMail({
+      from: 'noreply@karavel.com',
+      to: appt.email_user,
+      subject: 'Prise de rendez vous avec le support informatique annulé',
+      text: `Votre rendez vous avec le support informatique a bien été annulé.\n\nCordialement,\nL'équipe du support informatique.`,
+    });
+    return;
+  }
 
   if (type === 'close') {
     await transporter.sendMail({
