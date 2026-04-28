@@ -191,6 +191,69 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_inventory: {
+        Row: {
+          absence: boolean | null
+          asset: string
+          created_at: string
+          dns: string | null
+          eset_app: string | null
+          id: string
+          matricule: string | null
+          nom: string
+          pseudo: string | null
+          pret: boolean | null
+          pret_utilisateur: string | null
+          remarques: string | null
+          service: string
+          sn: string | null
+          type: string
+          uid: string | null
+          updated_at: string
+          windows_version: string | null
+        }
+        Insert: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          eset_app?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          pret?: boolean | null
+          pret_utilisateur?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          windows_version?: string | null
+        }
+        Update: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          eset_app?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pseudo?: string | null
+          pret?: boolean | null
+          pret_utilisateur?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          windows_version?: string | null
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           absence: boolean | null

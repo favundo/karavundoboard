@@ -339,7 +339,6 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                       <option>Qualité</option>
                       <option>Relation Client</option>
                       <option>Ressources Humaines</option>
-                      <option>Stock</option>
                     </select>
                   </div>
                 </div>

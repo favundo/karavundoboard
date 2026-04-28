@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, UserCheck, AlertTriangle } from "lucide-react";
+import { Search, UserCheck } from "lucide-react";
 
 type Step = "asset" | "form";
 
@@ -35,10 +35,10 @@ interface Props {
   onClose: () => void;
 }
 
-const AffecterModal = ({ open, onClose }: Props) => {
+const StockAffecterModal = ({ open, onClose }: Props) => {
   const [step, setStep] = useState<Step>("asset");
   const [asset, setAsset] = useState("");
-  const [alreadyAssigned, setAlreadyAssigned] = useState<string | null>(null);
+  const [stockRow, setStockRow] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState<FormData>({
     nom: "", uid: "", matricule: "", pseudo: "",
     service: "", type: "", sn: "", dns: "",
@@ -49,8 +49,8 @@ const AffecterModal = ({ open, onClose }: Props) => {
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
-        .from("inventory_items")
-        .select("nom, uid, matricule, pseudo, service, type, sn, dns, windows_version, remarques, asset")
+        .from("stock_inventory")
+        .select("*")
         .eq("asset", assetCode.trim())
         .maybeSingle();
       if (error) throw error;
@@ -58,39 +58,54 @@ const AffecterModal = ({ open, onClose }: Props) => {
     },
   });
 
-  const saveMutation = useMutation({
+  const affecterMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      if (!stockRow) throw new Error("Aucune donnée trouvée");
+
+      // Insérer dans inventory_items avec les infos d'affectation
+      const { error: insertError } = await supabase
         .from("inventory_items")
-        .update({
+        .insert({
+          asset: stockRow.asset as string,
+          sn: form.sn.trim() || (stockRow.sn as string) || "",
+          type: form.type || (stockRow.type as string) || "portable",
+          dns: form.dns.trim() || (stockRow.dns as string) || "",
+          windows_version: form.windows_version.trim() || (stockRow.windows_version as string) || "",
+          eset_app: stockRow.eset_app as string ?? null,
+          remarques: form.remarques.trim() || (stockRow.remarques as string) || null,
           nom: form.nom.trim(),
           uid: form.uid.trim(),
-          matricule: form.matricule.trim(),
-          pseudo: form.pseudo.trim(),
+          matricule: form.matricule.trim() || null,
+          pseudo: form.pseudo.trim() || null,
           service: form.service.trim(),
-          type: form.type,
-          sn: form.sn.trim(),
-          dns: form.dns.trim(),
-          windows_version: form.windows_version.trim(),
-          remarques: form.remarques.trim(),
-        })
-        .eq("asset", asset.trim());
-      if (error) throw error;
+          absence: false,
+          pret: false,
+          pret_utilisateur: "",
+        });
+      if (insertError) throw insertError;
+
+      // Supprimer du stock
+      const { error: deleteError } = await supabase
+        .from("stock_inventory")
+        .delete()
+        .eq("asset", (stockRow.asset as string).trim());
+      if (deleteError) throw deleteError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      toast.success(`Asset ${asset.trim()} affecté à ${form.nom.trim()} (${form.uid.trim()})`);
+      queryClient.invalidateQueries({ queryKey: ["stock-inventory"] });
+      toast.success(`Asset ${asset.trim()} affecté à ${form.nom.trim()} et déplacé vers le Siège`);
       handleClose();
     },
-    onError: () => {
-      toast.error("Erreur lors de l'affectation");
+    onError: (err: Error) => {
+      toast.error(`Erreur lors de l'affectation : ${err.message}`);
     },
   });
 
   const handleClose = () => {
     setStep("asset");
     setAsset("");
-    setAlreadyAssigned(null);
+    setStockRow(null);
     setForm({ nom: "", uid: "", matricule: "", pseudo: "", service: "", type: "", sn: "", dns: "", windows_version: "", remarques: "" });
     lookupMutation.reset();
     onClose();
@@ -100,37 +115,30 @@ const AffecterModal = ({ open, onClose }: Props) => {
     if (!asset.trim()) return;
     const result = await lookupMutation.mutateAsync(asset.trim());
     if (!result) {
-      toast.error(`Aucun équipement trouvé avec l'asset "${asset.trim()}"`);
+      toast.error(`Aucun équipement trouvé dans le stock avec l'asset "${asset.trim()}"`);
       return;
     }
-
-    // Already assigned?
-    if (result.nom && result.nom.trim() !== "") {
-      const who = result.uid ? `${result.nom} (${result.uid})` : result.nom;
-      setAlreadyAssigned(who);
-    } else {
-      setAlreadyAssigned(null);
-    }
-
+    setStockRow(result as Record<string, unknown>);
     setForm({
-      nom: result.nom ?? "",
-      uid: result.uid ?? "",
-      matricule: result.matricule ?? "",
-      pseudo: result.pseudo ?? "",
-      service: result.service ?? "",
-      type: result.type ?? "",
-      sn: result.sn ?? "",
-      dns: result.dns ?? "",
-      windows_version: result.windows_version ?? "",
-      remarques: result.remarques ?? "",
+      nom: "",
+      uid: "",
+      matricule: "",
+      pseudo: "",
+      service: "",
+      type: (result.type as string) ?? "",
+      sn: (result.sn as string) ?? "",
+      dns: (result.dns as string) ?? "",
+      windows_version: (result.windows_version as string) ?? "",
+      remarques: (result.remarques as string) ?? "",
     });
     setStep("form");
   };
 
-  const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+  const set = (field: keyof FormData) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const canSave = form.nom.trim() !== "" && form.uid.trim() !== "";
+  const canSave = form.nom.trim() !== "" && form.uid.trim() !== "" && form.service.trim() !== "";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
@@ -140,10 +148,10 @@ const AffecterModal = ({ open, onClose }: Props) => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserCheck size={18} className="text-violet-500" />
-                Affecter un PC — Étape 1/2
+                Affecter un PC du stock — Étape 1/2
               </DialogTitle>
               <DialogDescription>
-                Saisissez le numéro d'asset du PC à affecter.
+                Saisissez le numéro d'asset. L'équipement sera déplacé vers le Siège une fois affecté.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
@@ -173,18 +181,9 @@ const AffecterModal = ({ open, onClose }: Props) => {
                 Affecter — <span className="font-mono text-primary">{asset.trim()}</span>
               </DialogTitle>
               <DialogDescription>
-                Modifiez les informations. <span className="text-foreground font-medium">Nom</span> et <span className="text-foreground font-medium">UID</span> sont obligatoires.
+                <span className="text-foreground font-medium">Nom</span>, <span className="text-foreground font-medium">UID</span> et <span className="text-foreground font-medium">Service</span> sont obligatoires. L'asset sera déplacé vers le Siège.
               </DialogDescription>
             </DialogHeader>
-
-            {alreadyAssigned && (
-              <div className="flex items-start gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 p-3 text-sm text-orange-600 dark:text-orange-400">
-                <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-                <span>
-                  Cet asset est déjà affecté à <span className="font-semibold">{alreadyAssigned}</span>. Vous pouvez tout de même modifier l'affectation.
-                </span>
-              </div>
-            )}
 
             <div className="grid grid-cols-2 gap-3 py-1 max-h-[60vh] overflow-y-auto pr-1">
               <div className="col-span-2 space-y-1">
@@ -204,7 +203,7 @@ const AffecterModal = ({ open, onClose }: Props) => {
                 <Input value={form.pseudo} onChange={set("pseudo")} placeholder="Pseudo" />
               </div>
               <div className="space-y-1">
-                <Label>Service</Label>
+                <Label>Service <span className="text-destructive">*</span></Label>
                 <select
                   value={form.service}
                   onChange={set("service")}
@@ -284,12 +283,12 @@ const AffecterModal = ({ open, onClose }: Props) => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("asset")}>Retour</Button>
               <Button
-                onClick={() => saveMutation.mutate()}
-                disabled={!canSave || saveMutation.isPending}
+                onClick={() => affecterMutation.mutate()}
+                disabled={!canSave || affecterMutation.isPending}
                 className="bg-violet-600 hover:bg-violet-700 text-white"
               >
                 <UserCheck size={14} />
-                {saveMutation.isPending ? "Enregistrement…" : "Affecter"}
+                {affecterMutation.isPending ? "Déplacement…" : "Affecter → Siège"}
               </Button>
             </DialogFooter>
           </>
@@ -299,4 +298,4 @@ const AffecterModal = ({ open, onClose }: Props) => {
   );
 };
 
-export default AffecterModal;
+export default StockAffecterModal;
