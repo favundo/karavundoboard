@@ -64,10 +64,17 @@ const AbcroisiereImportModal = ({ open, onClose }: AbcroisiereImportModalProps) 
     [handleFile]
   );
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!parseResult) return;
-    await replaceInventory.mutateAsync(parseResult.items);
-    setStep("success");
+    try {
+      await replaceInventory.mutateAsync(parseResult.items);
+      setStep("success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? JSON.stringify(err);
+      console.error("[AbcroisiereImport] erreur upsert :", err);
+      toast.error(`Erreur lors de l'import : ${msg}`);
+    }
   };
 
   if (!open) return null;

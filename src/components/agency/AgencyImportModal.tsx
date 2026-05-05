@@ -39,9 +39,14 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
     if (f) handleFile(f);
   }, [handleFile]);
 
-  const handleImport = async () => {
-    await replace.mutateAsync(preview);
-    setStep("done");
+  const handleImport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await replace.mutateAsync(preview);
+      setStep("done");
+    } catch (err) {
+      toast.error(`Erreur lors de l'import : ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const handleClose = () => {

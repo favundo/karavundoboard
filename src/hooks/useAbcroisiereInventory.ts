@@ -56,9 +56,18 @@ export const useAppendAbcroisiereInventory = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (items: InventoryItem[]) => {
+      // Deduplicate by asset to prevent "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      const seen = new Set<string>();
+      const deduped = items.filter((item) => {
+        if (!item.asset) return true;
+        if (seen.has(item.asset)) return false;
+        seen.add(item.asset);
+        return true;
+      });
+
       const BATCH = 200;
-      for (let i = 0; i < items.length; i += BATCH) {
-        const batch = items.slice(i, i + BATCH).map((item) => ({
+      for (let i = 0; i < deduped.length; i += BATCH) {
+        const batch = deduped.slice(i, i + BATCH).map((item) => ({
           matricule: item.matricule ?? "",
           pseudo: item.pseudo ?? "",
           nom: item.nom ?? "",
