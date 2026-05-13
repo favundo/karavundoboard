@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
-  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Windows", "App. ESET", "Absent"];
+  const headers = ["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "UID", "Matricule", "Windows", "App. ESET", "Absent", "Fin de garantie", "Durée garantie (ans)"];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -16,6 +16,8 @@ export const exportToCSV = (data: InventoryItem[], filename = "inventaire") => {
     item.windows_version || "",
     item.eset_app || "",
     item.absence ? "Oui" : "Non",
+    item.warranty_end_date ? new Date(item.warranty_end_date).toLocaleDateString("fr-FR") : "",
+    item.warranty_duration != null ? String(item.warranty_duration) : "",
   ]);
 
   const BOM = "\uFEFF";
@@ -41,7 +43,7 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
   doc.setTextColor(120);
   doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipements`, 14, 22);
 
-  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "Windows", "App. ESET"]];
+  const headers = [["Nom", "Service", "Type", "Asset", "N° Série", "DNS", "Windows", "App. ESET", "Fin de garantie", "Durée (ans)"]];
   const rows = data.map((item) => [
     item.nom,
     item.service,
@@ -51,6 +53,8 @@ export const exportToPDF = (data: InventoryItem[], filename = "inventaire") => {
     item.dns || "—",
     item.windows_version || "—",
     item.eset_app || "—",
+    item.warranty_end_date ? new Date(item.warranty_end_date).toLocaleDateString("fr-FR") : "—",
+    item.warranty_duration != null ? String(item.warranty_duration) : "—",
   ]);
 
   autoTable(doc, {

@@ -88,6 +88,30 @@ const COLUMN_MAP: Record<string, keyof InventoryItem> = {
   "systeme exploitation": "windows_version",
   "systeme d'exploitation": "windows_version",
   "systeme d exploitation": "windows_version",
+  // warranty_end_date
+  "warranty_end_date": "warranty_end_date",
+  "date fin de garantie": "warranty_end_date",
+  "fin de garantie": "warranty_end_date",
+  "fin garantie": "warranty_end_date",
+  "date garantie": "warranty_end_date",
+  "date fin garantie": "warranty_end_date",
+  "expiration garantie": "warranty_end_date",
+  "expiration de garantie": "warranty_end_date",
+  "warranty end date": "warranty_end_date",
+  "warranty end": "warranty_end_date",
+  // warranty_duration
+  "warranty_duration": "warranty_duration",
+  "duree garantie": "warranty_duration",
+  "duree de la garantie": "warranty_duration",
+  "duree de garantie": "warranty_duration",
+  "warranty duration": "warranty_duration",
+  "garantie mois": "warranty_duration",
+  "garantie (mois)": "warranty_duration",
+  "duree (mois)": "warranty_duration",
+  "garantie ans": "warranty_duration",
+  "garantie (ans)": "warranty_duration",
+  "duree (ans)": "warranty_duration",
+  "duree garantie ans": "warranty_duration",
 };
 
 export type ParseResult = {
@@ -106,6 +130,33 @@ const normalizeType = (val: string): "portable" | "Pc Fixe" => {
   const isUC = /(?:^|[\s\-_])uc(?:$|[\s\-_\d])/.test(v) || v === "uc";
   if (v.includes("fixe") || v.includes("desktop") || isUC) return "Pc Fixe";
   return "portable";
+};
+
+// Converts DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD or any JS-parseable date → "YYYY-MM-DD" (or "" if unparseable)
+const normalizeDate = (val: string): string => {
+  const s = val.trim();
+  if (!s) return "";
+  // DD/MM/YYYY or D/M/YYYY — validate ranges to reject Excel epoch artefacts like "01/00/1900"
+  const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    const dNum = Number(d), mNum = Number(m), yNum = Number(y);
+    if (yNum > 1900 && mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31) {
+      const date = new Date(yNum, mNum - 1, dNum);
+      if (!isNaN(date.getTime())) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    return "";
+  }
+  // Already ISO YYYY-MM-DD — validate month/day to reject Excel epoch artefacts like "1900-00-01"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return s;
+    return "";
+  }
+  // Fallback: try JS Date parse
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return "";
 };
 
 const normalizeBoolean = (val: unknown): boolean => {
@@ -205,6 +256,11 @@ export const parseFile = async (file: File): Promise<ParseResult> => {
               item.type = normalizeType(val);
             } else if (field === "absence") {
               item.absence = normalizeBoolean(row[col]);
+            } else if (field === "warranty_end_date") {
+              item.warranty_end_date = normalizeDate(val) || undefined;
+            } else if (field === "warranty_duration") {
+              const n = parseInt(val, 10);
+              item.warranty_duration = isNaN(n) ? undefined : n;
             } else {
               (item as unknown as Record<string, unknown>)[field] = val.trim();
             }

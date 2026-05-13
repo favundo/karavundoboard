@@ -14,6 +14,8 @@ export interface InventoryItem {
   eset_app?: string;
   pret?: boolean;
   pret_utilisateur?: string;
+  warranty_end_date?: string;
+  warranty_duration?: number;
 }
 
 export const inventoryData: InventoryItem[] = [

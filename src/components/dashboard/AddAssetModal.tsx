@@ -33,6 +33,8 @@ interface FormData {
   nom: string;
   uid: string;
   remarques: string;
+  warranty_end_date: string;
+  warranty_duration: string;
 }
 
 const EMPTY_FORM: FormData = {
@@ -49,6 +51,8 @@ const EMPTY_FORM: FormData = {
   nom: "",
   uid: "",
   remarques: "",
+  warranty_end_date: "",
+  warranty_duration: "",
 };
 
 interface Props {
@@ -90,6 +94,8 @@ const AddAssetModal = ({ open, onClose }: Props) => {
         nom: payload.nom.trim() || undefined,
         uid: payload.uid.trim() || null,
         remarques: payload.remarques.trim() || null,
+        warranty_end_date: payload.warranty_end_date || null,
+        warranty_duration: payload.warranty_duration ? parseInt(payload.warranty_duration, 10) : null,
       });
       if (error) throw error;
     },
@@ -362,6 +368,29 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                     <Label htmlFor="absence" className="cursor-pointer">
                       ABSENCE
                     </Label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="warranty_end_date">Date fin de garantie</Label>
+                    <Input
+                      id="warranty_end_date"
+                      type="date"
+                      value={form.warranty_end_date}
+                      onChange={(e) => handleField("warranty_end_date", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="warranty_duration">Durée garantie (ans)</Label>
+                    <Input
+                      id="warranty_duration"
+                      type="number"
+                      min={0}
+                      placeholder="ex: 36"
+                      value={form.warranty_duration}
+                      onChange={(e) => handleField("warranty_duration", e.target.value)}
+                    />
                   </div>
                 </div>
 

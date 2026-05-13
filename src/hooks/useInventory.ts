@@ -19,6 +19,8 @@ export type DbInventoryItem = {
   eset_app: string;
   pret: boolean;
   pret_utilisateur: string;
+  warranty_end_date: string | null;
+  warranty_duration: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +42,8 @@ export const dbToInventoryItem = (row: DbInventoryItem): InventoryItem => ({
   eset_app: row.eset_app ?? "",
   pret: row.pret ?? false,
   pret_utilisateur: row.pret_utilisateur ?? "",
+  warranty_end_date: row.warranty_end_date ?? undefined,
+  warranty_duration: row.warranty_duration ?? undefined,
 });
 
 export const useInventory = () => {
@@ -77,6 +81,8 @@ export const useAppendInventory = () => {
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
           eset_app: item.eset_app ?? "",
+          warranty_end_date: item.warranty_end_date ?? null,
+          warranty_duration: item.warranty_duration ?? null,
         }));
         const { error: insertError } = await supabase
           .from("inventory_items")
