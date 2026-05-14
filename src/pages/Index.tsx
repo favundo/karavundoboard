@@ -38,7 +38,7 @@ const Index = () => {
       <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header + Navigation tabs — bloc sticky unique */}
-      <div className="sticky top-0 z-50 bg-card/50 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-0 z-40 bg-card/50 backdrop-blur-sm border-b border-border">
       <header className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
