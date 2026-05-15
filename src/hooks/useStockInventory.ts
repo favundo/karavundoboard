@@ -37,6 +37,8 @@ export const useAppendStockInventory = () => {
           remarques: item.remarques ?? "",
           windows_version: item.windows_version ?? "",
           eset_app: item.eset_app ?? "",
+          warranty_end_date: item.warranty_end_date ?? null,
+          warranty_duration: item.warranty_duration ?? null,
         }));
         const { error } = await supabase
           .from("stock_inventory")

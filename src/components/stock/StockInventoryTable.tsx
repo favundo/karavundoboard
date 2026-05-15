@@ -1,16 +1,51 @@
 import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, Handshake, FileText, FileSpreadsheet } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, Handshake, FileText, FileSpreadsheet, ShieldCheck, ShieldAlert, ShieldX, Shield } from "lucide-react";
 import { type InventoryItem } from "@/data/inventoryData";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { useStockInventory } from "@/hooks/useStockInventory";
 
 type SortKey = keyof InventoryItem;
 
+type WarrantyStatus = "expired" | "lt1y" | "1to2y" | "gt2y";
+
+const getWarrantyStatus = (endDate?: string): WarrantyStatus | null => {
+  if (!endDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  const diffDays = (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return "expired";
+  if (diffDays < 365) return "lt1y";
+  if (diffDays < 730) return "1to2y";
+  return "gt2y";
+};
+
+const WarrantyBadge = ({ endDate }: { endDate?: string }) => {
+  if (!endDate) return <span className="text-muted-foreground">—</span>;
+  const status = getWarrantyStatus(endDate);
+  const date = new Date(endDate).toLocaleDateString("fr-FR");
+  const configs = {
+    expired: { icon: ShieldX, cls: "bg-destructive/15 text-destructive", label: "Expirée" },
+    lt1y: { icon: ShieldAlert, cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400", label: "< 1 an" },
+    "1to2y": { icon: ShieldCheck, cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400", label: "1–2 ans" },
+    gt2y: { icon: Shield, cls: "bg-green-500/15 text-green-600 dark:text-green-400", label: "> 2 ans" },
+  };
+  if (!status) return <span className="text-muted-foreground">—</span>;
+  const { icon: Icon, cls, label } = configs[status];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cls}`} title={date}>
+      <Icon size={10} />
+      {label} <span className="opacity-70">({date})</span>
+    </span>
+  );
+};
+
 const StockInventoryTable = () => {
   const { data: inventoryFromDb, isLoading } = useStockInventory();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("Tous");
   const [osFilter, setOsFilter] = useState("Tous");
+  const [warrantyFilter, setWarrantyFilter] = useState("Tous");
   const [sortKey, setSortKey] = useState<SortKey>("asset");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -30,10 +65,12 @@ const StockInventoryTable = () => {
           item.uid.toLowerCase().includes(search.toLowerCase()) ||
           item.asset.toLowerCase().includes(search.toLowerCase()) ||
           item.sn.toLowerCase().includes(search.toLowerCase()) ||
-          item.dns.toLowerCase().includes(search.toLowerCase());
+          item.dns.toLowerCase().includes(search.toLowerCase()) ||
+          (item.warranty_end_date ?? "").toLowerCase().includes(search.toLowerCase());
         const matchType = typeFilter === "Tous" || item.type === typeFilter;
         const matchOs = osFilter === "Tous" || (item.windows_version ?? "") === osFilter;
-        return matchSearch && matchType && matchOs;
+        const matchWarranty = warrantyFilter === "Tous" || getWarrantyStatus(item.warranty_end_date) === warrantyFilter;
+        return matchSearch && matchType && matchOs && matchWarranty;
       })
       .sort((a, b) => {
         const valA = a[sortKey] ?? "";
@@ -41,7 +78,7 @@ const StockInventoryTable = () => {
         const cmp = String(valA).localeCompare(String(valB));
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [inventoryData, search, typeFilter, osFilter, sortKey, sortDir]);
+  }, [inventoryData, search, typeFilter, osFilter, warrantyFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -65,9 +102,11 @@ const StockInventoryTable = () => {
     { key: "sn", label: "N° Série", className: "font-mono" },
     { key: "dns", label: "DNS", className: "font-mono text-xs" },
     { key: "windows_version", label: "Windows" },
+    { key: "warranty_end_date", label: "Fin garantie" },
+    { key: "warranty_duration", label: "Durée" },
   ];
 
-  const hasFilter = search !== "" || typeFilter !== "Tous" || osFilter !== "Tous";
+  const hasFilter = search !== "" || typeFilter !== "Tous" || osFilter !== "Tous" || warrantyFilter !== "Tous";
 
   return (
     <div className="rounded-xl border border-border bg-card">
@@ -102,6 +141,17 @@ const StockInventoryTable = () => {
           {osVersions.map((v) => (
             <option key={v} value={v}>{v === "Tous" ? "Toutes versions" : v}</option>
           ))}
+        </select>
+        <select
+          value={warrantyFilter}
+          onChange={(e) => setWarrantyFilter(e.target.value)}
+          className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="Tous">Toutes garanties</option>
+          <option value="expired">Hors garantie</option>
+          <option value="lt1y">Moins d'un an</option>
+          <option value="1to2y">Entre 1 et 2 ans</option>
+          <option value="gt2y">Plus de 2 ans</option>
         </select>
         {hasFilter && (
           <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary whitespace-nowrap">
@@ -225,6 +275,12 @@ const StockInventoryTable = () => {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5">
+                      <WarrantyBadge endDate={item.warranty_end_date} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted-foreground">
+                      {item.warranty_duration != null ? `${item.warranty_duration} ans` : "—"}
                     </td>
                   </tr>
                 ))}

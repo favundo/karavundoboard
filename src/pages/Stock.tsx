@@ -8,6 +8,7 @@ import StockAddAssetModal from "@/components/stock/StockAddAssetModal";
 import StockAffecterModal from "@/components/stock/StockAffecterModal";
 import StockDecommissionModal from "@/components/stock/StockDecommissionModal";
 import StockPretModal from "@/components/stock/StockPretModal";
+import StockImportModal from "@/components/stock/StockImportModal";
 import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 
 const Stock = () => {
@@ -16,6 +17,7 @@ const Stock = () => {
   const [decommissionOpen, setDecommissionOpen] = useState(false);
   const [pretOpen, setPretOpen] = useState(false);
   const [decommListOpen, setDecommListOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,6 +25,7 @@ const Stock = () => {
       <StockAffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
       <StockDecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
       <StockPretModal open={pretOpen} onClose={() => setPretOpen(false)} />
+      <StockImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header + Navigation tabs */}
@@ -82,6 +85,14 @@ const Stock = () => {
                 >
                   <MonitorX size={15} />
                   <span className="hidden sm:inline">Décommissionner</span>
+                </button>
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Mettre à jour</span>
+                  <span className="sm:hidden">Import</span>
                 </button>
               </div>
             </div>

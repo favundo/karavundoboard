@@ -210,6 +210,8 @@ export type Database = {
           type: string
           uid: string | null
           updated_at: string
+          warranty_duration: number | null
+          warranty_end_date: string | null
           windows_version: string | null
         }
         Insert: {
@@ -230,6 +232,8 @@ export type Database = {
           type?: string
           uid?: string | null
           updated_at?: string
+          warranty_duration?: number | null
+          warranty_end_date?: string | null
           windows_version?: string | null
         }
         Update: {
@@ -250,6 +254,8 @@ export type Database = {
           type?: string
           uid?: string | null
           updated_at?: string
+          warranty_duration?: number | null
+          warranty_end_date?: string | null
           windows_version?: string | null
         }
         Relationships: []
