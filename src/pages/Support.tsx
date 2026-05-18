@@ -1,6 +1,12 @@
-import { HeadsetIcon } from 'lucide-react';
+import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import SupportCalendar from '@/components/support/SupportCalendar';
+import { Outlet } from 'react-router-dom';
+
+const SUB_NAV = [
+  { to: '/support/dashboard',    label: 'Dashboard & Recherche rapide',          icon: LayoutDashboard },
+  { to: '/support/planning',     label: 'Planning des interventions support IT',  icon: CalendarDays   },
+  { to: '/support/planning-tsi', label: 'Planning TSI',                           icon: ClipboardList  },
+];
 
 const Support = () => (
   <div className="min-h-screen bg-background">
@@ -23,7 +29,7 @@ const Support = () => (
         </div>
       </header>
 
-      {/* Navigation tabs */}
+      {/* Navigation tabs principale */}
       <nav className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex gap-1 py-2 overflow-x-auto">
           {[
@@ -44,11 +50,29 @@ const Support = () => (
           ))}
         </div>
       </nav>
+
+      {/* Sous-navigation Support */}
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 border-t border-border/50 bg-muted/20">
+        <div className="flex gap-1 py-1.5 overflow-x-auto">
+          {SUB_NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              className="shrink-0 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              activeClassName="bg-background text-foreground shadow-sm border border-border"
+            >
+              <Icon size={14} />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
 
-    {/* Main content */}
+    {/* Main content — rendu par le sous-route actif */}
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <SupportCalendar />
+      <Outlet />
     </main>
   </div>
 );

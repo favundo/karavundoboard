@@ -156,7 +156,7 @@ const SupportCalendar = () => {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Planning Support IT</h1>
+          <h1 className="text-xl font-bold text-foreground">Planning des interventions support IT</h1>
           <p className="text-xs text-muted-foreground">Interventions planifiées — cliquez sur un événement pour le gérer</p>
         </div>
         <div className="flex items-center gap-2">
