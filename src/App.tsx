@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import SupportDashboard from "./components/support/SupportDashboard";
 import SupportCalendar from "./components/support/SupportCalendar";
 import SupportPlanningTSI from "./components/support/SupportPlanningTSI";
+import FichePoste from "./pages/FichePoste";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="dashboard" element={<SupportDashboard />} />
             <Route path="planning" element={<SupportCalendar />} />
             <Route path="planning-tsi" element={<SupportPlanningTSI />} />
+            <Route path="poste/:source/:id" element={<FichePoste />} />
           </Route>
           <Route path="/gestion" element={<Gestion />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
