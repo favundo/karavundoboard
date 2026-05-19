@@ -25,7 +25,11 @@ function esetFetch(path) {
     }, (res) => {
       let data = '';
       res.on('data', c => { data += c; });
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
+      res.on('end', () => {
+        console.log(`[eset] HTTP ${res.statusCode} ${url.pathname}${url.search}`);
+        console.log(`[eset] raw text: ${data.slice(0, 300)}`);
+        try { resolve(JSON.parse(data)); } catch { resolve(null); }
+      });
     });
     req.on('error', reject);
     req.end();
