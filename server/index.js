@@ -38,6 +38,19 @@ const ESET_STATUS = {
   3: { label: 'Non protégé',    color: 'red'    },
 };
 
+// endpoint debug temporaire — à supprimer après validation
+app.get('/api/eset/debug', async (req, res) => {
+  if (!process.env.ESET_USER || !process.env.ESET_PASS) {
+    return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
+  }
+  try {
+    const data = await esetFetch('/era/v1/computers?pageSize=2');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/eset/computer', async (req, res) => {
   const { dns, sn } = req.query;
   if (!dns && !sn) return res.status(400).json({ error: 'Paramètre dns ou sn requis' });
@@ -49,6 +62,7 @@ app.get('/api/eset/computer', async (req, res) => {
       ? `filter.computerName=${encodeURIComponent(dns)}`
       : `filter.serialNumber=${encodeURIComponent(sn)}`;
     const data = await esetFetch(`/era/v1/computers?${param}&pageSize=1`);
+    console.log('[eset] raw response:', JSON.stringify(data));
     const computers = data?.computers ?? data?.data ?? [];
     if (!computers.length) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
 
