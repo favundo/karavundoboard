@@ -1,13 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download,
-  Ticket, Plus, User, KeyRound, Laptop, Clock,
+  Ticket, Plus, User, KeyRound, Laptop, Clock, ExternalLink,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { useFicheTicketsRT, useAddTicketRT } from '@/hooks/useFicheTicketsRT';
+import { useFicheTicketsRT, useAddTicketRT, useRTTicket } from '@/hooks/useFicheTicketsRT';
 
 const SOURCE_BADGE: Record<string, string> = {
   'Siège':       'bg-blue-100 text-blue-800',
@@ -85,6 +85,26 @@ async function fetchAsset(source: string, id: string) {
     default:
       return { data: null, error: new Error('Source inconnue') };
   }
+}
+
+const RT_BASE = 'http://rt.in.karavel.com';
+
+const RT_STATUS_BADGE: Record<string, string> = {
+  new:      'bg-orange-100 text-orange-800',
+  open:     'bg-blue-100 text-blue-800',
+  stalled:  'bg-gray-100 text-gray-600',
+  resolved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  deleted:  'bg-red-100 text-red-800',
+};
+
+function RTStatusBadge({ status }: { status: string }) {
+  const cls = RT_STATUS_BADGE[status.toLowerCase()] ?? 'bg-muted text-foreground';
+  return (
+    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+      {status}
+    </span>
+  );
 }
 
 function fmt(date: string) {
@@ -227,6 +247,8 @@ export default function FichePoste() {
   const dns: string | null = asset?.dns ?? null;
   const lastTicket = tickets[0] ?? null;
 
+  const { data: rtInfo, isFetching: rtFetching } = useRTTicket(lastTicket?.ticket_rt ?? null);
+
   return (
     <div className="space-y-6">
 
@@ -336,16 +358,28 @@ export default function FichePoste() {
             icon={Ticket}
             label="Dernier ticket RT"
             value={
-              lastTicket
-                ? (
-                  <span className="flex flex-col gap-0.5">
-                    <span className="font-mono">#{lastTicket.ticket_rt}</span>
-                    {lastTicket.technicien && (
-                      <span className="text-xs font-normal text-muted-foreground">{lastTicket.technicien}</span>
-                    )}
+              lastTicket ? (
+                <span className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5">
+                    <a
+                      href={`${RT_BASE}/Ticket/Display.html?id=${lastTicket.ticket_rt}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-primary hover:underline"
+                    >
+                      #{lastTicket.ticket_rt}
+                    </a>
+                    {rtFetching && <span className="text-xs text-muted-foreground animate-pulse">…</span>}
+                    {rtInfo && <RTStatusBadge status={rtInfo.status} />}
                   </span>
-                )
-                : null
+                  {rtInfo?.subject && (
+                    <span className="text-xs font-normal text-muted-foreground line-clamp-2">{rtInfo.subject}</span>
+                  )}
+                  {rtInfo?.owner && rtInfo.owner !== 'Nobody' && (
+                    <span className="text-xs font-normal text-muted-foreground">{rtInfo.owner}</span>
+                  )}
+                </span>
+              ) : null
             }
           />
         </div>
@@ -400,8 +434,16 @@ export default function FichePoste() {
                           {fmt(t.created_at)}
                         </span>
                       </td>
-                      <td className="px-3 py-2 border-b border-border/40 font-mono font-semibold text-primary">
-                        #{t.ticket_rt}
+                      <td className="px-3 py-2 border-b border-border/40 font-mono font-semibold">
+                        <a
+                          href={`${RT_BASE}/Ticket/Display.html?id=${t.ticket_rt}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          #{t.ticket_rt}
+                          <ExternalLink size={11} className="text-muted-foreground" />
+                        </a>
                       </td>
                       <td className="px-3 py-2 border-b border-border/40 text-muted-foreground">
                         {t.technicien ?? <span className="text-muted-foreground/40">—</span>}

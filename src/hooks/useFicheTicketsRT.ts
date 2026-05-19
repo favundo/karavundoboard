@@ -1,6 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// ── Infos live depuis RT ──────────────────────────────────────────────────────
+
+export interface RTTicketInfo {
+  id: string;
+  subject: string;
+  status: string;
+  owner: string;
+  queue: string;
+  created: string;
+  lastUpdated: string;
+}
+
+export function useRTTicket(ticketId: string | null) {
+  return useQuery<RTTicketInfo | null>({
+    queryKey: ['rt-ticket', ticketId],
+    queryFn: async () => {
+      const res = await fetch(`/api/rt/ticket/${ticketId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!ticketId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
 export interface TicketRT {
   id: string;
   ticket_rt: string;

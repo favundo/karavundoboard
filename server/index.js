@@ -2,10 +2,69 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const http = require('http');
+const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(express.json());
+
+// ─── RT Proxy ─────────────────────────────────────────────
+
+function rtFetch(ticketId) {
+  return new Promise((resolve, reject) => {
+    const base = process.env.RT_URL || 'http://rt.in.karavel.com';
+    const url = new URL(`/REST/1.0/ticket/${ticketId}/show`, base);
+    const credentials = Buffer.from(`${process.env.RT_USER}:${process.env.RT_PASS}`).toString('base64');
+    const lib = url.protocol === 'https:' ? https : http;
+
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      headers: { Authorization: `Basic ${credentials}` },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function parseRTTicket(text) {
+  if (!text.match(/^RT\/[\d.]+ 200/)) return null;
+  const fields = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^([A-Za-z][^:]+):\s*(.+)$/);
+    if (m) fields[m[1].trim()] = m[2].trim();
+  }
+  return {
+    id:          (fields['id'] || '').replace('ticket/', ''),
+    subject:     fields['Subject']     || '',
+    status:      fields['Status']      || '',
+    owner:       fields['Owner']       || '',
+    queue:       fields['Queue']       || '',
+    created:     fields['Created']     || '',
+    lastUpdated: fields['LastUpdated'] || '',
+  };
+}
+
+app.get('/api/rt/ticket/:id', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  try {
+    const text = await rtFetch(req.params.id);
+    const ticket = parseRTTicket(text);
+    if (!ticket) return res.status(404).json({ error: 'Ticket non trouvé' });
+    res.json(ticket);
+  } catch (err) {
+    console.error('[rt]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
 
 // ─── Config ───────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
