@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      fiche_tickets_rt: {
+        Row: {
+          id: string
+          asset_id: string
+          source: string
+          asset: string
+          ticket_rt: string
+          note: string | null
+          technicien: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          source: string
+          asset: string
+          ticket_rt: string
+          note?: string | null
+          technicien?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          asset_id?: string
+          source?: string
+          asset?: string
+          ticket_rt?: string
+          note?: string | null
+          technicien?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       abcroisiere_inventory: {
         Row: {
           absence: boolean | null

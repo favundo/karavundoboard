@@ -1,9 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download } from 'lucide-react';
+import {
+  ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download,
+  Ticket, Plus, User, KeyRound, Laptop, Clock,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { useFicheTicketsRT, useAddTicketRT } from '@/hooks/useFicheTicketsRT';
 
 const SOURCE_BADGE: Record<string, string> = {
   'Siège':       'bg-blue-100 text-blue-800',
@@ -12,7 +16,7 @@ const SOURCE_BADGE: Record<string, string> = {
   'Stock':       'bg-orange-100 text-orange-800',
 };
 
-// ── Contenu des fichiers de configuration à distribuer aux techs ──────────────
+// ── Fichiers de config VNC ────────────────────────────────────────────────────
 
 const PS1_CONTENT = `# launch_vnc.ps1 - Placez ce fichier dans C:\\vnc\\
 param([string]$Uri)
@@ -83,7 +87,125 @@ async function fetchAsset(source: string, id: string) {
   }
 }
 
-// ── Composant ─────────────────────────────────────────────────────────────────
+function fmt(date: string) {
+  return new Date(date).toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// ── Sous-composant : carte info ───────────────────────────────────────────────
+
+function InfoCard({
+  icon: Icon, label, value, mono = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+        <Icon size={12} />
+        {label}
+      </div>
+      <div className={`text-sm font-semibold text-foreground ${mono ? 'font-mono' : ''}`}>
+        {value ?? <span className="text-muted-foreground/50 font-normal">—</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── Formulaire ajout ticket RT ────────────────────────────────────────────────
+
+function AddTicketForm({
+  assetId, source, assetName,
+}: {
+  assetId: string;
+  source: string;
+  assetName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [ticketRt, setTicketRt] = useState('');
+  const [note, setNote] = useState('');
+  const [technicien, setTechnicien] = useState('');
+  const { mutate, isPending } = useAddTicketRT();
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!ticketRt.trim()) return;
+    mutate(
+      { asset_id: assetId, source, asset: assetName, ticket_rt: ticketRt.trim(), note: note.trim() || undefined, technicien: technicien.trim() || undefined },
+      {
+        onSuccess: () => {
+          setTicketRt('');
+          setNote('');
+          setTechnicien('');
+          setOpen(false);
+        },
+      },
+    );
+  }
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="gap-1.5">
+        <Plus size={14} />
+        Associer un ticket RT
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <p className="text-sm font-medium">Nouveau ticket RT</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">N° ticket RT *</label>
+          <input
+            type="text"
+            value={ticketRt}
+            onChange={e => setTicketRt(e.target.value)}
+            placeholder="ex. 12345"
+            required
+            className="rounded border border-border bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Technicien</label>
+          <input
+            type="text"
+            value={technicien}
+            onChange={e => setTechnicien(e.target.value)}
+            placeholder="ex. jdupont"
+            className="rounded border border-border bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Note (optionnel)</label>
+          <input
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Courte description"
+            className="rounded border border-border bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={isPending || !ticketRt.trim()}>
+          {isPending ? 'Enregistrement…' : 'Enregistrer'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Annuler
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ── Composant principal ───────────────────────────────────────────────────────
 
 export default function FichePoste() {
   const { source, id } = useParams<{ source: string; id: string }>();
@@ -100,7 +222,10 @@ export default function FichePoste() {
     enabled: !!id && !!decodedSource,
   });
 
+  const { data: tickets = [], isLoading: ticketsLoading } = useFicheTicketsRT(id ?? '');
+
   const dns: string | null = asset?.dns ?? null;
+  const lastTicket = tickets[0] ?? null;
 
   return (
     <div className="space-y-6">
@@ -161,7 +286,6 @@ export default function FichePoste() {
             </button>
           </div>
 
-          {/* Panneau setup */}
           {showSetup && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4 space-y-3 text-sm">
               <p className="font-medium text-amber-900 dark:text-amber-200">
@@ -189,10 +313,108 @@ export default function FichePoste() {
         </div>
       )}
 
-      {/* Contenu de la fiche — à définir */}
-      {!isLoading && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center text-muted-foreground">
-          Contenu de la fiche — à définir
+      {/* Grille info */}
+      {!isLoading && asset && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <InfoCard
+            icon={User}
+            label="Collaborateur actuel"
+            value={asset.nom || asset.agence}
+          />
+          <InfoCard
+            icon={KeyRound}
+            label="UID"
+            value={asset.uid}
+            mono
+          />
+          <InfoCard
+            icon={Laptop}
+            label="Système d'exploitation"
+            value={asset.windows_version ?? asset.os_version}
+          />
+          <InfoCard
+            icon={Ticket}
+            label="Dernier ticket RT"
+            value={
+              lastTicket
+                ? (
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-mono">#{lastTicket.ticket_rt}</span>
+                    {lastTicket.technicien && (
+                      <span className="text-xs font-normal text-muted-foreground">{lastTicket.technicien}</span>
+                    )}
+                  </span>
+                )
+                : null
+            }
+          />
+        </div>
+      )}
+
+      {/* Séparateur */}
+      {!isLoading && asset && <hr className="border-border" />}
+
+      {/* Section tickets RT */}
+      {!isLoading && id && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Ticket size={15} className="text-primary" />
+              Historique des tickets RT
+            </h2>
+            <AddTicketForm
+              assetId={id}
+              source={decodedSource}
+              assetName={asset?.asset ?? ''}
+            />
+          </div>
+
+          {ticketsLoading && (
+            <p className="text-sm text-muted-foreground animate-pulse">Chargement…</p>
+          )}
+
+          {!ticketsLoading && tickets.length === 0 && (
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 py-10 text-center text-sm text-muted-foreground">
+              Aucun ticket RT associé à ce poste
+            </div>
+          )}
+
+          {!ticketsLoading && tickets.length > 0 && (
+            <div className="rounded-lg border border-border overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    {['Date', 'N° ticket RT', 'Technicien', 'Note'].map(h => (
+                      <th key={h} className="px-3 py-2.5 font-semibold border-b border-border whitespace-nowrap text-xs uppercase tracking-wide text-muted-foreground">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.map((t, i) => (
+                    <tr key={t.id} className={`transition-colors hover:bg-muted/20 ${i % 2 === 1 ? 'bg-muted/10' : ''}`}>
+                      <td className="px-3 py-2 border-b border-border/40 text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />
+                          {fmt(t.created_at)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 font-mono font-semibold text-primary">
+                        #{t.ticket_rt}
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 text-muted-foreground">
+                        {t.technicien ?? <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 text-muted-foreground">
+                        {t.note ?? <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

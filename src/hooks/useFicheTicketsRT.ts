@@ -1,0 +1,46 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface TicketRT {
+  id: string;
+  ticket_rt: string;
+  note: string | null;
+  technicien: string | null;
+  created_at: string;
+}
+
+export function useFicheTicketsRT(assetId: string) {
+  return useQuery({
+    queryKey: ['fiche-tickets-rt', assetId],
+    queryFn: async (): Promise<TicketRT[]> => {
+      const { data, error } = await supabase
+        .from('fiche_tickets_rt')
+        .select('id,ticket_rt,note,technicien,created_at')
+        .eq('asset_id', assetId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!assetId,
+  });
+}
+
+export function useAddTicketRT() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      asset_id: string;
+      source: string;
+      asset: string;
+      ticket_rt: string;
+      note?: string;
+      technicien?: string;
+    }) => {
+      const { error } = await supabase.from('fiche_tickets_rt').insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['fiche-tickets-rt', variables.asset_id] });
+    },
+  });
+}
