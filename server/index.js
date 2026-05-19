@@ -9,6 +9,79 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 app.use(express.json());
 
+// ─── ESET Proxy ───────────────────────────────────────────
+
+function esetFetch(path) {
+  return new Promise((resolve, reject) => {
+    const base = process.env.ESET_URL || 'https://antivirus03.in.karavel.com';
+    const url = new URL(path, base);
+    const credentials = Buffer.from(`${process.env.ESET_USER}:${process.env.ESET_PASS}`).toString('base64');
+    const req = https.request({
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
+      rejectUnauthorized: false,
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+const ESET_STATUS = {
+  1: { label: 'Protégé',        color: 'green'  },
+  2: { label: 'Avertissement',  color: 'yellow' },
+  3: { label: 'Non protégé',    color: 'red'    },
+};
+
+app.get('/api/eset/computer', async (req, res) => {
+  const { dns, sn } = req.query;
+  if (!dns && !sn) return res.status(400).json({ error: 'Paramètre dns ou sn requis' });
+  if (!process.env.ESET_USER || !process.env.ESET_PASS) {
+    return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
+  }
+  try {
+    const param = dns
+      ? `filter.computerName=${encodeURIComponent(dns)}`
+      : `filter.serialNumber=${encodeURIComponent(sn)}`;
+    const data = await esetFetch(`/era/v1/computers?${param}&pageSize=1`);
+    const computers = data?.computers ?? data?.data ?? [];
+    if (!computers.length) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
+
+    const c = computers[0];
+    const ip = c.networkAddresses?.[0]?.address
+            ?? c.ipAddresses?.[0]
+            ?? null;
+    const status = c.protectionStatus ?? c.managedProductStatuses?.[0]?.status ?? null;
+    const threats = c.threats?.unresolved ?? c.threatsDetected ?? c.numberOfThreats ?? 0;
+    const esatUrl = process.env.ESET_URL || 'https://antivirus03.in.karavel.com';
+
+    res.json({
+      uuid:             c.uuid,
+      name:             c.name,
+      ip,
+      protectionStatus: status,
+      statusLabel:      ESET_STATUS[status]?.label ?? String(status ?? '?'),
+      statusColor:      ESET_STATUS[status]?.color ?? 'gray',
+      threats,
+      antivirusVersion: c.antivirusVersion ?? c.securityProductVersion ?? null,
+      lastConnectedTime: c.lastConnectedTime ?? c.lastSeen ?? null,
+      operatingSystem:  c.operatingSystem?.description ?? c.osDescription ?? null,
+      loggedInUsers:    Array.isArray(c.loggedInUsers)
+                          ? c.loggedInUsers.join(', ')
+                          : (c.lastLoggedUser ?? null),
+      consoleUrl: `${esatUrl}/protect/computers/detail/${c.uuid}`,
+    });
+  } catch (err) {
+    console.error('[eset]', err.message);
+    res.status(500).json({ error: 'Erreur connexion ESET' });
+  }
+});
+
 // ─── RT Proxy ─────────────────────────────────────────────
 
 function rtFetch(ticketId) {

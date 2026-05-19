@@ -2,12 +2,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download,
   Ticket, Plus, User, KeyRound, Laptop, Clock, ExternalLink,
+  Shield, ShieldAlert, ShieldOff, Network, AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useFicheTicketsRT, useAddTicketRT, useRTTicket } from '@/hooks/useFicheTicketsRT';
+import { useESETComputer } from '@/hooks/useESETComputer';
 
 const SOURCE_BADGE: Record<string, string> = {
   'Siège':       'bg-blue-100 text-blue-800',
@@ -137,6 +139,112 @@ function InfoCard({
   );
 }
 
+// ── Section ESET ──────────────────────────────────────────────────────────────
+
+const ESET_ICON = {
+  green:  <Shield size={15} className="text-green-600" />,
+  yellow: <ShieldAlert size={15} className="text-yellow-500" />,
+  red:    <ShieldOff size={15} className="text-red-500" />,
+  gray:   <Shield size={15} className="text-muted-foreground" />,
+};
+
+const ESET_BADGE = {
+  green:  'bg-green-100 text-green-800',
+  yellow: 'bg-yellow-100 text-yellow-800',
+  red:    'bg-red-100 text-red-800',
+  gray:   'bg-muted text-foreground',
+};
+
+function ESETSection({ dns, sn }: { dns: string | null; sn: string | null }) {
+  const { data: eset, isLoading, isError } = useESETComputer(dns, sn);
+
+  if (!dns && !sn) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+        <Shield size={15} className="text-primary" />
+        ESET PROTECT
+      </h2>
+
+      {isLoading && (
+        <p className="text-sm text-muted-foreground animate-pulse">Interrogation d'ESET…</p>
+      )}
+
+      {(isError || (!isLoading && !eset)) && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 py-6 text-center text-sm text-muted-foreground">
+          Poste non trouvé dans la console ESET
+        </div>
+      )}
+
+      {eset && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          {/* Ligne statut + bouton console */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              {ESET_ICON[eset.statusColor]}
+              <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${ESET_BADGE[eset.statusColor]}`}>
+                {eset.statusLabel}
+              </span>
+              {eset.threats > 0 && (
+                <span className="flex items-center gap-1 text-xs font-medium text-red-600">
+                  <AlertTriangle size={12} />
+                  {eset.threats} menace{eset.threats > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <a
+              href={eset.consoleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+            >
+              <ExternalLink size={12} />
+              Voir dans ESET PROTECT
+            </a>
+          </div>
+
+          {/* Grille infos */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+            {eset.ip && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <Network size={11} /> Adresse IP
+                </span>
+                <span className="font-mono font-semibold">{eset.ip}</span>
+              </div>
+            )}
+            {eset.antivirusVersion && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Version AV</span>
+                <span className="font-mono text-xs">{eset.antivirusVersion}</span>
+              </div>
+            )}
+            {eset.lastConnectedTime && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Dernière connexion</span>
+                <span className="text-xs">{fmt(eset.lastConnectedTime)}</span>
+              </div>
+            )}
+            {eset.loggedInUsers && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Utilisateur connecté</span>
+                <span className="text-xs font-mono">{eset.loggedInUsers}</span>
+              </div>
+            )}
+            {eset.operatingSystem && (
+              <div className="flex flex-col gap-0.5 col-span-2">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">OS détecté par ESET</span>
+                <span className="text-xs">{eset.operatingSystem}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Formulaire ajout ticket RT ────────────────────────────────────────────────
 
 function AddTicketForm({
@@ -245,6 +353,7 @@ export default function FichePoste() {
   const { data: tickets = [], isLoading: ticketsLoading } = useFicheTicketsRT(id ?? '');
 
   const dns: string | null = asset?.dns ?? null;
+  const sn: string | null = asset?.sn ?? null;
   const lastTicket = tickets[0] ?? null;
 
   const { data: rtInfo, isFetching: rtFetching } = useRTTicket(lastTicket?.ticket_rt ?? null);
@@ -384,6 +493,12 @@ export default function FichePoste() {
           />
         </div>
       )}
+
+      {/* Séparateur */}
+      {!isLoading && asset && <hr className="border-border" />}
+
+      {/* Section ESET */}
+      {!isLoading && asset && <ESETSection dns={dns} sn={sn} />}
 
       {/* Séparateur */}
       {!isLoading && asset && <hr className="border-border" />}
