@@ -1,7 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
+import { usePlanningTSI, useSavePlanningTSI } from '@/hooks/usePlanningTSI';
+import type { MonthPlan, WeekPlan, DayCell } from '@/hooks/usePlanningTSI';
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] as const;
 
@@ -12,11 +14,6 @@ const TECH_COLORS: Record<string, string> = {
   Christy:    'bg-sky-100    text-sky-800    dark:bg-sky-900/40    dark:text-sky-200',
   Rémy:       'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
 };
-
-interface DayCell      { value: string; tt: boolean }
-interface TechSchedule { name: string; schedule: DayCell[] }
-interface WeekPlan     { weekNumber: number; dates: string[]; technicians: TechSchedule[] }
-interface MonthPlan    { month: string; weeks: WeekPlan[] }
 
 // Convert Excel "w" formatted string "M/D/YY" → "DD/MM"
 function wToDateStr(w: string): string {
@@ -104,20 +101,11 @@ const LEGEND = [
   { color: 'bg-muted/40 border border-border', label: 'Non planifié' },
 ];
 
-const STORAGE_KEY = 'support-planning-tsi-v1';
-
 export default function SupportPlanningTSI() {
-  const [plan, setPlan] = useState<MonthPlan | null>(null);
+  const { data: plan, isLoading } = usePlanningTSI();
+  const savePlan = useSavePlanningTSI();
   const [weekIdx, setWeekIdx] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  // Restore from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try { setPlan(JSON.parse(saved)); } catch {}
-    }
-  }, []);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,14 +114,16 @@ export default function SupportPlanningTSI() {
     const wb = XLSX.read(buffer, { type: 'array', cellStyles: true });
     const sheetName = wb.SheetNames[0];
     const weeks = parseSheet(wb, sheetName);
-    const newPlan = { month: sheetName, weeks };
-    setPlan(newPlan);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newPlan));
+    savePlan.mutate({ month: sheetName, weeks });
     setWeekIdx(0);
     e.target.value = '';
-  }, []);
+  }, [savePlan]);
 
   const openPicker = () => fileRef.current?.click();
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-16 text-muted-foreground text-sm">Chargement du planning…</div>;
+  }
 
   if (!plan) {
     return (
@@ -145,7 +135,9 @@ export default function SupportPlanningTSI() {
             Fichier Excel (.xlsx) au format du planning mensuel
           </p>
         </div>
-        <Button variant="outline" onClick={openPicker}>Choisir un fichier</Button>
+        <Button variant="outline" onClick={openPicker} disabled={savePlan.isPending}>
+          Choisir un fichier
+        </Button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
       </div>
     );
@@ -195,9 +187,9 @@ export default function SupportPlanningTSI() {
           </div>
         </div>
 
-        <Button variant="outline" size="sm" onClick={openPicker}>
+        <Button variant="outline" size="sm" onClick={openPicker} disabled={savePlan.isPending}>
           <Upload size={14} className="mr-1.5" />
-          Mettre à jour
+          {savePlan.isPending ? 'Sauvegarde…' : 'Mettre à jour'}
         </Button>
       </div>
 
