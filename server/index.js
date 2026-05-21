@@ -157,6 +157,74 @@ app.get('/api/rt/ticket/:id', async (req, res) => {
   }
 });
 
+function rtSearch(query) {
+  return new Promise((resolve, reject) => {
+    const base = process.env.RT_URL || 'http://rt.in.karavel.com';
+    const params = new URLSearchParams({ query, orderby: '-Created', rows: '5', format: 'l' });
+    const url = new URL(`/REST/1.0/search/ticket`, base);
+    const credentials = Buffer.from(`${process.env.RT_USER}:${process.env.RT_PASS}`).toString('base64');
+    const lib = url.protocol === 'https:' ? https : http;
+
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: `${url.pathname}?${params}`,
+      headers: { Authorization: `Basic ${credentials}` },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function parseRTSearch(text) {
+  if (!text.match(/^RT\/[\d.]+ 200/)) return [];
+  const tickets = [];
+  for (const block of text.split(/\n--\n/)) {
+    if (!block.includes('id: ticket/')) continue;
+    const fields = {};
+    for (const line of block.split('\n')) {
+      const m = line.match(/^([A-Za-z][^:]+):\s*(.+)$/);
+      if (m) fields[m[1].trim()] = m[2].trim();
+    }
+    if (!fields['id']) continue;
+    tickets.push({
+      id:          fields['id'].replace('ticket/', ''),
+      subject:     fields['Subject']     || '',
+      status:      fields['Status']      || '',
+      owner:       fields['Owner']       || '',
+      queue:       fields['Queue']       || '',
+      requestors:  fields['Requestors']  || '',
+      created:     fields['Created']     || '',
+      lastUpdated: fields['LastUpdated'] || '',
+    });
+  }
+  return tickets;
+}
+
+app.get('/api/rt/search', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const { asset, uid } = req.query;
+  if (!asset && !uid) return res.status(400).json({ error: 'asset ou uid requis' });
+
+  const parts = [];
+  if (asset) parts.push(`Subject LIKE '%${asset}%'`);
+  if (uid)   parts.push(`Requestor LIKE '%${uid}%'`);
+
+  try {
+    const text = await rtSearch(parts.join(' OR '));
+    res.json(parseRTSearch(text));
+  } catch (err) {
+    console.error('[rt-search]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
 // ─── Config ───────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 

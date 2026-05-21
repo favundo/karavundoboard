@@ -1,6 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// ── Recherche live RT (5 derniers tickets asset/user) ────────────────────────
+
+export interface RTTicketSummary {
+  id: string;
+  subject: string;
+  status: string;
+  owner: string;
+  queue: string;
+  requestors: string;
+  created: string;
+  lastUpdated: string;
+}
+
+export function useRTSearch(asset: string | null, uid: string | null) {
+  const params = new URLSearchParams();
+  if (asset) params.set('asset', asset);
+  if (uid)   params.set('uid', uid);
+
+  return useQuery<RTTicketSummary[]>({
+    queryKey: ['rt-search', asset, uid],
+    queryFn: async () => {
+      const res = await fetch(`/api/rt/search?${params}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!(asset || uid),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
 // ── Infos live depuis RT ──────────────────────────────────────────────────────
 
 export interface RTTicketInfo {

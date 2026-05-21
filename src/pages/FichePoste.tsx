@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { useFicheTicketsRT, useAddTicketRT, useRTTicket } from '@/hooks/useFicheTicketsRT';
+import { useFicheTicketsRT, useAddTicketRT, useRTTicket, useRTSearch } from '@/hooks/useFicheTicketsRT';
 import { useESETComputer } from '@/hooks/useESETComputer';
 
 const SOURCE_BADGE: Record<string, string> = {
@@ -356,6 +356,10 @@ export default function FichePoste() {
   const sn: string | null = asset?.sn ?? null;
   const lastTicket = tickets[0] ?? null;
 
+  const assetName: string | null = asset?.asset ?? null;
+  const uid: string | null = asset?.uid ?? null;
+  const { data: rtLive = [], isFetching: rtLiveFetching } = useRTSearch(assetName, uid);
+
   const { data: rtInfo, isFetching: rtFetching } = useRTTicket(lastTicket?.ticket_rt ?? null);
 
   return (
@@ -503,13 +507,80 @@ export default function FichePoste() {
       {/* Séparateur */}
       {!isLoading && asset && <hr className="border-border" />}
 
+      {/* 5 derniers tickets RT (recherche live) */}
+      {!isLoading && (assetName || uid) && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Ticket size={15} className="text-primary" />
+            5 derniers tickets RT
+            {rtLiveFetching && <span className="text-xs text-muted-foreground font-normal animate-pulse">Interrogation RT…</span>}
+          </h2>
+
+          {!rtLiveFetching && rtLive.length === 0 && (
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 py-6 text-center text-sm text-muted-foreground">
+              Aucun ticket trouvé dans RT pour cet asset / cet utilisateur
+            </div>
+          )}
+
+          {rtLive.length > 0 && (
+            <div className="rounded-lg border border-border overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    {['Date', 'N° ticket', 'Sujet', 'Statut', 'Assigné à'].map(h => (
+                      <th key={h} className="px-3 py-2.5 font-semibold border-b border-border whitespace-nowrap text-xs uppercase tracking-wide text-muted-foreground">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rtLive.map((t, i) => (
+                    <tr key={t.id} className={`transition-colors hover:bg-muted/20 ${i % 2 === 1 ? 'bg-muted/10' : ''}`}>
+                      <td className="px-3 py-2 border-b border-border/40 text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />
+                          {fmt(t.created)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 font-mono font-semibold">
+                        <a
+                          href={`${RT_BASE}/Ticket/Display.html?id=${t.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          #{t.id}
+                          <ExternalLink size={11} className="text-muted-foreground" />
+                        </a>
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 text-muted-foreground max-w-xs truncate">
+                        {t.subject || <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40">
+                        <RTStatusBadge status={t.status} />
+                      </td>
+                      <td className="px-3 py-2 border-b border-border/40 text-muted-foreground text-xs">
+                        {t.owner && t.owner !== 'Nobody' ? t.owner : <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isLoading && asset && <hr className="border-border" />}
+
       {/* Section tickets RT */}
       {!isLoading && id && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
               <Ticket size={15} className="text-primary" />
-              Historique des tickets RT
+              Tickets RT liés manuellement
             </h2>
             <AddTicketForm
               assetId={id}
