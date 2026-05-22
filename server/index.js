@@ -105,15 +105,14 @@ app.get('/api/eset/computer', async (req, res) => {
 function rtFetch(ticketId) {
   return new Promise((resolve, reject) => {
     const base = process.env.RT_URL || 'http://rt.in.karavel.com';
+    const params = new URLSearchParams({ user: process.env.RT_USER, pass: process.env.RT_PASS });
     const url = new URL(`/REST/1.0/ticket/${ticketId}/show`, base);
-    const credentials = Buffer.from(`${process.env.RT_USER}:${process.env.RT_PASS}`).toString('base64');
     const lib = url.protocol === 'https:' ? https : http;
 
     const req = lib.request({
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
-      path: url.pathname,
-      headers: { Authorization: `Basic ${credentials}` },
+      path: `${url.pathname}?${params}`,
     }, (res) => {
       let data = '';
       res.on('data', c => { data += c; });
@@ -160,16 +159,14 @@ app.get('/api/rt/ticket/:id', async (req, res) => {
 function rtSearch(query) {
   return new Promise((resolve, reject) => {
     const base = process.env.RT_URL || 'http://rt.in.karavel.com';
-    const params = new URLSearchParams({ query, orderby: '-Created', rows: '5', format: 'l' });
+    const params = new URLSearchParams({ user: process.env.RT_USER, pass: process.env.RT_PASS, query, orderby: '-Created', rows: '5', format: 'l' });
     const url = new URL(`/REST/1.0/search/ticket`, base);
-    const credentials = Buffer.from(`${process.env.RT_USER}:${process.env.RT_PASS}`).toString('base64');
     const lib = url.protocol === 'https:' ? https : http;
 
     const req = lib.request({
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
       path: `${url.pathname}?${params}`,
-      headers: { Authorization: `Basic ${credentials}` },
     }, (res) => {
       let data = '';
       res.on('data', c => { data += c; });
