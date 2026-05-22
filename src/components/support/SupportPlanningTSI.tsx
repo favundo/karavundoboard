@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
@@ -72,6 +72,14 @@ function parseSheet(wb: XLSX.WorkBook, sheetName: string): WeekPlan[] {
   return weeks;
 }
 
+function getISOWeekNumber(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 function formatMonth(sheetName: string): string {
@@ -106,6 +114,17 @@ export default function SupportPlanningTSI() {
   const savePlan = useSavePlanningTSI();
   const [weekIdx, setWeekIdx] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const initializedRef = useRef(false);
+
+  // Auto-sélection de la semaine courante au premier chargement
+  useEffect(() => {
+    if (plan && !initializedRef.current) {
+      initializedRef.current = true;
+      const currentWeek = getISOWeekNumber();
+      const idx = plan.weeks.findIndex(w => w.weekNumber === currentWeek);
+      if (idx >= 0) setWeekIdx(idx);
+    }
+  }, [plan]);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,11 +132,20 @@ export default function SupportPlanningTSI() {
     const buffer = await file.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array', cellStyles: true });
     const sheetName = wb.SheetNames[0];
-    const weeks = parseSheet(wb, sheetName);
-    savePlan.mutate({ month: sheetName, weeks });
-    setWeekIdx(0);
+    const newWeeks = parseSheet(wb, sheetName);
+
+    // Fusion : les semaines existantes sont conservées, les nouvelles ajoutent ou écrasent par numéro
+    const weekMap = new Map<number, WeekPlan>();
+    for (const w of plan?.weeks ?? []) weekMap.set(w.weekNumber, w);
+    for (const w of newWeeks) weekMap.set(w.weekNumber, w);
+    const mergedWeeks = [...weekMap.values()].sort((a, b) => a.weekNumber - b.weekNumber);
+
+    savePlan.mutate({ month: sheetName, weeks: mergedWeeks });
+    // Positionner sur la première semaine importée
+    const firstNewIdx = mergedWeeks.findIndex(w => w.weekNumber === newWeeks[0]?.weekNumber);
+    setWeekIdx(firstNewIdx >= 0 ? firstNewIdx : 0);
     e.target.value = '';
-  }, [savePlan]);
+  }, [savePlan, plan]);
 
   const openPicker = () => fileRef.current?.click();
 
