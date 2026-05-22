@@ -209,12 +209,23 @@ app.get('/api/rt/search', async (req, res) => {
   if (!process.env.RT_USER || !process.env.RT_PASS) {
     return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
   }
-  const { asset, uid } = req.query;
-  if (!asset && !uid) return res.status(400).json({ error: 'asset ou uid requis' });
+  const { asset, uid, nom } = req.query;
+  if (!asset && !uid && !nom) return res.status(400).json({ error: 'asset, uid ou nom requis' });
 
   const parts = [];
   if (asset) parts.push(`Subject LIKE '%${asset}%'`);
   if (uid)   parts.push(`Requestor LIKE '%${uid}%'`);
+  if (nom) {
+    // "Fabien Vundo" → "fabien.vundo" (sans accents)
+    const normalized = nom.trim()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+    const spaceIdx = normalized.indexOf(' ');
+    if (spaceIdx > 0) {
+      const requestorLogin = normalized.slice(0, spaceIdx) + '.' + normalized.slice(spaceIdx + 1).replace(/\s+/g, '');
+      parts.push(`Requestor LIKE '%${requestorLogin}%'`);
+    }
+  }
 
   try {
     const text = await rtSearch(parts.join(' OR '));

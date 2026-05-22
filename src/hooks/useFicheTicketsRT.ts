@@ -14,19 +14,20 @@ export interface RTTicketSummary {
   lastUpdated: string;
 }
 
-export function useRTSearch(asset: string | null, uid: string | null) {
+export function useRTSearch(asset: string | null, uid: string | null, nom: string | null) {
   const params = new URLSearchParams();
   if (asset) params.set('asset', asset);
   if (uid)   params.set('uid', uid);
+  if (nom)   params.set('nom', nom);
 
   return useQuery<RTTicketSummary[]>({
-    queryKey: ['rt-search', asset, uid],
+    queryKey: ['rt-search', asset, uid, nom],
     queryFn: async () => {
       const res = await fetch(`/api/rt/search?${params}`);
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!(asset || uid),
+    enabled: !!(asset || uid || nom),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

@@ -358,7 +358,8 @@ export default function FichePoste() {
 
   const assetName: string | null = asset?.asset ?? null;
   const uid: string | null = asset?.uid ?? null;
-  const { data: rtLive = [], isFetching: rtLiveFetching } = useRTSearch(assetName, uid);
+  const nom: string | null = asset?.nom ?? null;
+  const { data: rtLive = [], isFetching: rtLiveFetching } = useRTSearch(assetName, uid, nom);
 
   const { data: rtInfo, isFetching: rtFetching } = useRTTicket(lastTicket?.ticket_rt ?? null);
 
