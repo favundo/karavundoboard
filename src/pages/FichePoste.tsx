@@ -339,6 +339,7 @@ export default function FichePoste() {
   const { source, id } = useParams<{ source: string; id: string }>();
   const navigate = useNavigate();
   const [showSetup, setShowSetup] = useState(false);
+  const [showAllRT, setShowAllRT] = useState(false);
   const decodedSource = source ? decodeURIComponent(source) : '';
 
   const { data: asset, isLoading } = useQuery({
@@ -524,6 +525,7 @@ export default function FichePoste() {
           )}
 
           {rtLive.length > 0 && (
+            <div className="space-y-2">
             <div className="rounded-lg border border-border overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -536,7 +538,7 @@ export default function FichePoste() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rtLive.map((t, i) => (
+                  {(showAllRT ? rtLive : rtLive.slice(0, 5)).map((t, i) => (
                     <tr key={t.id} className={`transition-colors hover:bg-muted/20 ${i % 2 === 1 ? 'bg-muted/10' : ''}`}>
                       <td className="px-3 py-2 border-b border-border/40 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="flex items-center gap-1">
@@ -568,6 +570,15 @@ export default function FichePoste() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            {rtLive.length > 5 && (
+              <button
+                onClick={() => setShowAllRT(v => !v)}
+                className="text-xs text-primary hover:underline"
+              >
+                {showAllRT ? 'Réduire' : `Voir les ${rtLive.length} tickets`}
+              </button>
+            )}
             </div>
           )}
         </div>
