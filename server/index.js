@@ -17,7 +17,7 @@ let _esetTokenExpiry = 0;
 async function esetGetToken() {
   if (_esetToken && Date.now() < _esetTokenExpiry) return _esetToken;
   const base = process.env.ESET_URL || 'https://antivirus03.in.karavel.com:9443';
-  const body = JSON.stringify({ name: process.env.ESET_USER, password: process.env.ESET_PASS });
+  const body = JSON.stringify({ username: process.env.ESET_USER, password: process.env.ESET_PASS });
   const token = await new Promise((resolve, reject) => {
     const url = new URL('/GetTokens', base);
     const req = https.request({
