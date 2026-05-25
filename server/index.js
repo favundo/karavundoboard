@@ -29,7 +29,7 @@ async function esetGetToken() {
       let data = '';
       res.on('data', c => { data += c; });
       res.on('end', () => {
-        console.log(`[eset] GetTokens HTTP ${res.statusCode}`);
+
         try {
           const json = JSON.parse(data);
           const t = json.token ?? json.access_token ?? json.Token ?? json.accessToken;
@@ -61,7 +61,6 @@ async function esetFetch(path) {
       let data = '';
       res.on('data', c => { data += c; });
       res.on('end', () => {
-        console.log(`[eset] HTTP ${res.statusCode} ${url.pathname}${url.search}`);
         try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
         catch { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 300) }); }
       });
@@ -107,26 +106,6 @@ const ESET_STATUS = {
   DEVICE_FUNCTIONALITY_STATUS_ERROR:   { label: 'Non protégé',   color: 'red'    },
 };
 
-// endpoint debug — à supprimer après validation des champs
-app.get('/api/eset/debug', async (req, res) => {
-  if (!process.env.ESET_USER || !process.env.ESET_PASS) {
-    return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
-  }
-  try {
-    // Récupère un device du groupe Siège et fetch ses détails complets
-    const siege = await esetFetch('/v1/device_groups/af42dc52-9228-4b09-996b-4e68e0ee5d45/devices');
-    const firstDevice = (siege.data?.devices ?? [])[0];
-    const details = firstDevice
-      ? await esetFetch(`/v1/devices/${firstDevice.uuid}`)
-      : null;
-    res.json({
-      first_device_basic: firstDevice,
-      first_device_full: details?.data,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.get('/api/eset/computer', async (req, res) => {
   const { dns } = req.query;
