@@ -102,9 +102,9 @@ async function esetGetAllDevices() {
 }
 
 const ESET_STATUS = {
-  1: { label: 'Protégé',        color: 'green'  },
-  2: { label: 'Avertissement',  color: 'yellow' },
-  3: { label: 'Non protégé',    color: 'red'    },
+  DEVICE_FUNCTIONALITY_STATUS_OK:      { label: 'Protégé',       color: 'green'  },
+  DEVICE_FUNCTIONALITY_STATUS_WARNING: { label: 'Avertissement', color: 'yellow' },
+  DEVICE_FUNCTIONALITY_STATUS_ERROR:   { label: 'Non protégé',   color: 'red'    },
 };
 
 // endpoint debug — à supprimer après validation des champs
@@ -137,31 +137,33 @@ app.get('/api/eset/computer', async (req, res) => {
   try {
     const devices = await esetGetAllDevices();
     const shortName = dns.split('.')[0].toLowerCase();
-    const c = devices.find(d => {
-      const n = (d.name ?? d.hostname ?? d.computerName ?? '').toLowerCase();
+    const match = devices.find(d => {
+      const n = (d.displayName ?? '').toLowerCase();
       return n === dns.toLowerCase() || n === shortName || n.startsWith(shortName + '.');
     });
-    if (!c) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
+    if (!match) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
 
-    const ip = c.networkAddresses?.[0]?.address ?? c.ipAddress ?? c.ipAddresses?.[0] ?? null;
-    const status = c.protectionStatus ?? c.managedProductStatuses?.[0]?.status ?? null;
-    const threats = c.threats?.unresolved ?? c.threatsDetected ?? c.numberOfThreats ?? 0;
+    // Fetch détails complets du device
+    const { data: detailData } = await esetFetch(`/v1/devices/${match.uuid}`);
+    const c = detailData?.device ?? detailData;
+    if (!c) return res.status(404).json({ error: 'Détails device ESET introuvables' });
+
+    const status = c.functionalityStatus ?? null;
     const esetUrl = process.env.ESET_URL || 'https://antivirus03.in.karavel.com:9443';
+    const avProduct = (c.activeProducts ?? [])[0];
 
     res.json({
       uuid:              c.uuid,
-      name:              c.name ?? c.hostname ?? c.computerName,
-      ip,
+      name:              c.displayName,
+      ip:                c.primaryLocalIpAddress ?? null,
       protectionStatus:  status,
       statusLabel:       ESET_STATUS[status]?.label ?? String(status ?? '?'),
       statusColor:       ESET_STATUS[status]?.color ?? 'gray',
-      threats,
-      antivirusVersion:  c.antivirusVersion ?? c.securityProductVersion ?? null,
-      lastConnectedTime: c.lastConnectedTime ?? c.lastSeen ?? null,
-      operatingSystem:   c.operatingSystem?.description ?? c.osDescription ?? null,
-      loggedInUsers:     Array.isArray(c.loggedInUsers)
-                           ? c.loggedInUsers.join(', ')
-                           : (c.lastLoggedUser ?? null),
+      problemCount:      c.functionalityProblemCount ?? 0,
+      antivirusVersion:  avProduct?.version ?? null,
+      lastConnectedTime: c.lastSyncTime ?? null,
+      operatingSystem:   c.operatingSystem?.displayName ?? null,
+      loggedInUsers:     null,
       consoleUrl: `${esetUrl}/protect/computers/detail/${c.uuid}`,
     });
   } catch (err) {
