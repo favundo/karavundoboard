@@ -77,15 +77,24 @@ let _esetDeviceCacheExpiry = 0;
 
 async function esetGetAllDevices() {
   if (_esetDeviceCache && Date.now() < _esetDeviceCacheExpiry) return _esetDeviceCache;
-  const { data: groupsData } = await esetFetch('/v1/device_groups');
-  const groups = groupsData?.groups ?? groupsData?.deviceGroups ?? groupsData?.items ?? [];
+  // On interroge les 4 groupes conteneurs réels (Siège, Agence, Nomades, Abcroisière)
+  // plutôt qu'itérer tous les groupes (~100+)
+  const DEVICE_GROUP_UUIDS = [
+    'af42dc52-9228-4b09-996b-4e68e0ee5d45', // Siège
+    '801c4af3-d899-45e9-a790-6e791a46c003', // Agence
+    '6c1966b1-dceb-47fa-b87f-f50398995336', // Nomades
+    '1d8211b8-ece9-407f-845e-b7a45328435e', // Abcroisière
+  ];
   const allDevices = [];
-  for (const group of groups) {
-    const uuid = group.uuid ?? group.groupUuid ?? group.id;
-    if (!uuid) continue;
-    const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices`);
-    const devices = devData?.devices ?? devData?.items ?? [];
-    allDevices.push(...devices);
+  for (const uuid of DEVICE_GROUP_UUIDS) {
+    let pageToken = '';
+    do {
+      const qs = pageToken ? `?pageToken=${pageToken}` : '';
+      const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices${qs}`);
+      const devices = devData?.devices ?? devData?.items ?? [];
+      allDevices.push(...devices);
+      pageToken = devData?.nextPageToken ?? '';
+    } while (pageToken);
   }
   _esetDeviceCache = allDevices;
   _esetDeviceCacheExpiry = Date.now() + 5 * 60 * 1000;
@@ -104,12 +113,14 @@ app.get('/api/eset/debug', async (req, res) => {
     return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
   }
   try {
-    const groups = await esetFetch('/v1/device_groups');
-    const firstGroupUuid = (groups.data?.groups ?? groups.data?.items ?? [])[0]?.uuid;
-    const devices = firstGroupUuid
-      ? await esetFetch(`/v1/device_groups/${firstGroupUuid}/devices`)
-      : null;
-    res.json({ groups: groups.data, sample_devices: devices?.data });
+    // Test si le groupe racine "Tous" retourne tous les devices (récursif ?)
+    const tous = await esetFetch('/v1/device_groups/00000000-0000-0000-7001-000000000001/devices');
+    // Siège — groupe qui contient forcément des devices
+    const siege = await esetFetch('/v1/device_groups/af42dc52-9228-4b09-996b-4e68e0ee5d45/devices');
+    res.json({
+      tous: tous.data,
+      siege_sample: siege.data,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
