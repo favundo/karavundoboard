@@ -11,29 +11,85 @@ app.use(express.json());
 
 // ─── ESET Proxy ───────────────────────────────────────────
 
-function esetFetch(path) {
-  return new Promise((resolve, reject) => {
-    const base = process.env.ESET_URL || 'https://antivirus03.in.karavel.com';
-    const url = new URL(path, base);
-    const credentials = Buffer.from(`${process.env.ESET_USER}:${process.env.ESET_PASS}`).toString('base64');
+let _esetToken = null;
+let _esetTokenExpiry = 0;
+
+async function esetGetToken() {
+  if (_esetToken && Date.now() < _esetTokenExpiry) return _esetToken;
+  const base = process.env.ESET_URL || 'https://antivirus03.in.karavel.com:9443';
+  const body = JSON.stringify({ name: process.env.ESET_USER, password: process.env.ESET_PASS });
+  const token = await new Promise((resolve, reject) => {
+    const url = new URL('/GetTokens', base);
     const req = https.request({
-      hostname: url.hostname,
-      port: url.port || 443,
+      hostname: url.hostname, port: url.port || 443,
+      path: '/GetTokens', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      rejectUnauthorized: false,
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        console.log(`[eset] GetTokens HTTP ${res.statusCode}`);
+        try {
+          const json = JSON.parse(data);
+          const t = json.token ?? json.access_token ?? json.Token ?? json.accessToken;
+          if (!t) return reject(new Error(`No token in response: ${data.slice(0, 200)}`));
+          resolve(t);
+        } catch (e) { reject(new Error(`Token parse error: ${data.slice(0, 200)}`)); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+  _esetToken = token;
+  _esetTokenExpiry = Date.now() + 50 * 60 * 1000;
+  return token;
+}
+
+async function esetFetch(path) {
+  const token = await esetGetToken();
+  const base = process.env.ESET_URL || 'https://antivirus03.in.karavel.com:9443';
+  const url = new URL(path, base);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, port: url.port || 443,
       path: url.pathname + url.search,
-      headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       rejectUnauthorized: false,
     }, (res) => {
       let data = '';
       res.on('data', c => { data += c; });
       res.on('end', () => {
         console.log(`[eset] HTTP ${res.statusCode} ${url.pathname}${url.search}`);
-        console.log(`[eset] raw text: ${data.slice(0, 300)}`);
-        try { resolve(JSON.parse(data)); } catch { resolve(null); }
+        try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
+        catch { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 300) }); }
       });
     });
     req.on('error', reject);
     req.end();
   });
+}
+
+// Cache devices 5 min pour éviter de spammer l'API à chaque FichePoste
+let _esetDeviceCache = null;
+let _esetDeviceCacheExpiry = 0;
+
+async function esetGetAllDevices() {
+  if (_esetDeviceCache && Date.now() < _esetDeviceCacheExpiry) return _esetDeviceCache;
+  const { data: groupsData } = await esetFetch('/v1/device_groups');
+  const groups = groupsData?.groups ?? groupsData?.deviceGroups ?? groupsData?.items ?? [];
+  const allDevices = [];
+  for (const group of groups) {
+    const uuid = group.uuid ?? group.groupUuid ?? group.id;
+    if (!uuid) continue;
+    const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices`);
+    const devices = devData?.devices ?? devData?.items ?? [];
+    allDevices.push(...devices);
+  }
+  _esetDeviceCache = allDevices;
+  _esetDeviceCacheExpiry = Date.now() + 5 * 60 * 1000;
+  return allDevices;
 }
 
 const ESET_STATUS = {
@@ -42,57 +98,58 @@ const ESET_STATUS = {
   3: { label: 'Non protégé',    color: 'red'    },
 };
 
-// endpoint debug temporaire — à supprimer après validation
+// endpoint debug — à supprimer après validation des champs
 app.get('/api/eset/debug', async (req, res) => {
   if (!process.env.ESET_USER || !process.env.ESET_PASS) {
     return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
   }
   try {
-    const data = await esetFetch('/era/v1/computers?pageSize=2');
-    res.json(data);
+    const groups = await esetFetch('/v1/device_groups');
+    const firstGroupUuid = (groups.data?.groups ?? groups.data?.items ?? [])[0]?.uuid;
+    const devices = firstGroupUuid
+      ? await esetFetch(`/v1/device_groups/${firstGroupUuid}/devices`)
+      : null;
+    res.json({ groups: groups.data, sample_devices: devices?.data });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get('/api/eset/computer', async (req, res) => {
-  const { dns, sn } = req.query;
-  if (!dns && !sn) return res.status(400).json({ error: 'Paramètre dns ou sn requis' });
+  const { dns } = req.query;
+  if (!dns) return res.status(400).json({ error: 'Paramètre dns requis' });
   if (!process.env.ESET_USER || !process.env.ESET_PASS) {
     return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
   }
   try {
-    const param = dns
-      ? `filter.computerName=${encodeURIComponent(dns)}`
-      : `filter.serialNumber=${encodeURIComponent(sn)}`;
-    const data = await esetFetch(`/era/v1/computers?${param}&pageSize=1`);
-    console.log('[eset] raw response:', JSON.stringify(data));
-    const computers = data?.computers ?? data?.data ?? [];
-    if (!computers.length) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
+    const devices = await esetGetAllDevices();
+    const shortName = dns.split('.')[0].toLowerCase();
+    const c = devices.find(d => {
+      const n = (d.name ?? d.hostname ?? d.computerName ?? '').toLowerCase();
+      return n === dns.toLowerCase() || n === shortName || n.startsWith(shortName + '.');
+    });
+    if (!c) return res.status(404).json({ error: 'Ordinateur non trouvé dans ESET' });
 
-    const c = computers[0];
-    const ip = c.networkAddresses?.[0]?.address
-            ?? c.ipAddresses?.[0]
-            ?? null;
+    const ip = c.networkAddresses?.[0]?.address ?? c.ipAddress ?? c.ipAddresses?.[0] ?? null;
     const status = c.protectionStatus ?? c.managedProductStatuses?.[0]?.status ?? null;
     const threats = c.threats?.unresolved ?? c.threatsDetected ?? c.numberOfThreats ?? 0;
-    const esatUrl = process.env.ESET_URL || 'https://antivirus03.in.karavel.com';
+    const esetUrl = process.env.ESET_URL || 'https://antivirus03.in.karavel.com:9443';
 
     res.json({
-      uuid:             c.uuid,
-      name:             c.name,
+      uuid:              c.uuid,
+      name:              c.name ?? c.hostname ?? c.computerName,
       ip,
-      protectionStatus: status,
-      statusLabel:      ESET_STATUS[status]?.label ?? String(status ?? '?'),
-      statusColor:      ESET_STATUS[status]?.color ?? 'gray',
+      protectionStatus:  status,
+      statusLabel:       ESET_STATUS[status]?.label ?? String(status ?? '?'),
+      statusColor:       ESET_STATUS[status]?.color ?? 'gray',
       threats,
-      antivirusVersion: c.antivirusVersion ?? c.securityProductVersion ?? null,
+      antivirusVersion:  c.antivirusVersion ?? c.securityProductVersion ?? null,
       lastConnectedTime: c.lastConnectedTime ?? c.lastSeen ?? null,
-      operatingSystem:  c.operatingSystem?.description ?? c.osDescription ?? null,
-      loggedInUsers:    Array.isArray(c.loggedInUsers)
-                          ? c.loggedInUsers.join(', ')
-                          : (c.lastLoggedUser ?? null),
-      consoleUrl: `${esatUrl}/protect/computers/detail/${c.uuid}`,
+      operatingSystem:   c.operatingSystem?.description ?? c.osDescription ?? null,
+      loggedInUsers:     Array.isArray(c.loggedInUsers)
+                           ? c.loggedInUsers.join(', ')
+                           : (c.lastLoggedUser ?? null),
+      consoleUrl: `${esetUrl}/protect/computers/detail/${c.uuid}`,
     });
   } catch (err) {
     console.error('[eset]', err.message);
