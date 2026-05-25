@@ -113,13 +113,15 @@ app.get('/api/eset/debug', async (req, res) => {
     return res.status(503).json({ error: 'ESET_USER / ESET_PASS non configurés' });
   }
   try {
-    // Test si le groupe racine "Tous" retourne tous les devices (récursif ?)
-    const tous = await esetFetch('/v1/device_groups/00000000-0000-0000-7001-000000000001/devices');
-    // Siège — groupe qui contient forcément des devices
+    // Récupère un device du groupe Siège et fetch ses détails complets
     const siege = await esetFetch('/v1/device_groups/af42dc52-9228-4b09-996b-4e68e0ee5d45/devices');
+    const firstDevice = (siege.data?.devices ?? [])[0];
+    const details = firstDevice
+      ? await esetFetch(`/v1/devices/${firstDevice.uuid}`)
+      : null;
     res.json({
-      tous: tous.data,
-      siege_sample: siege.data,
+      first_device_basic: firstDevice,
+      first_device_full: details?.data,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
