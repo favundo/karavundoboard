@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { useFicheTicketsRT, useAddTicketRT, useRTTicket, useRTSearch } from '@/hooks/useFicheTicketsRT';
+import { useFicheTicketsRT, useAddTicketRT, useRTSearch } from '@/hooks/useFicheTicketsRT';
 import { useESETComputer } from '@/hooks/useESETComputer';
 
 const SOURCE_BADGE: Record<string, string> = {
@@ -355,14 +355,11 @@ export default function FichePoste() {
 
   const dns: string | null = asset?.dns ?? null;
   const sn: string | null = asset?.sn ?? null;
-  const lastTicket = tickets[0] ?? null;
 
   const assetName: string | null = asset?.asset ?? null;
   const uid: string | null = asset?.uid ?? null;
   const nom: string | null = asset?.nom ?? null;
   const { data: rtLive = [], isFetching: rtLiveFetching } = useRTSearch(assetName, uid, nom);
-
-  const { data: rtInfo, isFetching: rtFetching } = useRTTicket(lastTicket?.ticket_rt ?? null);
 
   return (
     <div className="space-y-6">
@@ -473,25 +470,26 @@ export default function FichePoste() {
             icon={Ticket}
             label="Dernier ticket RT"
             value={
-              lastTicket ? (
+              rtLiveFetching ? (
+                <span className="text-muted-foreground/50 font-normal animate-pulse">…</span>
+              ) : rtLive[0] ? (
                 <span className="flex flex-col gap-1">
                   <span className="flex items-center gap-1.5">
                     <a
-                      href={`${RT_BASE}/Ticket/Display.html?id=${lastTicket.ticket_rt}`}
+                      href={`${RT_BASE}/Ticket/Display.html?id=${rtLive[0].id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-mono text-primary hover:underline"
                     >
-                      #{lastTicket.ticket_rt}
+                      #{rtLive[0].id}
                     </a>
-                    {rtFetching && <span className="text-xs text-muted-foreground animate-pulse">…</span>}
-                    {rtInfo && <RTStatusBadge status={rtInfo.status} />}
+                    <RTStatusBadge status={rtLive[0].status} />
                   </span>
-                  {rtInfo?.subject && (
-                    <span className="text-xs font-normal text-muted-foreground line-clamp-2">{rtInfo.subject}</span>
+                  {rtLive[0].subject && (
+                    <span className="text-xs font-normal text-muted-foreground line-clamp-2">{rtLive[0].subject}</span>
                   )}
-                  {rtInfo?.owner && rtInfo.owner !== 'Nobody' && (
-                    <span className="text-xs font-normal text-muted-foreground">{rtInfo.owner}</span>
+                  {rtLive[0].owner && rtLive[0].owner !== 'Nobody' && (
+                    <span className="text-xs font-normal text-muted-foreground">{rtLive[0].owner}</span>
                   )}
                 </span>
               ) : null
