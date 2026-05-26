@@ -356,7 +356,8 @@ export default function FichePoste() {
   const dns: string | null = asset?.dns ?? null;
   const sn: string | null = asset?.sn ?? null;
 
-  const assetName: string | null = asset?.asset ?? null;
+  const isAgence = decodedSource === 'Agences';
+  const assetName: string | null = !isAgence ? (asset?.asset ?? null) : null;
   const uid: string | null = asset?.uid ?? null;
   const nom: string | null = asset?.nom ?? null;
   const { data: rtLive = [], isFetching: rtLiveFetching } = useRTSearch(assetName, uid, nom);
@@ -449,53 +450,68 @@ export default function FichePoste() {
 
       {/* Grille info */}
       {!isLoading && asset && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <InfoCard
-            icon={User}
-            label="Collaborateur actuel"
-            value={asset.nom || asset.agence}
-          />
-          <InfoCard
-            icon={KeyRound}
-            label="UID"
-            value={asset.uid}
-            mono
-          />
-          <InfoCard
-            icon={Laptop}
-            label="Système d'exploitation"
-            value={asset.windows_version ?? asset.os_version}
-          />
-          <InfoCard
-            icon={Ticket}
-            label="Dernier ticket RT"
-            value={
-              rtLiveFetching ? (
-                <span className="text-muted-foreground/50 font-normal animate-pulse">…</span>
-              ) : rtLive[0] ? (
-                <span className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1.5">
-                    <a
-                      href={`${RT_BASE}/Ticket/Display.html?id=${rtLive[0].id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-primary hover:underline"
-                    >
-                      #{rtLive[0].id}
-                    </a>
-                    <RTStatusBadge status={rtLive[0].status} />
+        decodedSource === 'Agences' ? (
+          <div className="grid grid-cols-2 gap-3">
+            <InfoCard
+              icon={User}
+              label="Nom agence"
+              value={asset.agence}
+            />
+            <InfoCard
+              icon={Laptop}
+              label="Système d'exploitation"
+              value={asset.os_version}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <InfoCard
+              icon={User}
+              label="Collaborateur actuel"
+              value={asset.nom || asset.agence}
+            />
+            <InfoCard
+              icon={KeyRound}
+              label="UID"
+              value={asset.uid}
+              mono
+            />
+            <InfoCard
+              icon={Laptop}
+              label="Système d'exploitation"
+              value={asset.windows_version ?? asset.os_version}
+            />
+            <InfoCard
+              icon={Ticket}
+              label="Dernier ticket RT"
+              value={
+                rtLiveFetching ? (
+                  <span className="text-muted-foreground/50 font-normal animate-pulse">…</span>
+                ) : rtLive[0] ? (
+                  <span className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1.5">
+                      <a
+                        href={`${RT_BASE}/Ticket/Display.html?id=${rtLive[0].id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-primary hover:underline"
+                      >
+                        #{rtLive[0].id}
+                      </a>
+                      <RTStatusBadge status={rtLive[0].status} />
+                    </span>
+                    {rtLive[0].subject && (
+                      <span className="text-xs font-normal text-muted-foreground line-clamp-2">{rtLive[0].subject}</span>
+                    )}
+                    {rtLive[0].owner && rtLive[0].owner !== 'Nobody' && (
+                      <span className="text-xs font-normal text-muted-foreground">{rtLive[0].owner}</span>
+                    )}
                   </span>
-                  {rtLive[0].subject && (
-                    <span className="text-xs font-normal text-muted-foreground line-clamp-2">{rtLive[0].subject}</span>
-                  )}
-                  {rtLive[0].owner && rtLive[0].owner !== 'Nobody' && (
-                    <span className="text-xs font-normal text-muted-foreground">{rtLive[0].owner}</span>
-                  )}
-                </span>
-              ) : null
-            }
-          />
-        </div>
+                ) : null
+              }
+            />
+          </div>
+        )
       )}
 
       {/* Séparateur */}
@@ -508,7 +524,7 @@ export default function FichePoste() {
       {!isLoading && asset && <hr className="border-border" />}
 
       {/* 5 derniers tickets RT (recherche live) */}
-      {!isLoading && (assetName || uid) && (
+      {!isLoading && !isAgence && (assetName || uid) && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Ticket size={15} className="text-primary" />
@@ -582,10 +598,10 @@ export default function FichePoste() {
         </div>
       )}
 
-      {!isLoading && asset && <hr className="border-border" />}
+      {!isLoading && asset && !isAgence && <hr className="border-border" />}
 
       {/* Section tickets RT */}
-      {!isLoading && id && (
+      {!isLoading && !isAgence && id && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
