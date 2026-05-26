@@ -42,10 +42,11 @@ interface FormData {
   sn: string;
   os_version: string;
   eset_app: string;
+  dns: string;
 }
 
 const EMPTY: FormData = {
-  agence: "", type: "", asset: "", sn: "", os_version: "", eset_app: "",
+  agence: "", type: "", asset: "", sn: "", os_version: "", eset_app: "", dns: "",
 };
 
 const SELECT_CLASS =
@@ -79,6 +80,7 @@ const AgencyAddModal = ({ open, onClose, extraAgences = [] }: Props) => {
         sn: form.sn.trim(),
         os_version: form.os_version,
         eset_app: form.eset_app,
+        dns: form.dns.trim() || null,
       });
       if (error) throw error;
     },
@@ -153,6 +155,11 @@ const AgencyAddModal = ({ open, onClose, extraAgences = [] }: Props) => {
               <option>ESET Endpoint Security</option>
               <option>ESET Endpoint ANTIVIRUS</option>
             </select>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Nom DNS</Label>
+            <Input value={form.dns} onChange={set("dns")} placeholder="ex: AGE-PC-001" className="font-mono text-xs" />
           </div>
         </div>
 

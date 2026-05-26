@@ -8,6 +8,7 @@ export type AgencyItem = {
   os_version: string;
   type: string;
   eset_app?: string;
+  dns?: string;
 };
 
 export const useAgencyInventory = () => {

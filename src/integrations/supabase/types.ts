@@ -109,6 +109,7 @@ export type Database = {
           agence: string
           asset: string
           created_at: string
+          dns: string | null
           eset_app: string | null
           id: string
           masque: string
@@ -122,6 +123,7 @@ export type Database = {
           agence?: string
           asset?: string
           created_at?: string
+          dns?: string | null
           eset_app?: string | null
           id?: string
           masque?: string
@@ -135,6 +137,7 @@ export type Database = {
           agence?: string
           asset?: string
           created_at?: string
+          dns?: string | null
           eset_app?: string | null
           id?: string
           masque?: string

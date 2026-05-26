@@ -34,7 +34,8 @@ const AgencyTable = () => {
           !search ||
           item.agence.toLowerCase().includes(s) ||
           item.asset.toLowerCase().includes(s) ||
-          item.sn.toLowerCase().includes(s);
+          item.sn.toLowerCase().includes(s) ||
+          (item.dns ?? "").toLowerCase().includes(s);
         const matchAgence = agenceFilter === "Toutes" || item.agence === agenceFilter;
         const matchOs = osFilter === "Tous" || (item.os_version ?? "") === osFilter;
         return matchSearch && matchAgence && matchOs;
@@ -60,6 +61,7 @@ const AgencyTable = () => {
     { key: "type", label: "Type" },
     { key: "asset", label: "Asset" },
     { key: "sn", label: "N° Série" },
+    { key: "dns", label: "Nom DNS" },
     { key: "os_version", label: "Version OS" },
   ];
 
@@ -171,6 +173,7 @@ const AgencyTable = () => {
                      </td>
                      <td className="whitespace-nowrap px-4 py-2.5 font-mono text-primary">{item.asset || "—"}</td>
                      <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.sn || "—"}</td>
+                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-muted-foreground">{item.dns || "—"}</td>
                      <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{item.os_version || "—"}</td>
                   </tr>
                 ))}

@@ -43,6 +43,16 @@ const COLUMN_MAP: Record<string, keyof AgencyItem> = {
   "applicationdesecuriteeset": "eset_app",
   "applicationdesecuriteset": "eset_app",
   "appdesecuriteeset": "eset_app",
+  // dns
+  "dns": "dns",
+  "hostname": "dns",
+  "nomdns": "dns",
+  "nomordinateur": "dns",
+  "nomdordinateur": "dns",
+  "nomposte": "dns",
+  "nomduposte": "dns",
+  "nommachine": "dns",
+  "nompc": "dns",
 };
 
 export type AgencyParseResult = {
@@ -91,6 +101,7 @@ export const parseAgencyFile = async (file: File): Promise<AgencyParseResult> =>
             os_version: "",
             type: "",
             eset_app: "",
+            dns: "",
           };
 
           for (const [col, field] of Object.entries(mapping)) {
