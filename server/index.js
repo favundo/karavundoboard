@@ -303,10 +303,12 @@ const supabase = createClient(
 // ─── Technicians (mirrored from frontend) ────────────────
 const TECHNICIANS = {
   nehad:         { label: 'Nehad',          email: 'nehad@karavel.com' },
-  zkarroum:      { label: 'Z. Karroum',      email: 'zkarroum@karavel.com' },
-  maabid:        { label: 'M. Abid',          email: 'maabid@karavel.com' },
+  zkarroum:      { label: 'Z. Karroum',     email: 'zkarroum@karavel.com' },
+  maabid:        { label: 'M. Abid',        email: 'maabid@karavel.com' },
   cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com' },
-  rrinville:     { label: 'R. Rinville',     email: 'rrinville@karavel.com' },
+  rrinville:     { label: 'R. Rinville',    email: 'rrinville@karavel.com' },
+  'ext-favundo': { label: 'F. Avundo',      email: 'ext-favundo@karavel.com' },
+  blouis:        { label: 'B. Louis',       email: 'blouis@karavel.com' },
 };
 
 const TYPE_LABELS = {

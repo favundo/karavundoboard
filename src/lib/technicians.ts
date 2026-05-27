@@ -11,7 +11,8 @@ export const TECHNICIANS: Technician[] = [
   { id: 'maabid',        label: 'M. Abid',         email: 'maabid@karavel.com',        bgColor: '#f59e0b' },
   { id: 'cananthakumar', label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com', bgColor: '#8b5cf6' },
   { id: 'rrinville',     label: 'R. Rinville',     email: 'rrinville@karavel.com',     bgColor: '#ef4444' },
-  { id: 'favundo',       label: 'F. Avundo',       email: 'ext-favundo@karavel.com',       bgColor: '#ec4899' },
+  { id: 'ext-favundo',   label: 'F. Avundo',       email: 'ext-favundo@karavel.com',   bgColor: '#ec4899' },
+  { id: 'blouis',        label: 'B. Louis',        email: 'blouis@karavel.com',        bgColor: '#06b6d4' },
 ];
 
 export const getTechnicianById = (id: string) =>
