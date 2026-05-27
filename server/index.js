@@ -430,7 +430,7 @@ L'équipe du support`,
 };
 
 // ─── Route POST /send-email ───────────────────────────────
-app.post('/send-email', async (req, res) => {
+app.post('/api/send-email', async (req, res) => {
   const { type, appointment } = req.body;
   if (!type || !appointment) {
     return res.status(400).json({ error: 'Missing type or appointment' });
