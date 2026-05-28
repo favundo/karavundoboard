@@ -1,6 +1,7 @@
 import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Outlet } from 'react-router-dom';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const SUB_NAV = [
   { to: '/support/dashboard',    label: 'Dashboard & Recherche rapide',          icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const Support = () => (
                 <p className="text-xs text-muted-foreground">Planning des interventions</p>
               </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>

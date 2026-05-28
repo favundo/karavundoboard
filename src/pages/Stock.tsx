@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Archive, Upload, PlusCircle, UserCheck, MonitorX, Handshake, ClipboardList } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import StockInventoryTable from "@/components/stock/StockInventoryTable";
 import StockDeviceTypeChart from "@/components/stock/StockDeviceTypeChart";
 import StockWindowsVersionChart from "@/components/stock/StockWindowsVersionChart";
@@ -49,7 +50,7 @@ const Stock = () => {
                     Données à jour
                   </span>
                 </div>
-
+                <ThemeToggle />
                 <button
                   onClick={() => setDecommListOpen(true)}
                   className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
