@@ -151,6 +151,71 @@ app.get('/api/eset/computer', async (req, res) => {
   }
 });
 
+// ─── OCS Inventory Proxy ──────────────────────────────────
+
+async function ocsFetch(path) {
+  const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
+  const auth = Buffer.from(`${process.env.OCS_USER}:${process.env.OCS_PASS}`).toString('base64');
+  const url = new URL(path, base);
+  const lib = url.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject) => {
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname + url.search,
+      headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+      rejectUnauthorized: false,
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
+        catch { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 300) }); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+app.get('/api/ocs/computer', async (req, res) => {
+  const { dns } = req.query;
+  if (!dns) return res.status(400).json({ error: 'Paramètre dns requis' });
+  if (!process.env.OCS_USER || !process.env.OCS_PASS) {
+    return res.status(503).json({ error: 'OCS_USER / OCS_PASS non configurés' });
+  }
+  try {
+    const shortName = dns.split('.')[0];
+    // Essaie en majuscules puis en minuscules (OCS stocke souvent en majuscules)
+    let found = null;
+    for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
+      const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
+      const { data } = await ocsFetch(`/api/v1/computers?${qs}`);
+      if (data?.data?.length) { found = data.data[0]; break; }
+    }
+    if (!found) return res.status(404).json({ error: 'Ordinateur non trouvé dans OCS' });
+
+    const hw = found;
+    const id = hw.ID ?? hw.HARDWARE_ID ?? hw.id ?? null;
+    const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
+
+    res.json({
+      id,
+      name:          hw.NAME        ?? hw.name        ?? null,
+      lastInventory: hw.LASTDATE    ?? hw.lastdate     ?? null,
+      osName:        hw.OSNAME      ?? hw.osname       ?? null,
+      ipAddress:     hw.IPADDR      ?? hw.ipaddr       ?? null,
+      totalRam:      hw.MEMORY      ? parseInt(hw.MEMORY, 10) : null,
+      cpuName:       hw.PROCESSORT  ?? hw.processort   ?? null,
+      userId:        hw.USERID      ?? hw.userid       ?? null,
+      consoleUrl:    id ? `${base}/ocsreports/index.php?function=computer&head=1&val_id=${id}` : `${base}/ocsreports/`,
+    });
+  } catch (err) {
+    console.error('[ocs]', err.message);
+    res.status(500).json({ error: 'Erreur connexion OCS' });
+  }
+});
+
 // ─── RT Proxy ─────────────────────────────────────────────
 
 function rtFetch(ticketId) {

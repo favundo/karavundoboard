@@ -3,6 +3,7 @@ import {
   ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download,
   Ticket, Plus, User, KeyRound, Laptop, Clock, ExternalLink,
   Shield, ShieldAlert, ShieldOff, Network, AlertTriangle,
+  Database, Cpu, MemoryStick,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useFicheTicketsRT, useAddTicketRT, useRTSearch } from '@/hooks/useFicheTicketsRT';
 import { useESETComputer } from '@/hooks/useESETComputer';
+import { useOCSComputer } from '@/hooks/useOCSComputer';
 
 const SOURCE_BADGE: Record<string, string> = {
   'Siège':       'bg-blue-100 text-blue-800',
@@ -236,6 +238,115 @@ function ESETSection({ dns, sn }: { dns: string | null; sn: string | null }) {
               <div className="flex flex-col gap-0.5 col-span-2">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">OS détecté par ESET</span>
                 <span className="text-xs">{eset.operatingSystem}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section OCS ───────────────────────────────────────────────────────────────
+
+function ocsInventoryAge(lastInventory: string | null): { label: string; color: 'green' | 'yellow' | 'red' | 'gray' } {
+  if (!lastInventory) return { label: 'Inconnue', color: 'gray' };
+  const days = Math.floor((Date.now() - new Date(lastInventory).getTime()) / 86_400_000);
+  if (days <= 7)  return { label: `Il y a ${days} j`, color: 'green' };
+  if (days <= 30) return { label: `Il y a ${days} j`, color: 'yellow' };
+  return { label: `Il y a ${days} j`, color: 'red' };
+}
+
+const OCS_AGE_BADGE = {
+  green:  'bg-green-100 text-green-800',
+  yellow: 'bg-yellow-100 text-yellow-800',
+  red:    'bg-red-100 text-red-800',
+  gray:   'bg-muted text-foreground',
+};
+
+function OCSSection({ dns }: { dns: string | null }) {
+  const { data: ocs, isLoading, isError } = useOCSComputer(dns);
+
+  if (!dns) return null;
+
+  const age = ocsInventoryAge(ocs?.lastInventory ?? null);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+        <Database size={15} className="text-primary" />
+        OCS Inventory
+      </h2>
+
+      {isLoading && (
+        <p className="text-sm text-muted-foreground animate-pulse">Interrogation d'OCS…</p>
+      )}
+
+      {(isError || (!isLoading && !ocs)) && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 py-6 text-center text-sm text-muted-foreground">
+          Poste non trouvé dans OCS Inventory
+        </div>
+      )}
+
+      {ocs && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          {/* En-tête : dernière remontée + lien console */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Dernière remontée</span>
+              <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${OCS_AGE_BADGE[age.color]}`}>
+                {age.label}
+              </span>
+            </div>
+            <a
+              href={ocs.consoleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+            >
+              <ExternalLink size={12} />
+              Voir dans OCS
+            </a>
+          </div>
+
+          {/* Grille infos */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+            {ocs.ipAddress && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <Network size={11} /> Adresse IP
+                </span>
+                <span className="font-mono font-semibold">{ocs.ipAddress}</span>
+              </div>
+            )}
+            {ocs.totalRam !== null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <MemoryStick size={11} /> RAM
+                </span>
+                <span className="font-semibold">
+                  {ocs.totalRam >= 1024 ? `${(ocs.totalRam / 1024).toFixed(0)} Go` : `${ocs.totalRam} Mo`}
+                </span>
+              </div>
+            )}
+            {ocs.cpuName && (
+              <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-1">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <Cpu size={11} /> Processeur
+                </span>
+                <span className="text-xs">{ocs.cpuName}</span>
+              </div>
+            )}
+            {ocs.osName && (
+              <div className="flex flex-col gap-0.5 col-span-2">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">OS détecté par OCS</span>
+                <span className="text-xs">{ocs.osName}</span>
+              </div>
+            )}
+            {ocs.userId && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Dernier utilisateur OCS</span>
+                <span className="text-xs font-mono">{ocs.userId}</span>
               </div>
             )}
           </div>
@@ -519,6 +630,12 @@ export default function FichePoste() {
 
       {/* Section ESET */}
       {!isLoading && asset && <ESETSection dns={dns} sn={sn} />}
+
+      {/* Séparateur */}
+      {!isLoading && asset && <hr className="border-border" />}
+
+      {/* Section OCS */}
+      {!isLoading && asset && <OCSSection dns={dns} />}
 
       {/* Séparateur */}
       {!isLoading && asset && <hr className="border-border" />}
