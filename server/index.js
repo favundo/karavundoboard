@@ -208,26 +208,25 @@ app.get('/api/ocs/debug', async (req, res) => {
   }
 });
 
-function ocsParseComputer(hw) {
-  // OCS peut retourner les champs en majuscules ou minuscules selon la version
-  return {
-    id:            hw.ID          ?? hw.HARDWARE_ID  ?? hw.id    ?? null,
-    name:          hw.NAME        ?? hw.name         ?? null,
-    lastInventory: hw.LASTDATE    ?? hw.lastdate      ?? null,
-    osName:        hw.OSNAME      ?? hw.osname        ?? null,
-    ipAddress:     hw.IPADDR      ?? hw.ipaddr        ?? null,
-    totalRam:      hw.MEMORY      ? parseInt(hw.MEMORY, 10) : (hw.memory ? parseInt(hw.memory, 10) : null),
-    cpuName:       hw.PROCESSORT  ?? hw.processort    ?? null,
-    userId:        hw.USERID      ?? hw.userid        ?? null,
-  };
+// OCS 2.x retourne { "ID": { hardware: {...}, bios: [], software: [], ... } }
+function ocsExtractHardware(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const keys = Object.keys(data);
+  if (!keys.length) return null;
+  return data[keys[0]]?.hardware ?? null;
 }
 
-function ocsExtractArray(data) {
-  // OCS peut retourner { data: [...] }, { computers: [...] }, ou directement [...]
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.computers)) return data.computers;
-  return [];
+function ocsParseComputer(hw) {
+  return {
+    id:            hw.ID         ?? null,
+    name:          hw.NAME       ?? null,
+    lastInventory: hw.LASTDATE   ?? hw.LASTCOME ?? null,
+    osName:        hw.OSNAME     ?? null,
+    ipAddress:     hw.IPADDR     ?? hw.IPSRC    ?? null,
+    totalRam:      hw.MEMORY     ? parseInt(hw.MEMORY, 10) : null,
+    cpuName:       hw.PROCESSORT ?? null,
+    userId:        hw.USERID     ?? null,
+  };
 }
 
 app.get('/api/ocs/computer', async (req, res) => {
@@ -241,22 +240,26 @@ app.get('/api/ocs/computer', async (req, res) => {
     const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
     let found = null;
 
-    // Stratégie 1 : recherche exacte (=) en majuscules puis minuscules
+    // Stratégie 1 : recherche exacte en majuscules puis minuscules puis tel quel
     for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
       const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
       const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
-      const arr = ocsExtractArray(data);
-      if (arr.length) { found = arr[0]; break; }
+      const hw = ocsExtractHardware(data);
+      if (hw) { found = hw; break; }
     }
 
     // Stratégie 2 : LIKE (partiel)
     if (!found) {
-      const qs = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
+      const qs = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '5' });
       const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
-      const arr = ocsExtractArray(data);
-      // Prend le meilleur match : commence exactement par shortName
-      const sl = shortName.toLowerCase();
-      found = arr.find(d => (d.NAME ?? d.name ?? '').toLowerCase().startsWith(sl)) ?? arr[0] ?? null;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const sl = shortName.toLowerCase();
+        for (const entry of Object.values(data)) {
+          const hw = entry?.hardware;
+          if (hw && (hw.NAME ?? '').toLowerCase().startsWith(sl)) { found = hw; break; }
+        }
+        if (!found) found = Object.values(data)[0]?.hardware ?? null;
+      }
     }
 
     if (!found) {
