@@ -41,9 +41,9 @@ const AbcroisiereServiceChart = () => {
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20, top: 0, bottom: 0 }}>
-            <XAxis type="number" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis dataKey="name" type="category" width={120} tick={{ fill: "hsl(210, 20%, 85%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(220, 15%, 14%)" }} />
+            <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis dataKey="name" type="category" width={120} tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
             <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={24}>
               {data.map((entry) => (
                 <Cell key={entry.fullName} fill={serviceColors[entry.fullName] || serviceColors["Other"]} fillOpacity={0.85} />
