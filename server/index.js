@@ -170,12 +170,64 @@ async function ocsFetch(path) {
       res.on('data', c => { data += c; });
       res.on('end', () => {
         try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
-        catch { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 300) }); }
+        catch { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 600) }); }
       });
     });
     req.on('error', reject);
     req.end();
   });
+}
+
+// Endpoint de diagnostic — accès interne uniquement
+app.get('/api/ocs/debug', async (req, res) => {
+  if (!process.env.OCS_USER || !process.env.OCS_PASS) {
+    return res.json({ error: 'OCS_USER / OCS_PASS non configurés' });
+  }
+  const { dns } = req.query;
+  const shortName = dns ? dns.split('.')[0] : 'TEST';
+  try {
+    const results = {};
+
+    // 1. Ping : liste les 2 premiers ordinateurs pour vérifier accès + format
+    const ping = await ocsFetch('/api/v1/computers?limit=2');
+    results.ping = { status: ping.status, raw: ping.raw ?? null, dataKeys: ping.data ? Object.keys(ping.data) : null, sample: ping.data };
+
+    // 2. Recherche par nom (= exact, majuscules)
+    const qs1 = new URLSearchParams({ where: 'name', operator: '=', value: shortName.toUpperCase(), limit: '1' });
+    const r1 = await ocsFetch(`/api/v1/computers?${qs1}`);
+    results.searchExactUpper = { status: r1.status, raw: r1.raw ?? null, data: r1.data };
+
+    // 3. Recherche LIKE
+    const qs2 = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
+    const r2 = await ocsFetch(`/api/v1/computers?${qs2}`);
+    results.searchLike = { status: r2.status, raw: r2.raw ?? null, data: r2.data };
+
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function ocsParseComputer(hw) {
+  // OCS peut retourner les champs en majuscules ou minuscules selon la version
+  return {
+    id:            hw.ID          ?? hw.HARDWARE_ID  ?? hw.id    ?? null,
+    name:          hw.NAME        ?? hw.name         ?? null,
+    lastInventory: hw.LASTDATE    ?? hw.lastdate      ?? null,
+    osName:        hw.OSNAME      ?? hw.osname        ?? null,
+    ipAddress:     hw.IPADDR      ?? hw.ipaddr        ?? null,
+    totalRam:      hw.MEMORY      ? parseInt(hw.MEMORY, 10) : (hw.memory ? parseInt(hw.memory, 10) : null),
+    cpuName:       hw.PROCESSORT  ?? hw.processort    ?? null,
+    userId:        hw.USERID      ?? hw.userid        ?? null,
+  };
+}
+
+function ocsExtractArray(data) {
+  // OCS peut retourner { data: [...] }, { computers: [...] }, ou directement [...]
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.computers)) return data.computers;
+  return [];
 }
 
 app.get('/api/ocs/computer', async (req, res) => {
@@ -186,29 +238,38 @@ app.get('/api/ocs/computer', async (req, res) => {
   }
   try {
     const shortName = dns.split('.')[0];
-    // Essaie en majuscules puis en minuscules (OCS stocke souvent en majuscules)
+    const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
     let found = null;
+
+    // Stratégie 1 : recherche exacte (=) en majuscules puis minuscules
     for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
       const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
       const { data } = await ocsFetch(`/api/v1/computers?${qs}`);
-      if (data?.data?.length) { found = data.data[0]; break; }
+      const arr = ocsExtractArray(data);
+      if (arr.length) { found = arr[0]; break; }
     }
-    if (!found) return res.status(404).json({ error: 'Ordinateur non trouvé dans OCS' });
 
-    const hw = found;
-    const id = hw.ID ?? hw.HARDWARE_ID ?? hw.id ?? null;
-    const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
+    // Stratégie 2 : LIKE (partiel)
+    if (!found) {
+      const qs = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
+      const { data } = await ocsFetch(`/api/v1/computers?${qs}`);
+      const arr = ocsExtractArray(data);
+      // Prend le meilleur match : commence exactement par shortName
+      const sl = shortName.toLowerCase();
+      found = arr.find(d => (d.NAME ?? d.name ?? '').toLowerCase().startsWith(sl)) ?? arr[0] ?? null;
+    }
 
+    if (!found) {
+      console.warn(`[ocs] Poste non trouvé : ${shortName}`);
+      return res.status(404).json({ error: 'Ordinateur non trouvé dans OCS' });
+    }
+
+    const hw = ocsParseComputer(found);
     res.json({
-      id,
-      name:          hw.NAME        ?? hw.name        ?? null,
-      lastInventory: hw.LASTDATE    ?? hw.lastdate     ?? null,
-      osName:        hw.OSNAME      ?? hw.osname       ?? null,
-      ipAddress:     hw.IPADDR      ?? hw.ipaddr       ?? null,
-      totalRam:      hw.MEMORY      ? parseInt(hw.MEMORY, 10) : null,
-      cpuName:       hw.PROCESSORT  ?? hw.processort   ?? null,
-      userId:        hw.USERID      ?? hw.userid       ?? null,
-      consoleUrl:    id ? `${base}/ocsreports/index.php?function=computer&head=1&val_id=${id}` : `${base}/ocsreports/`,
+      ...hw,
+      consoleUrl: hw.id
+        ? `${base}/ocsreports/index.php?function=computer&head=1&val_id=${hw.id}`
+        : `${base}/ocsreports/`,
     });
   } catch (err) {
     console.error('[ocs]', err.message);
