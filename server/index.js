@@ -189,17 +189,17 @@ app.get('/api/ocs/debug', async (req, res) => {
     const results = {};
 
     // 1. Ping : liste les 2 premiers ordinateurs pour vérifier accès + format
-    const ping = await ocsFetch('/api/v1/computers?limit=2');
+    const ping = await ocsFetch('/ocsapi/v1/computers?limit=2');
     results.ping = { status: ping.status, raw: ping.raw ?? null, dataKeys: ping.data ? Object.keys(ping.data) : null, sample: ping.data };
 
     // 2. Recherche par nom (= exact, majuscules)
     const qs1 = new URLSearchParams({ where: 'name', operator: '=', value: shortName.toUpperCase(), limit: '1' });
-    const r1 = await ocsFetch(`/api/v1/computers?${qs1}`);
+    const r1 = await ocsFetch(`/ocsapi/v1/computers?${qs1}`);
     results.searchExactUpper = { status: r1.status, raw: r1.raw ?? null, data: r1.data };
 
     // 3. Recherche LIKE
     const qs2 = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
-    const r2 = await ocsFetch(`/api/v1/computers?${qs2}`);
+    const r2 = await ocsFetch(`/ocsapi/v1/computers?${qs2}`);
     results.searchLike = { status: r2.status, raw: r2.raw ?? null, data: r2.data };
 
     res.json(results);
@@ -244,7 +244,7 @@ app.get('/api/ocs/computer', async (req, res) => {
     // Stratégie 1 : recherche exacte (=) en majuscules puis minuscules
     for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
       const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
-      const { data } = await ocsFetch(`/api/v1/computers?${qs}`);
+      const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
       const arr = ocsExtractArray(data);
       if (arr.length) { found = arr[0]; break; }
     }
@@ -252,7 +252,7 @@ app.get('/api/ocs/computer', async (req, res) => {
     // Stratégie 2 : LIKE (partiel)
     if (!found) {
       const qs = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
-      const { data } = await ocsFetch(`/api/v1/computers?${qs}`);
+      const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
       const arr = ocsExtractArray(data);
       // Prend le meilleur match : commence exactement par shortName
       const sl = shortName.toLowerCase();
