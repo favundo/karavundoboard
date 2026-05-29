@@ -208,15 +208,21 @@ app.get('/api/ocs/debug', async (req, res) => {
   }
 });
 
-// OCS 2.x retourne { "ID": { hardware: {...}, bios: [], software: [], ... } }
-function ocsExtractHardware(data) {
+// OCS 2.x retourne { "ID": { hardware: {...}, bios: [], drives: [], ... } }
+function ocsExtractEntry(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const keys = Object.keys(data);
   if (!keys.length) return null;
-  return data[keys[0]]?.hardware ?? null;
+  return data[keys[0]] ?? null;
 }
 
-function ocsParseComputer(hw) {
+function ocsParseComputer(entry) {
+  const hw = entry?.hardware ?? {};
+  const bios = (entry?.bios ?? [])[0] ?? {};
+  // Disque système : on cherche la lettre C: (LETTER vaut "C:/" dans OCS)
+  const drives = entry?.drives ?? [];
+  const sysDrive = drives.find(d => (d.LETTER ?? '').toUpperCase().startsWith('C:')) ?? null;
+
   return {
     id:            hw.ID         ?? null,
     name:          hw.NAME       ?? null,
@@ -226,6 +232,10 @@ function ocsParseComputer(hw) {
     totalRam:      hw.MEMORY     ? parseInt(hw.MEMORY, 10) : null,
     cpuName:       hw.PROCESSORT ?? null,
     userId:        hw.USERID     ?? null,
+    manufacturer:  bios.SMANUFACTURER ?? null,
+    model:         bios.SMODEL        ?? null,
+    diskTotal:     sysDrive?.TOTAL != null ? parseInt(sysDrive.TOTAL, 10) : null,
+    diskFree:      sysDrive?.FREE  != null ? parseInt(sysDrive.FREE, 10)  : null,
   };
 }
 
@@ -244,8 +254,8 @@ app.get('/api/ocs/computer', async (req, res) => {
     for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
       const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
       const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
-      const hw = ocsExtractHardware(data);
-      if (hw) { found = hw; break; }
+      const entry = ocsExtractEntry(data);
+      if (entry) { found = entry; break; }
     }
 
     // Stratégie 2 : LIKE (partiel)
@@ -255,10 +265,9 @@ app.get('/api/ocs/computer', async (req, res) => {
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const sl = shortName.toLowerCase();
         for (const entry of Object.values(data)) {
-          const hw = entry?.hardware;
-          if (hw && (hw.NAME ?? '').toLowerCase().startsWith(sl)) { found = hw; break; }
+          if ((entry?.hardware?.NAME ?? '').toLowerCase().startsWith(sl)) { found = entry; break; }
         }
-        if (!found) found = Object.values(data)[0]?.hardware ?? null;
+        if (!found) found = Object.values(data)[0] ?? null;
       }
     }
 

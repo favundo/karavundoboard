@@ -9,6 +9,10 @@ export interface OCSComputer {
   totalRam: number | null;
   cpuName: string | null;
   userId: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  diskTotal: number | null;
+  diskFree: number | null;
   consoleUrl: string;
 }
 

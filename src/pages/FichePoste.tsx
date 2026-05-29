@@ -3,7 +3,7 @@ import {
   ArrowLeft, Monitor, Wifi, WifiOff, Settings, Download,
   Ticket, Plus, User, KeyRound, Laptop, Clock, ExternalLink,
   Shield, ShieldAlert, ShieldOff, Network, AlertTriangle,
-  Database, Cpu, MemoryStick,
+  Database, Cpu, MemoryStick, HardDrive, Factory, Server,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -327,6 +327,35 @@ function OCSSection({ dns }: { dns: string | null }) {
                 <span className="font-semibold">
                   {ocs.totalRam >= 1024 ? `${(ocs.totalRam / 1024).toFixed(0)} Go` : `${ocs.totalRam} Mo`}
                 </span>
+              </div>
+            )}
+            {ocs.diskTotal !== null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <HardDrive size={11} /> Disque C:
+                </span>
+                <span className="font-semibold">
+                  {(ocs.diskTotal / 1024).toFixed(0)} Go
+                  {ocs.diskFree !== null && (
+                    <span className="text-xs font-normal text-muted-foreground"> ({(ocs.diskFree / 1024).toFixed(0)} Go libres)</span>
+                  )}
+                </span>
+              </div>
+            )}
+            {ocs.manufacturer && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <Factory size={11} /> Fabricant
+                </span>
+                <span className="text-xs">{ocs.manufacturer}</span>
+              </div>
+            )}
+            {ocs.model && (
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                  <Server size={11} /> Modèle
+                </span>
+                <span className="text-xs">{ocs.model}</span>
               </div>
             )}
             {ocs.cpuName && (
