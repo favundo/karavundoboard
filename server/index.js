@@ -192,15 +192,21 @@ app.get('/api/ocs/debug', async (req, res) => {
     const ping = await ocsFetch('/ocsapi/v1/computers?limit=2');
     results.ping = { status: ping.status, raw: ping.raw ?? null, dataKeys: ping.data ? Object.keys(ping.data) : null, sample: ping.data };
 
-    // 2. Recherche par nom (= exact, majuscules)
-    const qs1 = new URLSearchParams({ where: 'name', operator: '=', value: shortName.toUpperCase(), limit: '1' });
-    const r1 = await ocsFetch(`/ocsapi/v1/computers?${qs1}`);
-    results.searchExactUpper = { status: r1.status, raw: r1.raw ?? null, data: r1.data };
+    // 2. Recherche par nom via l'endpoint /search (renvoie une liste d'IDs)
+    const qs1 = new URLSearchParams({ start: '0', limit: '20', NAME: shortName.toUpperCase() });
+    const r1 = await ocsFetch(`/ocsapi/v1/computers/search?${qs1}`);
+    results.searchUpper = { status: r1.status, raw: r1.raw ?? null, ids: ocsExtractIds(r1.data), data: r1.data };
 
-    // 3. Recherche LIKE
-    const qs2 = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '3' });
-    const r2 = await ocsFetch(`/ocsapi/v1/computers?${qs2}`);
-    results.searchLike = { status: r2.status, raw: r2.raw ?? null, data: r2.data };
+    const qs2 = new URLSearchParams({ start: '0', limit: '20', NAME: shortName.toLowerCase() });
+    const r2 = await ocsFetch(`/ocsapi/v1/computers/search?${qs2}`);
+    results.searchLower = { status: r2.status, raw: r2.raw ?? null, ids: ocsExtractIds(r2.data), data: r2.data };
+
+    // 3. Détail du premier ID trouvé
+    const firstId = ocsExtractIds(r1.data)[0] ?? ocsExtractIds(r2.data)[0] ?? null;
+    if (firstId != null) {
+      const r3 = await ocsFetch(`/ocsapi/v1/computer/${firstId}`);
+      results.detail = { id: firstId, status: r3.status, raw: r3.raw ?? null, data: r3.data };
+    }
 
     res.json(results);
   } catch (err) {
@@ -214,6 +220,12 @@ function ocsExtractEntry(data) {
   const keys = Object.keys(data);
   if (!keys.length) return null;
   return data[keys[0]] ?? null;
+}
+
+// /computers/search renvoie uniquement une liste d'IDs : [ { "ID": 16 }, ... ]
+function ocsExtractIds(data) {
+  if (!Array.isArray(data)) return [];
+  return data.map(x => x?.ID).filter(v => v != null);
 }
 
 function ocsParseComputer(entry) {
@@ -248,31 +260,37 @@ app.get('/api/ocs/computer', async (req, res) => {
   try {
     const shortName = dns.split('.')[0];
     const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
-    let found = null;
 
-    // Stratégie 1 : recherche exacte en majuscules puis minuscules puis tel quel
+    // 1) Recherche par nom — l'endpoint /search ne renvoie QUE des IDs (LIKE sur la table hardware)
+    let ids = [];
     for (const name of [shortName.toUpperCase(), shortName.toLowerCase(), shortName]) {
-      const qs = new URLSearchParams({ where: 'name', operator: '=', value: name, limit: '1' });
-      const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
-      const entry = ocsExtractEntry(data);
-      if (entry) { found = entry; break; }
+      const qs = new URLSearchParams({ start: '0', limit: '20', NAME: name });
+      const { data } = await ocsFetch(`/ocsapi/v1/computers/search?${qs}`);
+      ids = ocsExtractIds(data);
+      if (ids.length) break;
     }
 
-    // Stratégie 2 : LIKE (partiel)
-    if (!found) {
-      const qs = new URLSearchParams({ where: 'name', operator: 'like', value: `%${shortName}%`, limit: '5' });
-      const { data } = await ocsFetch(`/ocsapi/v1/computers?${qs}`);
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        const sl = shortName.toLowerCase();
-        for (const entry of Object.values(data)) {
-          if ((entry?.hardware?.NAME ?? '').toLowerCase().startsWith(sl)) { found = entry; break; }
-        }
-        if (!found) found = Object.values(data)[0] ?? null;
-      }
-    }
-
-    if (!found) {
+    if (!ids.length) {
       console.warn(`[ocs] Poste non trouvé : ${shortName}`);
+      return res.status(404).json({ error: 'Ordinateur non trouvé dans OCS' });
+    }
+
+    // 2) Détails de chaque candidat : on privilégie la correspondance exacte du nom
+    //    (la recherche OCS est un LIKE, elle peut renvoyer plusieurs machines proches)
+    const sl = shortName.toLowerCase();
+    let found = null;
+    let first = null;
+    for (const id of ids.slice(0, 10)) {
+      const { data } = await ocsFetch(`/ocsapi/v1/computer/${id}`);
+      const entry = ocsExtractEntry(data);
+      if (!entry) continue;
+      if (!first) first = entry;
+      if ((entry?.hardware?.NAME ?? '').toLowerCase() === sl) { found = entry; break; }
+    }
+    found = found ?? first;
+
+    if (!found) {
+      console.warn(`[ocs] Détails introuvables : ${shortName}`);
       return res.status(404).json({ error: 'Ordinateur non trouvé dans OCS' });
     }
 
