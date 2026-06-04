@@ -461,18 +461,43 @@ function rtGet(pathWithQuery) {
       res.on('end', () => resolve(data));
     });
     req.on('error', reject);
+    // RT 4.0.4 (Perl) peut être lent : on coupe à 15 s plutôt que d'empiler les connexions.
+    req.setTimeout(15000, () => req.destroy(new Error('RT timeout')));
     req.end();
   });
+}
+
+// Exécute fn sur items avec au plus `limit` appels simultanés — évite de noyer
+// RT sous des dizaines de requêtes d'historique en parallèle.
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx], idx);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+// Ne recherche que les arrivées récentes (fenêtre glissante) pour garder la
+// requête RT légère ; tout est surchargeable par variables d'env.
+function buildArriveeQuery() {
+  if (process.env.RT_ARRIVEE_QUERY) return process.env.RT_ARRIVEE_QUERY;
+  const days = parseInt(process.env.RT_ARRIVEE_DAYS || '120', 10);
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  return `Subject LIKE 'Creation de compte' AND Created > '${cutoff}' AND Status != 'deleted'`;
 }
 
 function rtArriveeSearch() {
   const params = new URLSearchParams({
     user: process.env.RT_USER,
     pass: process.env.RT_PASS,
-    // Le sujet « Creation de compte » identifie ces tickets quelle que soit la file.
-    query: process.env.RT_ARRIVEE_QUERY || "Subject LIKE 'Creation de compte' AND Status != 'deleted'",
+    query: buildArriveeQuery(),
     orderby: '-Created',
-    rows: process.env.RT_ARRIVEE_ROWS || '50',
+    rows: process.env.RT_ARRIVEE_ROWS || '30',
     format: 'l',
   });
   return rtGet(`/REST/1.0/search/ticket?${params}`);
@@ -518,12 +543,13 @@ app.get('/api/rt/arrivees', async (req, res) => {
   }
   try {
     const tickets = parseRTSearch(await rtArriveeSearch());
-    const arrivals = await Promise.all(tickets.map(async (t) => {
+    // Historiques récupérés 3 par 3 pour ne pas saturer RT.
+    const arrivals = await mapLimit(tickets, 3, async (t) => {
       let body = {};
       try { body = parseArriveeBody(await rtTicketHistory(t.id)); }
       catch (e) { console.error(`[rt-arrivees] history ${t.id}:`, e.message); }
       return { ...t, ...body, responsableEmail: extractResponsableEmail(t.cc) };
-    }));
+    });
     res.json(arrivals);
   } catch (err) {
     console.error('[rt-arrivees]', err.message);
