@@ -402,6 +402,7 @@ function parseRTSearch(text) {
       owner:       fields['Owner']       || '',
       queue:       fields['Queue']       || '',
       requestors:  fields['Requestors']  || '',
+      cc:          fields['Cc']          || '',
       created:     fields['Created']     || '',
       lastUpdated: fields['LastUpdated'] || '',
     });
@@ -436,6 +437,178 @@ app.get('/api/rt/search', async (req, res) => {
     res.json(parseRTSearch(text));
   } catch (err) {
     console.error('[rt-search]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
+// ─── RT Arrivées (créations de compte / nouveaux collaborateurs) ──────────────
+// Les mails RH « [LDAP][RH] Creation de compte: … » créent un ticket dans la
+// file « Arrivées … ». Le corps du mail contient des champs structurés qu'on
+// reparse pour alimenter l'onglet Arrivées.
+
+function rtGet(pathWithQuery) {
+  return new Promise((resolve, reject) => {
+    const base = process.env.RT_URL || 'http://rt.in.karavel.com';
+    const url = new URL(pathWithQuery, base);
+    const lib = url.protocol === 'https:' ? https : http;
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname + url.search,
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function rtArriveeSearch() {
+  const params = new URLSearchParams({
+    user: process.env.RT_USER,
+    pass: process.env.RT_PASS,
+    // Le sujet « Creation de compte » identifie ces tickets quelle que soit la file.
+    query: process.env.RT_ARRIVEE_QUERY || "Subject LIKE 'Creation de compte' AND Status != 'deleted'",
+    orderby: '-Created',
+    rows: process.env.RT_ARRIVEE_ROWS || '50',
+    format: 'l',
+  });
+  return rtGet(`/REST/1.0/search/ticket?${params}`);
+}
+
+function rtTicketHistory(id) {
+  const params = new URLSearchParams({ user: process.env.RT_USER, pass: process.env.RT_PASS, format: 'l' });
+  return rtGet(`/REST/1.0/ticket/${id}/history?${params}`);
+}
+
+// Les champs sont sur une ligne dans le corps du mail ; en sortie RT REST les
+// lignes de continuation sont indentées → on tolère un préfixe d'espaces (^\s*).
+function rtField(text, re) {
+  const m = text.match(re);
+  return m ? m[1].replace(/\r/g, '').trim() : null;
+}
+
+// Email du responsable : on prend la 1re adresse @karavel du Cc qui n'est ni le
+// robot de notification, ni l'expéditeur RH.
+function extractResponsableEmail(cc) {
+  if (!cc) return null;
+  const emails = cc.match(/[\w.+-]+@[\w.-]+\.\w+/g) || [];
+  const ignore = /^(notification-creation-compte|rh)@/i;
+  return emails.find(e => !ignore.test(e)) || null;
+}
+
+function parseArriveeBody(text) {
+  return {
+    prenom:      rtField(text, /^\s*Pr[ée]?nom\s*:\s*(.+)$/im),
+    nom:         rtField(text, /^\s*Nom\s*:\s*(.+)$/im),
+    login:       rtField(text, /^\s*Login\s*:\s*(.+)$/im),
+    service:     rtField(text, /^\s*Service\s*:\s*(.+)$/im),
+    responsable: rtField(text, /^\s*Responsable\s*:\s*(.+)$/im),
+    fonction:    rtField(text, /^\s*Fonction\s*:\s*(.+)$/im),
+    societe:     rtField(text, /^\s*Soci[ée]t[ée]\s*:\s*(.+)$/im),
+    dateArrivee: rtField(text, /^\s*Date d['’]arriv[ée]e\s*:\s*(.+)$/im),
+  };
+}
+
+app.get('/api/rt/arrivees', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  try {
+    const tickets = parseRTSearch(await rtArriveeSearch());
+    const arrivals = await Promise.all(tickets.map(async (t) => {
+      let body = {};
+      try { body = parseArriveeBody(await rtTicketHistory(t.id)); }
+      catch (e) { console.error(`[rt-arrivees] history ${t.id}:`, e.message); }
+      return { ...t, ...body, responsableEmail: extractResponsableEmail(t.cc) };
+    }));
+    res.json(arrivals);
+  } catch (err) {
+    console.error('[rt-arrivees]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
+// Envoi du mot de passe au responsable. Le mdp transite par la requête mais
+// n'est jamais journalisé ni stocké côté serveur.
+app.post('/api/rt/send-mdp', async (req, res) => {
+  const { email, prenom, nom, login, mdp } = req.body || {};
+  if (!email || !mdp) return res.status(400).json({ error: 'email et mdp requis' });
+  if (!/@karavel\.com$/i.test(email)) return res.status(400).json({ error: 'Adresse destinataire invalide' });
+  try {
+    const fullName = [prenom, nom].filter(Boolean).join(' ') || login || 'le nouveau collaborateur';
+    await transporter.sendMail({
+      from: 'noreply@karavel.com',
+      to: email,
+      subject: `Création de compte — identifiants de ${fullName}`,
+      text: `Bonjour,
+
+Le compte du nouveau collaborateur a été créé :
+
+  Collaborateur : ${fullName}
+  Identifiant   : ${login || '—'}
+  Mot de passe  : ${mdp}
+
+Merci de transmettre ces identifiants à l'intéressé(e) et de l'inviter à changer son mot de passe à la première connexion.
+
+Cordialement,
+Le support informatique Karavel`,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[rt-send-mdp]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Clôture du ticket RT (Status: resolved). Nécessite que RT_USER ait les droits.
+function rtSetStatus(id, status) {
+  return new Promise((resolve, reject) => {
+    const base = process.env.RT_URL || 'http://rt.in.karavel.com';
+    const body = new URLSearchParams({
+      user: process.env.RT_USER,
+      pass: process.env.RT_PASS,
+      content: `Status: ${status}`,
+    }).toString();
+    const url = new URL(`/REST/1.0/ticket/${id}/edit`, base);
+    const lib = url.protocol === 'https:' ? https : http;
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+app.post('/api/rt/close', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const { ticketId } = req.body || {};
+  if (!ticketId) return res.status(400).json({ error: 'ticketId requis' });
+  try {
+    const out = await rtSetStatus(ticketId, 'resolved');
+    if (!out.match(/^RT\/[\d.]+ 200/) || /Permission Denied|does not exist|Unable/i.test(out)) {
+      console.error('[rt-close]', out.slice(0, 200));
+      return res.status(502).json({ error: 'RT a refusé la clôture' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[rt-close]', err.message);
     res.status(500).json({ error: 'Erreur connexion RT' });
   }
 });

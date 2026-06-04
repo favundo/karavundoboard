@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      arrivees_workflow: {
+        Row: {
+          ticket_rt: string
+          compte_ldap: boolean
+          logiciels_metiers: boolean
+          telephone: boolean
+          technicien: string | null
+          mdp_envoye_at: string | null
+          cloture: boolean
+          cloture_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          ticket_rt: string
+          compte_ldap?: boolean
+          logiciels_metiers?: boolean
+          telephone?: boolean
+          technicien?: string | null
+          mdp_envoye_at?: string | null
+          cloture?: boolean
+          cloture_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ticket_rt?: string
+          compte_ldap?: boolean
+          logiciels_metiers?: boolean
+          telephone?: boolean
+          technicien?: string | null
+          mdp_envoye_at?: string | null
+          cloture?: boolean
+          cloture_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       abcroisiere_inventory: {
         Row: {
           absence: boolean | null
