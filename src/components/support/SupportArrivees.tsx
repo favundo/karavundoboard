@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
   UserPlus, ExternalLink, CalendarClock, RefreshCw, Check, X,
-  Send, CheckCircle2, Loader2, KeyRound,
+  Send, CheckCircle2, Loader2, KeyRound, Network, AppWindow, Phone,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArrivees, type Arrivee } from '@/hooks/useArrivees';
@@ -48,23 +49,28 @@ function Countdown({ date }: { date: Date | null }) {
 
 const Empty = () => <span className="text-muted-foreground/40">—</span>;
 
-// Bascule fait / à faire
-function ToggleFait({
-  value, onChange, disabled,
-}: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+// Bascule compacte fait / à faire avec icône + libellé court
+function TaskToggle({
+  icon: Icon, label, value, onChange, disabled,
+}: {
+  icon: LucideIcon; label: string;
+  value: boolean; onChange: (v: boolean) => void; disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={() => onChange(!value)}
-      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+      title={`${label} — ${value ? 'fait' : 'à faire'}`}
+      className={`inline-flex w-full items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
         value
           ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
           : 'bg-muted text-muted-foreground hover:bg-muted/70'
       }`}
     >
-      {value ? <Check size={12} /> : <X size={12} />}
-      {value ? 'Fait' : 'À faire'}
+      <Icon size={12} className="shrink-0" />
+      <span className="flex-1 text-left">{label}</span>
+      {value ? <Check size={12} className="shrink-0" /> : <X size={12} className="shrink-0 opacity-50" />}
     </button>
   );
 }
@@ -122,7 +128,7 @@ function ArriveeRow({
     }
   };
 
-  const td = 'px-3 py-2 border-b border-border/40 align-top';
+  const td = 'px-2.5 py-2 border-b border-border/40 align-top';
 
   return (
     <tr className={`transition-colors hover:bg-muted/20 ${zebra ? 'bg-muted/10' : ''} ${isClosed ? 'opacity-60' : ''}`}>
@@ -144,34 +150,37 @@ function ArriveeRow({
         </div>
         <Countdown date={d} />
       </td>
-      {/* Collaborateur */}
-      <td className={`${td} font-medium whitespace-nowrap`}>{fullName || <Empty />}</td>
-      {/* Login */}
-      <td className={`${td} font-mono text-xs text-muted-foreground`}>{a.login ?? <Empty />}</td>
-      {/* Service */}
-      <td className={td}>{a.service ?? <Empty />}</td>
-      {/* Fonction */}
-      <td className={td}>{a.fonction ?? <Empty />}</td>
-      {/* Responsable */}
+      {/* Collaborateur (+ login) */}
+      <td className={`${td} whitespace-nowrap`}>
+        <div className="font-medium">{fullName || <Empty />}</div>
+        {a.login && (
+          <div className="font-mono text-[11px] text-muted-foreground">{a.login}</div>
+        )}
+      </td>
+      {/* Service / Fonction */}
       <td className={td}>
-        {a.responsable ?? <Empty />}
+        <div>{a.service ?? <Empty />}</div>
+        {a.fonction && (
+          <div className="text-[11px] text-muted-foreground">{a.fonction}</div>
+        )}
+      </td>
+      {/* Responsable (+ email + société) */}
+      <td className={td}>
+        <div className="whitespace-nowrap">{a.responsable ?? <Empty />}</div>
         {a.responsableEmail && (
           <div className="font-mono text-[11px] text-muted-foreground">{a.responsableEmail}</div>
         )}
+        {a.societe && (
+          <div className="text-[11px] text-muted-foreground">{a.societe}</div>
+        )}
       </td>
-      {/* Société */}
-      <td className={td}>{a.societe ?? <Empty />}</td>
-      {/* Compte LDAP */}
+      {/* Tâches (LDAP / Logiciels / Téléphone) */}
       <td className={td}>
-        <ToggleFait value={wf.compte_ldap} disabled={isClosed} onChange={v => onPatch({ compte_ldap: v })} />
-      </td>
-      {/* Logiciels métiers */}
-      <td className={td}>
-        <ToggleFait value={wf.logiciels_metiers} disabled={isClosed} onChange={v => onPatch({ logiciels_metiers: v })} />
-      </td>
-      {/* Téléphone */}
-      <td className={td}>
-        <ToggleFait value={wf.telephone} disabled={isClosed} onChange={v => onPatch({ telephone: v })} />
+        <div className="flex w-32 flex-col gap-1">
+          <TaskToggle icon={Network} label="LDAP" value={wf.compte_ldap} disabled={isClosed} onChange={v => onPatch({ compte_ldap: v })} />
+          <TaskToggle icon={AppWindow} label="Logiciels" value={wf.logiciels_metiers} disabled={isClosed} onChange={v => onPatch({ logiciels_metiers: v })} />
+          <TaskToggle icon={Phone} label="Téléphone" value={wf.telephone} disabled={isClosed} onChange={v => onPatch({ telephone: v })} />
+        </div>
       </td>
       {/* Mot de passe */}
       <td className={`${td} whitespace-nowrap`}>
@@ -191,7 +200,7 @@ function ArriveeRow({
               disabled={isClosed}
               placeholder="mot de passe"
               autoComplete="new-password"
-              className="w-32 rounded border border-border bg-background pl-7 pr-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+              className="w-28 rounded border border-border bg-background pl-7 pr-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
             />
           </div>
           <button
@@ -242,8 +251,8 @@ function ArriveeRow({
 }
 
 const COLS = [
-  'Ticket', 'Arrivée', 'Collaborateur', 'Login', 'Service', 'Fonction', 'Responsable',
-  'Société', 'Compte LDAP', 'Logiciels métiers', 'Téléphone', 'Mot de passe', 'Technicien', 'Clôture',
+  'Ticket', 'Arrivée', 'Collaborateur', 'Service / Fonction', 'Responsable',
+  'Tâches', 'Mot de passe', 'Technicien', 'Clôture',
 ];
 
 export default function SupportArrivees() {
@@ -310,7 +319,7 @@ export default function SupportArrivees() {
             <thead>
               <tr className="bg-muted/50 text-left">
                 {COLS.map(h => (
-                  <th key={h} className="px-3 py-2.5 font-semibold border-b border-border whitespace-nowrap">{h}</th>
+                  <th key={h} className="px-2.5 py-2.5 font-semibold border-b border-border whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
