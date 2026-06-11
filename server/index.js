@@ -88,8 +88,11 @@ async function esetGetAllDevices() {
   for (const uuid of DEVICE_GROUP_UUIDS) {
     let pageToken = '';
     do {
-      const qs = pageToken ? `?pageToken=${pageToken}` : '';
-      const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices${qs}`);
+      // recurseSubgroups=true : sans ça l'API ne renvoie que les membres
+      // directs du groupe, pas ceux des sous-groupes (postes "perdus").
+      const params = new URLSearchParams({ recurseSubgroups: 'true', pageSize: '1000' });
+      if (pageToken) params.set('pageToken', pageToken);
+      const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices?${params}`);
       const devices = devData?.devices ?? devData?.items ?? [];
       allDevices.push(...devices);
       pageToken = devData?.nextPageToken ?? '';
