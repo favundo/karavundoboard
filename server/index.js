@@ -76,28 +76,21 @@ let _esetDeviceCacheExpiry = 0;
 
 async function esetGetAllDevices() {
   if (_esetDeviceCache && Date.now() < _esetDeviceCacheExpiry) return _esetDeviceCache;
-  // On interroge les 4 groupes conteneurs réels (Siège, Agence, Nomades, Abcroisière)
-  // plutôt qu'itérer tous les groupes (~100+)
-  const DEVICE_GROUP_UUIDS = [
-    'af42dc52-9228-4b09-996b-4e68e0ee5d45', // Siège
-    '801c4af3-d899-45e9-a790-6e791a46c003', // Agence
-    '6c1966b1-dceb-47fa-b87f-f50398995336', // Nomades
-    '1d8211b8-ece9-407f-845e-b7a45328435e', // Abcroisière
-  ];
+  // On interroge le groupe racine "Tous" en récursif : une seule passe ramène
+  // l'intégralité du parc. Itérer les 4 groupes conteneurs (Siège, Agence,
+  // Nomades, Abcroisière) ratait ~111 postes rangés dans d'autres groupes.
+  const ROOT_GROUP_UUID = '00000000-0000-0000-7001-000000000001'; // "Tous"
   const allDevices = [];
-  for (const uuid of DEVICE_GROUP_UUIDS) {
-    let pageToken = '';
-    do {
-      // recurseSubgroups=true : sans ça l'API ne renvoie que les membres
-      // directs du groupe, pas ceux des sous-groupes (postes "perdus").
-      const params = new URLSearchParams({ recurseSubgroups: 'true', pageSize: '1000' });
-      if (pageToken) params.set('pageToken', pageToken);
-      const { data: devData } = await esetFetch(`/v1/device_groups/${uuid}/devices?${params}`);
-      const devices = devData?.devices ?? devData?.items ?? [];
-      allDevices.push(...devices);
-      pageToken = devData?.nextPageToken ?? '';
-    } while (pageToken);
-  }
+  let pageToken = '';
+  do {
+    // recurseSubgroups=true : sinon l'API ne renvoie que les membres directs.
+    const params = new URLSearchParams({ recurseSubgroups: 'true', pageSize: '1000' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const { data: devData } = await esetFetch(`/v1/device_groups/${ROOT_GROUP_UUID}/devices?${params}`);
+    const devices = devData?.devices ?? devData?.items ?? [];
+    allDevices.push(...devices);
+    pageToken = devData?.nextPageToken ?? '';
+  } while (pageToken);
   _esetDeviceCache = allDevices;
   _esetDeviceCacheExpiry = Date.now() + 5 * 60 * 1000;
   return allDevices;
