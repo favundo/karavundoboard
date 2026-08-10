@@ -464,6 +464,57 @@ export type Database = {
         }
         Relationships: []
       }
+      printer_inventory: {
+        Row: {
+          asset: string
+          created_at: string
+          date_enregistrement: string | null
+          emplacement: string | null
+          fabricant: string | null
+          hostname: string | null
+          id: string
+          ip: string | null
+          mac: string | null
+          modele: string | null
+          service: string | null
+          sn: string | null
+          updated_at: string
+          warranty_duration: number | null
+        }
+        Insert: {
+          asset?: string
+          created_at?: string
+          date_enregistrement?: string | null
+          emplacement?: string | null
+          fabricant?: string | null
+          hostname?: string | null
+          id?: string
+          ip?: string | null
+          mac?: string | null
+          modele?: string | null
+          service?: string | null
+          sn?: string | null
+          updated_at?: string
+          warranty_duration?: number | null
+        }
+        Update: {
+          asset?: string
+          created_at?: string
+          date_enregistrement?: string | null
+          emplacement?: string | null
+          fabricant?: string | null
+          hostname?: string | null
+          id?: string
+          ip?: string | null
+          mac?: string | null
+          modele?: string | null
+          service?: string | null
+          sn?: string | null
+          updated_at?: string
+          warranty_duration?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -120,6 +120,9 @@ const Abcroisiere = () => {
             <a href="/stock" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
               Stock
             </a>
+            <a href="/imprimantes-siege" className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border">
+              Imprimantes Siège
+            </a>
           </nav>
         </div>
       </div>

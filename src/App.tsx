@@ -8,6 +8,7 @@ import Province from "./pages/Province";
 import Agency from "./pages/Agency";
 import Abcroisiere from "./pages/Abcroisiere";
 import Stock from "./pages/Stock";
+import PrinterInventory from "./pages/PrinterInventory";
 import Support from "./pages/Support";
 import Gestion from "./pages/Gestion";
 import NotFound from "./pages/NotFound";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/agences" element={<Agency />} />
           <Route path="/abcroisiere" element={<Abcroisiere />} />
           <Route path="/stock" element={<Stock />} />
+          <Route path="/imprimantes-siege" element={<PrinterInventory />} />
           <Route path="/support" element={<Support />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<SupportDashboard />} />
