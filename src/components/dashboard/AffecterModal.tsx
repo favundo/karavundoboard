@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, UserCheck, AlertTriangle } from "lucide-react";
+import { tableForService, type InventoryTableName } from "@/lib/inventoryContext";
 
 type Step = "asset" | "form";
 
@@ -39,6 +40,8 @@ const AffecterModal = ({ open, onClose }: Props) => {
   const [step, setStep] = useState<Step>("asset");
   const [asset, setAsset] = useState("");
   const [alreadyAssigned, setAlreadyAssigned] = useState<string | null>(null);
+  const [sourceTable, setSourceTable] = useState<InventoryTableName>("inventory_items");
+  const [sourceRow, setSourceRow] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState<FormData>({
     nom: "", uid: "", matricule: "", pseudo: "",
     service: "", type: "", sn: "", dns: "",
@@ -46,39 +49,69 @@ const AffecterModal = ({ open, onClose }: Props) => {
   });
   const queryClient = useQueryClient();
 
+  // Look up the asset in both the Siège and Province tables.
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("nom, uid, matricule, pseudo, service, type, sn, dns, windows_version, remarques, asset")
-        .eq("asset", assetCode.trim())
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      const code = assetCode.trim();
+      const siege = await supabase.from("inventory_items").select("*").eq("asset", code).maybeSingle();
+      if (siege.error) throw siege.error;
+      if (siege.data) return { row: siege.data as Record<string, unknown>, table: "inventory_items" as InventoryTableName };
+      const province = await supabase.from("province_inventory").select("*").eq("asset", code).maybeSingle();
+      if (province.error) throw province.error;
+      if (province.data) return { row: province.data as Record<string, unknown>, table: "province_inventory" as InventoryTableName };
+      return null;
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("inventory_items")
-        .update({
-          nom: form.nom.trim(),
-          uid: form.uid.trim(),
-          matricule: form.matricule.trim(),
-          pseudo: form.pseudo.trim(),
-          service: form.service.trim(),
-          type: form.type,
-          sn: form.sn.trim(),
-          dns: form.dns.trim(),
-          windows_version: form.windows_version.trim(),
-          remarques: form.remarques.trim(),
-        })
+      const editable = {
+        nom: form.nom.trim(),
+        uid: form.uid.trim(),
+        matricule: form.matricule.trim(),
+        pseudo: form.pseudo.trim(),
+        service: form.service.trim(),
+        type: form.type,
+        sn: form.sn.trim(),
+        dns: form.dns.trim(),
+        windows_version: form.windows_version.trim(),
+        remarques: form.remarques.trim(),
+      };
+      const targetTable = tableForService(form.service);
+
+      if (targetTable === sourceTable) {
+        // Same table → simple update in place.
+        const { error } = await supabase
+          .from(sourceTable)
+          .update(editable)
+          .eq("asset", asset.trim());
+        if (error) throw error;
+        return;
+      }
+
+      // Cross-table move: rebuild the full row, insert into target, delete from source.
+      const src = sourceRow ?? {};
+      const moved = {
+        asset: asset.trim(),
+        eset_app: (src.eset_app as string) ?? null,
+        absence: (src.absence as boolean) ?? false,
+        pret: (src.pret as boolean) ?? false,
+        pret_utilisateur: (src.pret_utilisateur as string) ?? null,
+        warranty_end_date: (src.warranty_end_date as string) ?? null,
+        warranty_duration: (src.warranty_duration as number) ?? null,
+        ...editable,
+      };
+      const { error: insertError } = await supabase.from(targetTable).insert(moved);
+      if (insertError) throw insertError;
+      const { error: deleteError } = await supabase
+        .from(sourceTable)
+        .delete()
         .eq("asset", asset.trim());
-      if (error) throw error;
+      if (deleteError) throw deleteError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["province-inventory"] });
       toast.success(`Asset ${asset.trim()} affecté à ${form.nom.trim()} (${form.uid.trim()})`);
       handleClose();
     },
@@ -91,6 +124,8 @@ const AffecterModal = ({ open, onClose }: Props) => {
     setStep("asset");
     setAsset("");
     setAlreadyAssigned(null);
+    setSourceTable("inventory_items");
+    setSourceRow(null);
     setForm({ nom: "", uid: "", matricule: "", pseudo: "", service: "", type: "", sn: "", dns: "", windows_version: "", remarques: "" });
     lookupMutation.reset();
     onClose();
@@ -98,11 +133,14 @@ const AffecterModal = ({ open, onClose }: Props) => {
 
   const handleSearch = async () => {
     if (!asset.trim()) return;
-    const result = await lookupMutation.mutateAsync(asset.trim());
-    if (!result) {
+    const found = await lookupMutation.mutateAsync(asset.trim());
+    if (!found) {
       toast.error(`Aucun équipement trouvé avec l'asset "${asset.trim()}"`);
       return;
     }
+    const result = found.row as Record<string, string | null>;
+    setSourceTable(found.table);
+    setSourceRow(found.row);
 
     // Already assigned?
     if (result.nom && result.nom.trim() !== "") {
@@ -221,7 +259,7 @@ const AffecterModal = ({ open, onClose }: Props) => {
                   <option>Fram</option>
                   <option>Groupes</option>
                   <option>Groupes - Plateforme Lille</option>
-                  <option>Groupes - Plateforme Nord</option>
+                  <option>Groupes - Plateforme Nantes</option>
                   <option>Indiv CE</option>
                   <option>Informatique</option>
                   <option>Juridique</option>

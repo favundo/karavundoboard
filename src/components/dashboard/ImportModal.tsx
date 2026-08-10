@@ -2,24 +2,29 @@ import { useState, useCallback, useRef } from "react";
 import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, ChevronRight, Loader2 } from "lucide-react";
 import { parseFile, type ParseResult } from "@/lib/parseInventory";
 import { useAppendInventory } from "@/hooks/useInventory";
+import { useAppendProvinceInventory } from "@/hooks/useProvinceInventory";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 import { type InventoryItem } from "@/data/inventoryData";
 import { toast } from "sonner";
 
 interface ImportModalProps {
   open: boolean;
   onClose: () => void;
+  ctx?: InventoryCtx;
 }
 
 type Step = "upload" | "preview" | "success";
 
-const ImportModal = ({ open, onClose }: ImportModalProps) => {
+const ImportModal = ({ open, onClose, ctx = SIEGE_CTX }: ImportModalProps) => {
   const [step, setStep] = useState<Step>("upload");
   const [dragging, setDragging] = useState(false);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [parsing, setParsing] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceInventory = useAppendInventory();
+  const appendSiege = useAppendInventory();
+  const appendProvince = useAppendProvinceInventory();
+  const replaceInventory = ctx.section === "province" ? appendProvince : appendSiege;
 
   const reset = () => {
     setStep("upload");

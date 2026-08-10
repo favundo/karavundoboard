@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
+import Province from "./pages/Province";
 import Agency from "./pages/Agency";
 import Abcroisiere from "./pages/Abcroisiere";
 import Stock from "./pages/Stock";
@@ -28,6 +29,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/groupes-province" element={<Province />} />
           <Route path="/agences" element={<Agency />} />
           <Route path="/abcroisiere" element={<Abcroisiere />} />
           <Route path="/stock" element={<Stock />} />

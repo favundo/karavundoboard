@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Search, ArrowLeft } from "lucide-react";
+import { tableForService } from "@/lib/inventoryContext";
 
 type Step = "input" | "form";
 
@@ -68,19 +69,23 @@ const AddAssetModal = ({ open, onClose }: Props) => {
 
   const checkMutation = useMutation({
     mutationFn: async (assetCode: string) => {
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("asset")
-        .eq("asset", assetCode.trim())
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      const code = assetCode.trim();
+      // An asset must be unique across both the Siège and Province tables.
+      const [siege, province] = await Promise.all([
+        supabase.from("inventory_items").select("asset").eq("asset", code).maybeSingle(),
+        supabase.from("province_inventory").select("asset").eq("asset", code).maybeSingle(),
+      ]);
+      if (siege.error) throw siege.error;
+      if (province.error) throw province.error;
+      return siege.data ?? province.data;
     },
   });
 
   const insertMutation = useMutation({
     mutationFn: async (payload: FormData) => {
-      const { error } = await supabase.from("inventory_items").insert({
+      // Route to the province table when the service is a province platform.
+      const table = tableForService(payload.service);
+      const { error } = await supabase.from(table).insert({
         asset: payload.asset.trim(),
         sn: payload.sn.trim(),
         type: payload.type.trim(),
@@ -101,6 +106,7 @@ const AddAssetModal = ({ open, onClose }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["province-inventory"] });
       toast.success(`Asset ${form.asset.trim()} ajouté avec succès`);
       handleClose();
     },
@@ -335,7 +341,7 @@ const AddAssetModal = ({ open, onClose }: Props) => {
                       <option>Fram</option>
                       <option>Groupes</option>
                       <option>Groupes - Plateforme Lille</option>
-                      <option>Groupes - Plateforme Nord</option>
+                      <option>Groupes - Plateforme Nantes</option>
                       <option>Indiv CE</option>
                       <option>Informatique</option>
                       <option>Juridique</option>

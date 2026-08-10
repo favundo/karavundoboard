@@ -1,0 +1,54 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { dbToInventoryItem, type DbInventoryItem } from "./useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
+
+export const useProvinceInventory = () => {
+  return useQuery({
+    queryKey: ["province-inventory"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("province_inventory")
+        .select("*")
+        .order("nom", { ascending: true });
+      if (error) throw error;
+      return (data as DbInventoryItem[]).map(dbToInventoryItem);
+    },
+  });
+};
+
+// Append new items to the province inventory (no deletion)
+export const useAppendProvinceInventory = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: InventoryItem[]) => {
+      const BATCH = 200;
+      for (let i = 0; i < items.length; i += BATCH) {
+        const batch = items.slice(i, i + BATCH).map((item) => ({
+          matricule: item.matricule ?? "",
+          pseudo: item.pseudo ?? "",
+          nom: item.nom ?? "",
+          uid: item.uid ?? "",
+          service: item.service ?? "",
+          type: item.type ?? "portable",
+          asset: item.asset || `EMPTY-${crypto.randomUUID()}`,
+          sn: item.sn ?? "",
+          dns: item.dns ?? "",
+          absence: item.absence ?? false,
+          remarques: item.remarques ?? "",
+          windows_version: item.windows_version ?? "",
+          eset_app: item.eset_app ?? "",
+          warranty_end_date: item.warranty_end_date ?? null,
+          warranty_duration: item.warranty_duration ?? null,
+        }));
+        const { error: insertError } = await supabase
+          .from("province_inventory")
+          .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
+        if (insertError) throw insertError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["province-inventory"] });
+    },
+  });
+};

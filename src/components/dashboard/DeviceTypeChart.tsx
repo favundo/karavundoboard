@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useInventory } from "@/hooks/useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
 import { useMemo } from "react";
 
 const COLORS = ["hsl(190, 95%, 50%)", "hsl(160, 70%, 45%)"];
@@ -16,8 +17,13 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const DeviceTypeChart = () => {
-  const { data: inventory } = useInventory();
+interface DeviceTypeChartProps {
+  items?: InventoryItem[];
+}
+
+const DeviceTypeChart = ({ items: itemsProp }: DeviceTypeChartProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
 
   const data = useMemo(() => {
     const items = inventory ?? [];

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-type Source = 'Siège' | 'ABcroisière' | 'Agences' | 'Stock';
+type Source = 'Siège' | 'Groupes Province' | 'ABcroisière' | 'Agences' | 'Stock';
 
 interface SearchResult {
   id: string;
@@ -22,9 +22,14 @@ interface SearchResult {
 
 async function searchAllTables(query: string): Promise<SearchResult[]> {
   const q = `%${query}%`;
-  const [siege, abc, agences, stock] = await Promise.all([
+  const [siege, province, abc, agences, stock] = await Promise.all([
     supabase
       .from('inventory_items')
+      .select('id,asset,sn,type,nom,uid,service,windows_version,eset_app')
+      .or(`asset.ilike.${q},sn.ilike.${q},nom.ilike.${q},uid.ilike.${q}`)
+      .limit(50),
+    supabase
+      .from('province_inventory')
       .select('id,asset,sn,type,nom,uid,service,windows_version,eset_app')
       .or(`asset.ilike.${q},sn.ilike.${q},nom.ilike.${q},uid.ilike.${q}`)
       .limit(50),
@@ -47,6 +52,7 @@ async function searchAllTables(query: string): Promise<SearchResult[]> {
 
   return [
     ...(siege.data ?? []).map(r => ({ ...r, source: 'Siège' as Source, agence: null })),
+    ...(province.data ?? []).map(r => ({ ...r, source: 'Groupes Province' as Source, agence: null })),
     ...(abc.data ?? []).map(r => ({ ...r, source: 'ABcroisière' as Source, agence: null })),
     ...(agences.data ?? []).map(r => ({
       id: r.id,
@@ -67,6 +73,7 @@ async function searchAllTables(query: string): Promise<SearchResult[]> {
 
 const SOURCE_BADGE: Record<Source, string> = {
   'Siège':       'bg-blue-100 text-blue-800',
+  'Groupes Province': 'bg-cyan-100 text-cyan-800',
   'ABcroisière': 'bg-purple-100 text-purple-800',
   'Agences':     'bg-emerald-100 text-emerald-800',
   'Stock':       'bg-orange-100 text-orange-800',

@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { serviceColors } from "@/data/inventoryData";
+import { serviceColors, type InventoryItem } from "@/data/inventoryData";
 import { useInventory } from "@/hooks/useInventory";
 import { useMemo } from "react";
 
@@ -15,8 +15,13 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const ServiceChart = () => {
-  const { data: inventory } = useInventory();
+interface ServiceChartProps {
+  items?: InventoryItem[];
+}
+
+const ServiceChart = ({ items: itemsProp }: ServiceChartProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
 
   const data = useMemo(() => {
     const counts: Record<string, number> = {};

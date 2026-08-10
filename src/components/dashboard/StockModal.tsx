@@ -13,15 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Archive } from "lucide-react";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 
 type Step = "asset" | "confirm";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  ctx?: InventoryCtx;
 }
 
-const StockModal = ({ open, onClose }: Props) => {
+const StockModal = ({ open, onClose, ctx = SIEGE_CTX }: Props) => {
   const [step, setStep] = useState<Step>("asset");
   const [asset, setAsset] = useState("");
   const [foundInfo, setFoundInfo] = useState("");
@@ -31,7 +33,7 @@ const StockModal = ({ open, onClose }: Props) => {
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .select("*")
         .eq("asset", assetCode.trim())
         .maybeSingle();
@@ -66,15 +68,15 @@ const StockModal = ({ open, onClose }: Props) => {
         });
       if (insertError) throw insertError;
 
-      // Delete from inventory_items
+      // Delete from source inventory
       const { error: deleteError } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .delete()
         .eq("asset", (foundRow.asset as string).trim());
       if (deleteError) throw deleteError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: [ctx.queryKey] });
       queryClient.invalidateQueries({ queryKey: ["stock-inventory"] });
       toast.success(`Asset ${asset.trim()} déplacé vers le stock`);
       handleClose();

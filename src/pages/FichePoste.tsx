@@ -80,6 +80,8 @@ async function fetchAsset(source: string, id: string) {
   switch (source) {
     case 'Siège':
       return supabase.from('inventory_items').select('*').eq('id', id).single();
+    case 'Groupes Province':
+      return supabase.from('province_inventory').select('*').eq('id', id).single();
     case 'ABcroisière':
       return supabase.from('abcroisiere_inventory').select('*').eq('id', id).single();
     case 'Agences':

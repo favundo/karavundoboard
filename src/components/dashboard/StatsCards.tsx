@@ -1,5 +1,6 @@
 import { Monitor, Laptop, Users, UserX, Layers } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -25,8 +26,15 @@ const StatCard = ({ icon, label, value, sublabel, glowClass = "glow-primary" }: 
   </div>
 );
 
-const StatsCards = () => {
-  const { data: inventory, isLoading } = useInventory();
+interface StatsCardsProps {
+  items?: InventoryItem[];
+  isLoading?: boolean;
+}
+
+const StatsCards = ({ items: itemsProp, isLoading: loadingProp }: StatsCardsProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
+  const isLoading = loadingProp ?? q.isLoading;
 
   const items = inventory ?? [];
   const totalDevices = items.length;

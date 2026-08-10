@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useInventory } from "@/hooks/useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
 
 const FALLBACK_COLORS = [
   "hsl(var(--primary))",
@@ -25,8 +26,15 @@ const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?:
   );
 };
 
-const EsetChart = () => {
-  const { data: inventory, isLoading } = useInventory();
+interface EsetChartProps {
+  items?: InventoryItem[];
+  isLoading?: boolean;
+}
+
+const EsetChart = ({ items: itemsProp, isLoading: loadingProp }: EsetChartProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
+  const isLoading = loadingProp ?? q.isLoading;
 
   const chartData = useMemo(() => {
     if (!inventory) return [];

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useInventory } from "@/hooks/useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
 
 const normalizeVersion = (v: string): string =>
   v && v.trim() !== "" ? v.trim() : "Inconnu";
@@ -28,8 +29,15 @@ const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?:
   );
 };
 
-const WindowsVersionChart = () => {
-  const { data: inventory, isLoading } = useInventory();
+interface WindowsVersionChartProps {
+  items?: InventoryItem[];
+  isLoading?: boolean;
+}
+
+const WindowsVersionChart = ({ items: itemsProp, isLoading: loadingProp }: WindowsVersionChartProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
+  const isLoading = loadingProp ?? q.isLoading;
 
   const chartData = useMemo(() => {
     if (!inventory) return [];

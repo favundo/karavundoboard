@@ -3,6 +3,7 @@ import { Search, ChevronDown, ChevronUp, Laptop, Monitor, AlertCircle, Handshake
 import { type InventoryItem } from "@/data/inventoryData";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { useInventory } from "@/hooks/useInventory";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 import ImportModal from "./ImportModal";
 import MultiDeviceModal from "./MultiDeviceModal";
 
@@ -42,8 +43,16 @@ const WarrantyBadge = ({ endDate }: { endDate?: string }) => {
   );
 };
 
-const InventoryTable = () => {
-  const { data: inventoryFromDb, isLoading } = useInventory();
+interface InventoryTableProps {
+  items?: InventoryItem[];
+  isLoading?: boolean;
+  ctx?: InventoryCtx;
+}
+
+const InventoryTable = ({ items: itemsProp, isLoading: loadingProp, ctx = SIEGE_CTX }: InventoryTableProps = {}) => {
+  const q = useInventory();
+  const inventoryFromDb = itemsProp ?? q.data;
+  const isLoading = loadingProp ?? q.isLoading;
   const [importOpen, setImportOpen] = useState(false);
   const [multiDeviceOpen, setMultiDeviceOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -124,7 +133,7 @@ const InventoryTable = () => {
 
   return (
     <>
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} ctx={ctx} />
       <MultiDeviceModal open={multiDeviceOpen} onClose={() => setMultiDeviceOpen(false)} data={inventoryData} />
 
       <div className={`rounded-xl border border-border bg-card transition-all duration-200 ${isExpanded ? "" : "shadow-none"}`}>

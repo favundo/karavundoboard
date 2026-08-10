@@ -13,15 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Search, Trash2 } from "lucide-react";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 
 type Step = "input" | "confirm";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  ctx?: InventoryCtx;
 }
 
-const DecommissionModal = ({ open, onClose }: Props) => {
+const DecommissionModal = ({ open, onClose, ctx = SIEGE_CTX }: Props) => {
   const [step, setStep] = useState<Step>("input");
   const [asset, setAsset] = useState("");
   const [foundName, setFoundName] = useState("");
@@ -31,7 +33,7 @@ const DecommissionModal = ({ open, onClose }: Props) => {
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .select("nom, service, asset, sn")
         .eq("asset", assetCode.trim())
         .maybeSingle();
@@ -44,16 +46,16 @@ const DecommissionModal = ({ open, onClose }: Props) => {
     mutationFn: async (assetCode: string) => {
       const { error: insertError } = await supabase
         .from("decommissioned_items")
-        .insert({ asset: assetCode, serial_number: foundSn, source: "siege" });
+        .insert({ asset: assetCode, serial_number: foundSn, source: ctx.decommSource });
       if (insertError) throw insertError;
       const { error } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .delete()
         .eq("asset", assetCode.trim());
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: [ctx.queryKey] });
       toast.success(`Asset ${asset.trim()} décommissionné avec succès`);
       handleClose();
     },

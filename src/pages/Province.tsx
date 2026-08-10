@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive, ClipboardList } from "lucide-react";
+import { Server, Upload, MonitorX, PlusCircle, Handshake, UserCheck, Archive, ClipboardList } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
@@ -16,8 +16,10 @@ import PretModal from "@/components/dashboard/PretModal";
 import AffecterModal from "@/components/dashboard/AffecterModal";
 import StockModal from "@/components/dashboard/StockModal";
 import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
+import { useProvinceInventory } from "@/hooks/useProvinceInventory";
+import { PROVINCE_CTX } from "@/lib/inventoryContext";
 
-const Index = () => {
+const Province = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [decommissionOpen, setDecommissionOpen] = useState(false);
@@ -27,15 +29,17 @@ const Index = () => {
   const [stockOpen, setStockOpen] = useState(false);
   const [decommListOpen, setDecommListOpen] = useState(false);
 
+  const { data: inventory, isLoading } = useProvinceInventory();
+
   return (
     <div className="min-h-screen bg-background">
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
-      <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} ctx={PROVINCE_CTX} />
+      <ResetModal open={resetOpen} onClose={() => setResetOpen(false)} ctx={PROVINCE_CTX} />
+      <DecommissionModal open={decommissionOpen} onClose={() => setDecommissionOpen(false)} ctx={PROVINCE_CTX} />
       <AddAssetModal open={addAssetOpen} onClose={() => setAddAssetOpen(false)} />
-      <PretModal open={pretOpen} onClose={() => setPretOpen(false)} />
+      <PretModal open={pretOpen} onClose={() => setPretOpen(false)} ctx={PROVINCE_CTX} />
       <AffecterModal open={affecterOpen} onClose={() => setAffecterOpen(false)} />
-      <StockModal open={stockOpen} onClose={() => setStockOpen(false)} />
+      <StockModal open={stockOpen} onClose={() => setStockOpen(false)} ctx={PROVINCE_CTX} />
       <DecommissionedListModal open={decommListOpen} onClose={() => setDecommListOpen(false)} />
 
       {/* Header + Navigation tabs — bloc sticky unique */}
@@ -48,8 +52,8 @@ const Index = () => {
                 <Server size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc - Siège et Groupes</h1>
-                <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">{PROVINCE_CTX.title}</h1>
+                <p className="text-xs text-muted-foreground">{PROVINCE_CTX.subtitle}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -60,7 +64,7 @@ const Index = () => {
                 </span>
               </div>
               <ThemeToggle />
-<button
+              <button
                 onClick={() => setDecommListOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
                 title="PC Décommissionnés"
@@ -68,7 +72,7 @@ const Index = () => {
                 <ClipboardList size={15} />
                 <span className="hidden sm:inline">Rebut</span>
               </button>
-<button
+              <button
                 onClick={() => setAddAssetOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"
               >
@@ -122,13 +126,13 @@ const Index = () => {
           <nav className="flex gap-1 -mb-px">
             <a
               href="/"
-              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
+              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
             >
               Parc - Siège et Groupes
             </a>
             <a
               href="/groupes-province"
-              className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
+              className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
             >
               Groupes Province
             </a>
@@ -157,22 +161,21 @@ const Index = () => {
 
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        <StatsCards />
+        <StatsCards items={inventory} isLoading={isLoading} />
 
-        <InventoryTable />
+        <InventoryTable items={inventory} isLoading={isLoading} ctx={PROVINCE_CTX} />
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <MultiDeviceGauge />
-          <DeviceTypeChart />
-          <WindowsVersionChart />
-          <EsetChart />
+          <MultiDeviceGauge items={inventory} isLoading={isLoading} baselineKey="multi-device-baseline-province" />
+          <DeviceTypeChart items={inventory} />
+          <WindowsVersionChart items={inventory} isLoading={isLoading} />
+          <EsetChart items={inventory} isLoading={isLoading} />
         </div>
 
-        <ServiceChart />
+        <ServiceChart items={inventory} />
       </main>
     </div>
   );
 };
 
-export default Index;
-
+export default Province;

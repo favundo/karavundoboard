@@ -13,15 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Handshake } from "lucide-react";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 
 type Step = "asset" | "utilisateur" | "confirm";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  ctx?: InventoryCtx;
 }
 
-const PretModal = ({ open, onClose }: Props) => {
+const PretModal = ({ open, onClose, ctx = SIEGE_CTX }: Props) => {
   const [step, setStep] = useState<Step>("asset");
   const [asset, setAsset] = useState("");
   const [utilisateur, setUtilisateur] = useState("");
@@ -31,7 +33,7 @@ const PretModal = ({ open, onClose }: Props) => {
   const lookupMutation = useMutation({
     mutationFn: async (assetCode: string) => {
       const { data, error } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .select("nom, service, asset")
         .eq("asset", assetCode.trim())
         .maybeSingle();
@@ -43,13 +45,13 @@ const PretModal = ({ open, onClose }: Props) => {
   const pretMutation = useMutation({
     mutationFn: async ({ assetCode, user }: { assetCode: string; user: string }) => {
       const { error } = await supabase
-        .from("inventory_items")
+        .from(ctx.table)
         .update({ pret: true, pret_utilisateur: user.trim() })
         .eq("asset", assetCode.trim());
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: [ctx.queryKey] });
       toast.success(`PC ${asset.trim()} mis en prêt pour ${utilisateur.trim()}`);
       handleClose();
     },

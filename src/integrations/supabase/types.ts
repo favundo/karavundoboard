@@ -395,6 +395,75 @@ export type Database = {
         }
         Relationships: []
       }
+      province_inventory: {
+        Row: {
+          absence: boolean | null
+          asset: string
+          created_at: string
+          dns: string | null
+          eset_app: string | null
+          id: string
+          matricule: string | null
+          nom: string
+          pret: boolean | null
+          pret_utilisateur: string | null
+          pseudo: string | null
+          remarques: string | null
+          service: string
+          sn: string | null
+          type: string
+          uid: string | null
+          updated_at: string
+          warranty_duration: number | null
+          warranty_end_date: string | null
+          windows_version: string | null
+        }
+        Insert: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          eset_app?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pret?: boolean | null
+          pret_utilisateur?: string | null
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          warranty_duration?: number | null
+          warranty_end_date?: string | null
+          windows_version?: string | null
+        }
+        Update: {
+          absence?: boolean | null
+          asset?: string
+          created_at?: string
+          dns?: string | null
+          eset_app?: string | null
+          id?: string
+          matricule?: string | null
+          nom?: string
+          pret?: boolean | null
+          pret_utilisateur?: string | null
+          pseudo?: string | null
+          remarques?: string | null
+          service?: string
+          sn?: string | null
+          type?: string
+          uid?: string | null
+          updated_at?: string
+          warranty_duration?: number | null
+          warranty_end_date?: string | null
+          windows_version?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

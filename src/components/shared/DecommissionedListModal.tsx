@@ -11,6 +11,7 @@ interface Props {
 
 const SOURCE_LABELS: Record<string, string> = {
   siege: "Siège",
+  province: "Groupes Province",
   agences: "Agences",
   abcroisiere: "ABcroisière",
 };

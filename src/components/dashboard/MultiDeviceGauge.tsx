@@ -1,12 +1,21 @@
 import { useInventory } from "@/hooks/useInventory";
+import { type InventoryItem } from "@/data/inventoryData";
 import { Target, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const BASELINE_KEY = "multi-device-baseline";
 const INITIAL_BASELINE = 48; // Valeur de référence initiale historique
 
-const MultiDeviceGauge = () => {
-  const { data: inventory, isLoading } = useInventory();
+interface MultiDeviceGaugeProps {
+  items?: InventoryItem[];
+  isLoading?: boolean;
+  baselineKey?: string;
+}
+
+const MultiDeviceGauge = ({ items: itemsProp, isLoading: loadingProp, baselineKey }: MultiDeviceGaugeProps = {}) => {
+  const q = useInventory();
+  const inventory = itemsProp ?? q.data;
+  const isLoading = loadingProp ?? q.isLoading;
   const [baseline, setBaseline] = useState<number | null>(null);
 
   const items = inventory ?? [];
@@ -22,7 +31,8 @@ const MultiDeviceGauge = () => {
   // Store baseline on first load (highest seen value)
   useEffect(() => {
     if (isLoading) return;
-    const stored = localStorage.getItem(BASELINE_KEY);
+    const key = baselineKey ?? BASELINE_KEY;
+    const stored = localStorage.getItem(key);
     if (items.length === 0) {
       if (stored) setBaseline(parseInt(stored, 10));
       else setBaseline(INITIAL_BASELINE);
@@ -31,7 +41,7 @@ const MultiDeviceGauge = () => {
     if (stored) {
       const storedVal = parseInt(stored, 10);
       if (multiDeviceCount > storedVal) {
-        localStorage.setItem(BASELINE_KEY, String(multiDeviceCount));
+        localStorage.setItem(key, String(multiDeviceCount));
         setBaseline(multiDeviceCount);
       } else {
         setBaseline(storedVal);
@@ -39,10 +49,10 @@ const MultiDeviceGauge = () => {
     } else {
       // First time: use the higher of current count or historical baseline
       const initial = Math.max(multiDeviceCount, INITIAL_BASELINE);
-      localStorage.setItem(BASELINE_KEY, String(initial));
+      localStorage.setItem(key, String(initial));
       setBaseline(initial);
     }
-  }, [isLoading, multiDeviceCount, items.length]);
+  }, [isLoading, multiDeviceCount, items.length, baselineKey]);
 
   // percentage: 0% when at baseline, 100% when 0
   const percentage = baseline && baseline > 0

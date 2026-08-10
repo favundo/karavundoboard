@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Trash2, X, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 
 interface ResetModalProps {
   open: boolean;
   onClose: () => void;
+  ctx?: InventoryCtx;
 }
 
-const ResetModal = ({ open, onClose }: ResetModalProps) => {
+const ResetModal = ({ open, onClose, ctx = SIEGE_CTX }: ResetModalProps) => {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const queryClient = useQueryClient();
@@ -20,8 +22,8 @@ const ResetModal = ({ open, onClose }: ResetModalProps) => {
 
   const handleReset = async () => {
     setLoading(true);
-    await supabase.from("inventory_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    await supabase.from(ctx.table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    queryClient.invalidateQueries({ queryKey: [ctx.queryKey] });
     setLoading(false);
     setDone(true);
   };
@@ -55,7 +57,7 @@ const ResetModal = ({ open, onClose }: ResetModalProps) => {
               <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
                 <AlertTriangle size={16} className="mt-0.5 shrink-0 text-destructive" />
                 <p className="text-xs text-destructive">
-                  Cette action supprimera <strong>définitivement</strong> tous les équipements de l'onglet <strong>Parc IT — Siège</strong>. Cette opération est irréversible.
+                  Cette action supprimera <strong>définitivement</strong> tous les équipements de l'onglet <strong>{ctx.title}</strong>. Cette opération est irréversible.
                 </p>
               </div>
               <div className="flex justify-end gap-2">
