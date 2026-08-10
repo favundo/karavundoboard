@@ -128,7 +128,7 @@ const Province = () => {
               href="/"
               className="px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
             >
-              Parc - Siège et Groupes
+              Parc Siège
             </a>
             <a
               href="/groupes-province"

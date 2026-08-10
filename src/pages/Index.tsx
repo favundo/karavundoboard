@@ -48,7 +48,7 @@ const Index = () => {
                 <Server size={20} />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc - Siège et Groupes</h1>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Parc Siège</h1>
                 <p className="text-xs text-muted-foreground">Inventaire du parc informatique</p>
               </div>
             </div>
@@ -124,7 +124,7 @@ const Index = () => {
               href="/"
               className="px-4 py-3 text-xs font-medium text-primary border-b-2 border-primary"
             >
-              Parc - Siège et Groupes
+              Parc Siège
             </a>
             <a
               href="/groupes-province"

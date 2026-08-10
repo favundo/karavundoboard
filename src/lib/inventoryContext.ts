@@ -23,7 +23,7 @@ export const SIEGE_CTX: InventoryCtx = {
   table: "inventory_items",
   queryKey: "inventory",
   decommSource: "siege",
-  title: "Parc - Siège et Groupes",
+  title: "Parc Siège",
   subtitle: "Inventaire du parc informatique",
 };
 
