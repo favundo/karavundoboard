@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Printer, PlusCircle, Trash2 } from "lucide-react";
+import { Printer, PlusCircle, Trash2, Upload } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import PrinterInventoryTable from "@/components/printer/PrinterInventoryTable";
 import PrinterAddModal from "@/components/printer/PrinterAddModal";
 import PrinterDeleteModal from "@/components/printer/PrinterDeleteModal";
+import PrinterImportModal from "@/components/printer/PrinterImportModal";
 
 const PrinterInventory = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
       <PrinterAddModal open={addOpen} onClose={() => setAddOpen(false)} />
       <PrinterDeleteModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <PrinterImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Header + Navigation tabs — bloc sticky unique */}
       <div className="sticky top-0 z-40 bg-card/50 backdrop-blur-sm border-b border-border">
@@ -36,6 +39,13 @@ const PrinterInventory = () => {
                   </span>
                 </div>
                 <ThemeToggle />
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Importer</span>
+                </button>
                 <button
                   onClick={() => setAddOpen(true)}
                   className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"

@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Printer } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Printer, FileSpreadsheet, FileText, Pencil } from "lucide-react";
 import { usePrinterInventory, isWarrantyExpired, type PrinterItem } from "@/hooks/usePrinterInventory";
+import { exportPrintersToExcel, exportPrintersToPDF } from "@/lib/exportUtils";
+import PrinterEditModal from "./PrinterEditModal";
 
 type SortKey = keyof PrinterItem;
 
@@ -12,6 +14,7 @@ const PrinterInventoryTable = () => {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("asset");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [editing, setEditing] = useState<PrinterItem | null>(null);
 
   const printers = data ?? [];
 
@@ -62,6 +65,7 @@ const PrinterInventoryTable = () => {
 
   return (
     <div className="rounded-xl border border-border bg-card">
+      <PrinterEditModal printer={editing} onClose={() => setEditing(null)} />
       {/* Toolbar : recherche rapide */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap mr-1">
@@ -77,6 +81,22 @@ const PrinterInventoryTable = () => {
             className="h-8 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
           />
         </div>
+        <button
+          onClick={() => exportPrintersToExcel(filtered)}
+          disabled={filtered.length === 0}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+        >
+          <FileSpreadsheet size={13} />
+          Excel
+        </button>
+        <button
+          onClick={() => exportPrintersToPDF(filtered)}
+          disabled={filtered.length === 0}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+        >
+          <FileText size={13} />
+          PDF
+        </button>
         <span className="ml-auto text-[11px] text-muted-foreground whitespace-nowrap">
           {isLoading ? "…" : `${filtered.length} imprimante${filtered.length !== 1 ? "s" : ""}`}
         </span>
@@ -116,16 +136,37 @@ const PrinterInventoryTable = () => {
                     </span>
                   </th>
                 ))}
+                <th className="w-10 px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {filtered.map((p) => {
                 const expired = isWarrantyExpired(p.date_enregistrement, p.warranty_duration);
                 return (
-                  <tr key={p.id} className="border-b border-border/50 transition-colors hover:bg-muted/20">
+                  <tr
+                    key={p.id}
+                    onClick={() => setEditing(p)}
+                    title="Cliquer pour modifier cette imprimante"
+                    className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/20"
+                  >
                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-primary">{p.asset}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-foreground">{p.modele || "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">{p.ip || "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                      {p.ip ? (
+                        <a
+                          href={`http://${p.ip}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Ouvrir l'interface web de l'imprimante (http://${p.ip})`}
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          {p.ip}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">{p.sn || "—"}</td>
                     <td className="whitespace-nowrap px-4 py-2.5">
                       <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
@@ -148,6 +189,9 @@ const PrinterInventoryTable = () => {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Pencil size={13} className="inline text-muted-foreground" />
                     </td>
                   </tr>
                 );

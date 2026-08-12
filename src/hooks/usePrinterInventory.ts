@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { type ParsedPrinter } from "@/lib/parsePrinters";
 
 export interface PrinterItem {
   id: string;
@@ -62,6 +63,39 @@ export const usePrinterInventory = () => {
         .order("asset", { ascending: true });
       if (error) throw error;
       return (data as DbPrinterRow[]).map(dbToPrinter);
+    },
+  });
+};
+
+// Import : upsert par lots sur la contrainte d'unicité `asset`.
+// Une imprimante déjà connue est mise à jour, une nouvelle est créée.
+export const useUpsertPrinters = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: ParsedPrinter[]) => {
+      const BATCH = 200;
+      for (let i = 0; i < items.length; i += BATCH) {
+        const batch = items.slice(i, i + BATCH).map((p) => ({
+          asset: p.asset,
+          modele: p.modele ?? "",
+          mac: p.mac ?? "",
+          ip: p.ip ?? "",
+          fabricant: p.fabricant ?? "",
+          hostname: p.hostname ?? "",
+          sn: p.sn ?? "",
+          service: p.service ?? "",
+          emplacement: p.emplacement ?? "",
+          date_enregistrement: p.date_enregistrement ?? null,
+          warranty_duration: p.warranty_duration ?? null,
+        }));
+        const { error } = await supabase
+          .from("printer_inventory")
+          .upsert(batch, { onConflict: "asset", ignoreDuplicates: false });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["printer-inventory"] });
     },
   });
 };
