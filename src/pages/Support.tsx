@@ -2,6 +2,7 @@ import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus } f
 import { NavLink } from '@/components/NavLink';
 import { Outlet } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { PriorityTicker } from '@/components/support/PriorityTicker';
 
 const SUB_NAV = [
   { to: '/support/dashboard',    label: 'Dashboard & Recherche rapide',          icon: LayoutDashboard },
@@ -22,10 +23,7 @@ const Support = () => (
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <HeadsetIcon size={20} />
               </div>
-              <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Support IT</h1>
-                <p className="text-xs text-muted-foreground">Planning des interventions</p>
-              </div>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">Support IT</h1>
             </div>
             <ThemeToggle />
           </div>
@@ -53,6 +51,9 @@ const Support = () => (
           ))}
         </div>
       </nav>
+
+      {/* Bandeau défilant des tickets RT à haute priorité */}
+      <PriorityTicker />
 
       {/* Sous-navigation Support */}
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 border-t border-border/50 bg-muted/20">

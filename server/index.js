@@ -437,6 +437,56 @@ app.get('/api/rt/search', async (req, res) => {
   }
 });
 
+// ─── RT Tickets prioritaires (bandeau défilant Support) ──────────────────────
+// RT filtre et trie côté serveur : la requête reste sous la seconde même si la
+// file contient des centaines de tickets ouverts.
+
+const PRIORITY_MIN    = parseInt(process.env.RT_PRIORITY_MIN || '5', 10);
+const PRIORITY_QUEUES = (process.env.RT_PRIORITY_QUEUES || 'sos').split(',').map(q => q.trim()).filter(Boolean);
+// RT 4.0.4 n'honore pas `rows` sur /search/ticket : on l'envoie quand même et on
+// tronque côté serveur, sinon un seuil bas ferait défiler des centaines d'entrées.
+const PRIORITY_ROWS   = parseInt(process.env.RT_PRIORITY_ROWS || '20', 10);
+
+function rtPrioritySearch(min, queues) {
+  const queueClause = queues.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
+  const query = `(${queueClause}) AND (Status = 'new' OR Status = 'open') AND Priority >= ${min}`;
+  const params = new URLSearchParams({
+    user: process.env.RT_USER,
+    pass: process.env.RT_PASS,
+    query,
+    orderby: '-Priority',
+    rows: String(PRIORITY_ROWS),
+    format: 'l',
+  });
+  return rtGet(`/REST/1.0/search/ticket?${params}`);
+}
+
+app.get('/api/rt/priority', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const min = parseInt(req.query.min, 10);
+  const queues = req.query.queue ? String(req.query.queue).split(',') : PRIORITY_QUEUES;
+  try {
+    const text = await rtPrioritySearch(Number.isNaN(min) ? PRIORITY_MIN : min, queues);
+    // parseRTSearch ne remonte pas Priority : on la relit par ticket depuis le bloc brut.
+    const priorities = {};
+    for (const block of text.split(/\n--\n/)) {
+      const id = block.match(/^id:\s*ticket\/(\d+)/m);
+      const p  = block.match(/^Priority:\s*(\d+)/m);
+      if (id && p) priorities[id[1]] = parseInt(p[1], 10);
+    }
+    const tickets = parseRTSearch(text)
+      .map(t => ({ id: t.id, subject: t.subject, status: t.status, owner: t.owner, queue: t.queue, created: t.created, priority: priorities[t.id] ?? 0 }))
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, PRIORITY_ROWS);
+    res.json(tickets);
+  } catch (err) {
+    console.error('[rt-priority]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
 // ─── RT Arrivées (créations de compte / nouveaux collaborateurs) ──────────────
 // Les mails RH « [LDAP][RH] Creation de compte: … » créent un ticket dans la
 // file « Arrivées … ». Le corps du mail contient des champs structurés qu'on
