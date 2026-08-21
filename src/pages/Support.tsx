@@ -1,4 +1,4 @@
-import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus } from 'lucide-react';
+import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus, BarChart3 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Outlet } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -9,6 +9,7 @@ const SUB_NAV = [
   { to: '/support/planning',     label: 'Planning des interventions support IT',  icon: CalendarDays   },
   { to: '/support/planning-tsi', label: 'Planning TSI',                           icon: ClipboardList  },
   { to: '/support/arrivees',     label: 'Arrivées',                               icon: UserPlus       },
+  { to: '/support/stats',        label: 'Stats support',                           icon: BarChart3      },
 ];
 
 const Support = () => (

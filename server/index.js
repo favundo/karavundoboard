@@ -487,12 +487,289 @@ app.get('/api/rt/priority', async (req, res) => {
   }
 });
 
+// ─── RT Stats support (onglet Stats) ─────────────────────────────────────────
+// RT 4.0.4 accepte `fields=` sur /search/ticket : la réponse est un TSV, ce qui
+// permet de récupérer l'année entière (≈3 000 tickets) en 2 requêtes au lieu
+// d'un /show par ticket. Chaque requête coûte ~9 s côté RT (Perl) → cache.
+
+const STATS_QUEUE  = process.env.RT_STATS_QUEUE || 'sos';
+const STATS_TTL    = parseInt(process.env.RT_STATS_TTL_MIN || '1440', 10) * 60000;  // 24 h : le cron du matin fait l'actualisation
+const _statsCache  = new Map();   // `${queue}:${year}` → { at, data }
+const _statsInFlight = new Map(); // même clé → Promise, évite 2 calculs concurrents
+
+// RT choisit lui-même l'ordre des colonnes de `fields` (pas celui demandé) :
+// toujours parser via la ligne d'en-tête, jamais par position.
+function parseRTTsv(text) {
+  if (!/^RT\/[\d.]+ 200/.test(text)) return [];
+  const lines = text.split('\n').filter(l => l.trim() !== '');
+  const head = lines.findIndex(l => l.startsWith('id\t'));
+  if (head === -1) return [];
+  const cols = lines[head].split('\t');
+  return lines.slice(head + 1)
+    .filter(l => /^\d+\t/.test(l))
+    .map(l => {
+      const cells = l.split('\t');
+      return Object.fromEntries(cols.map((c, i) => [c, (cells[i] || '').trim()]));
+    });
+}
+
+function rtFieldSearch(query, fields) {
+  const params = new URLSearchParams({
+    user: process.env.RT_USER,
+    pass: process.env.RT_PASS,
+    query,
+    format: 's',
+    fields,
+  });
+  // 60 s : ces requêtes balaient l'année, elles dépassent le timeout par défaut.
+  return rtGet(`/REST/1.0/search/ticket?${params}`, 60000);
+}
+
+// "2026-08-06 08:52" (heure locale RT). "Not set" / vide → null.
+function parseRTDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(s || '');
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null;
+}
+
+function median(nums) {
+  if (!nums.length) return null;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function quantile(nums, q) {
+  if (!nums.length) return null;
+  const s = [...nums].sort((a, b) => a - b);
+  const pos = (s.length - 1) * q;
+  const lo = Math.floor(pos);
+  return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (pos - lo);
+}
+
+async function buildRTStats(queue, year) {
+  const from = `${year}-01-01`;
+  const to   = `${year + 1}-01-01`;
+  const q    = queue.replace(/'/g, "\\'");
+
+  // 2 requêtes séquentielles : RT 4.0.4 encaisse mal le parallélisme sur des
+  // recherches aussi larges.
+  const closedText = await rtFieldSearch(
+    `Queue = '${q}' AND (Status = 'resolved' OR Status = 'rejected') AND Resolved > '${from}' AND Resolved < '${to}'`,
+    'id,Owner,Status,Created,Resolved',
+  );
+  const createdText = await rtFieldSearch(
+    `Queue = '${q}' AND Created > '${from}' AND Created < '${to}'`,
+    'id,Owner,Status,Created',
+  );
+
+  const closed  = parseRTTsv(closedText);
+  const created = parseRTTsv(createdText);
+
+  const owners = new Map();   // login → agrégat
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    month: `${year}-${String(i + 1).padStart(2, '0')}`,
+    created: 0, resolved: 0, rejected: 0,
+  }));
+  const heat    = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  const perDay  = new Map();  // 'YYYY-MM-DD' → { total, byOwner }
+  const delays  = [];         // heures Created→Resolved, tous techs confondus
+  let marathon  = null;       // le ticket resté ouvert le plus longtemps
+
+  const owner = (login) => {
+    const key = login || 'Nobody';
+    if (!owners.has(key)) {
+      owners.set(key, {
+        owner: key, resolved: 0, rejected: 0, sameDay: 0,
+        months: new Array(12).fill(0), delays: [], bestDay: null,
+      });
+    }
+    return owners.get(key);
+  };
+
+  for (const t of closed) {
+    const res = parseRTDate(t.Resolved);
+    if (!res || res.getFullYear() !== year) continue;
+    const o = owner(t.Owner);
+    const m = res.getMonth();
+
+    if (t.Status === 'rejected') { o.rejected++; months[m].rejected++; continue; }
+
+    o.resolved++;
+    o.months[m]++;
+    months[m].resolved++;
+    heat[(res.getDay() + 6) % 7][res.getHours()]++;   // lundi = 0
+
+    const day = t.Resolved.slice(0, 10);
+    if (!perDay.has(day)) perDay.set(day, { total: 0, byOwner: {} });
+    const d = perDay.get(day);
+    d.total++;
+    d.byOwner[o.owner] = (d.byOwner[o.owner] || 0) + 1;
+
+    const cre = parseRTDate(t.Created);
+    if (cre) {
+      const hours = (res - cre) / 3600000;
+      if (hours >= 0) {
+        o.delays.push(hours);
+        delays.push(hours);
+        if (cre.toDateString() === res.toDateString()) o.sameDay++;
+        if (!marathon || hours > marathon.hours) {
+          marathon = { id: t.id, owner: o.owner, created: t.Created, resolved: t.Resolved, hours: Math.round(hours) };
+        }
+      }
+    }
+  }
+
+  for (const t of created) {
+    const cre = parseRTDate(t.Created);
+    if (cre && cre.getFullYear() === year) months[cre.getMonth()].created++;
+  }
+
+  // Meilleure journée de chaque technicien + de l'équipe
+  let teamBestDay = null;
+  for (const [date, d] of perDay) {
+    if (!teamBestDay || d.total > teamBestDay.count) teamBestDay = { date, count: d.total };
+    for (const [login, n] of Object.entries(d.byOwner)) {
+      const o = owners.get(login);
+      if (!o.bestDay || n > o.bestDay.count) o.bestDay = { date, count: n };
+    }
+  }
+
+  // Mois où chacun a fini n°1 (Nobody exclu : ce n'est pas un technicien)
+  const crowns = {};
+  months.forEach((_, i) => {
+    let top = null;
+    for (const o of owners.values()) {
+      if (o.owner === 'Nobody') continue;
+      if (o.months[i] > 0 && (!top || o.months[i] > top.n)) top = { login: o.owner, n: o.months[i] };
+    }
+    if (top) crowns[top.login] = (crowns[top.login] || 0) + 1;
+  });
+
+  const totalResolved = [...owners.values()].reduce((s, o) => s + o.resolved, 0);
+
+  const ownerList = [...owners.values()]
+    .map(o => ({
+      owner:       o.owner,
+      resolved:    o.resolved,
+      rejected:    o.rejected,
+      share:       totalResolved ? o.resolved / totalResolved : 0,
+      months:      o.months,
+      medianHours: median(o.delays),
+      p90Hours:    quantile(o.delays, 0.9),
+      sameDayPct:  o.resolved ? o.sameDay / o.resolved : 0,
+      bestDay:     o.bestDay,
+      crowns:      crowns[o.owner] || 0,
+    }))
+    .sort((a, b) => b.resolved - a.resolved);
+
+  // Jours ouvrés écoulés dans l'année (pour la cadence)
+  const start   = new Date(year, 0, 1);
+  const end     = new Date(Math.min(Date.now(), new Date(year + 1, 0, 1).getTime()));
+  let workdays  = 0;
+  for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+    const wd = d.getDay();
+    if (wd !== 0 && wd !== 6) workdays++;
+  }
+
+  const backlog = created.filter(t => t.Status === 'new' || t.Status === 'open');
+
+  return {
+    year,
+    queue,
+    generatedAt: new Date().toISOString(),
+    totals: {
+      resolved:   totalResolved,
+      rejected:   [...owners.values()].reduce((s, o) => s + o.rejected, 0),
+      created:    months.reduce((s, m) => s + m.created, 0),
+      openFromYear: backlog.length,
+      unassigned: owners.get('Nobody')?.resolved || 0,
+      perWorkday: workdays ? totalResolved / workdays : 0,
+      workdays,
+    },
+    team: {
+      medianHours: median(delays),
+      p90Hours:    quantile(delays, 0.9),
+      sameDayPct:  totalResolved ? [...owners.values()].reduce((s, o) => s + o.sameDay, 0) / totalResolved : 0,
+      bestDay:     teamBestDay,
+      marathon,
+    },
+    owners: ownerList,
+    months,
+    heat,
+  };
+}
+
+app.get('/api/rt/stats', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const queue = String(req.query.queue || STATS_QUEUE);
+  const year  = parseInt(req.query.year, 10) || new Date().getFullYear();
+  if (year < 2000 || year > 2100) return res.status(400).json({ error: 'Année invalide' });
+
+  const key    = `${queue}:${year}`;
+  const force  = req.query.refresh === '1';
+  const cached = _statsCache.get(key);
+  const fresh  = cached && Date.now() - cached.at < STATS_TTL;
+
+  // Cache expiré mais données présentes : on sert le périmé immédiatement et on
+  // recalcule en fond — 18 s d'attente RT, ça ne se met pas sur le chemin critique.
+  // Le bouton « Actualiser » (refresh=1), lui, attend le vrai recalcul.
+  if (cached && !force) {
+    if (!fresh) refreshRTStats(key, queue, year).catch(() => {});
+    return res.json({ ...cached.data, cachedAt: new Date(cached.at).toISOString(), stale: !fresh });
+  }
+
+  try {
+    const data = await refreshRTStats(key, queue, year);
+    res.json({ ...data, cachedAt: data.generatedAt, stale: false });
+  } catch (err) {
+    console.error('[rt-stats]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
+function refreshRTStats(key, queue, year) {
+  if (_statsInFlight.has(key)) return _statsInFlight.get(key);
+  const p = buildRTStats(queue, year)
+    .then((data) => { _statsCache.set(key, { at: Date.now(), data }); return data; })
+    .finally(() => _statsInFlight.delete(key));
+  _statsInFlight.set(key, p);
+  return p;
+}
+
+// Actualisation quotidienne : le cache est reconstruit tous les matins avant
+// l'arrivée de l'équipe, pour que personne ne tombe sur les ~18 s de calcul RT.
+// Avec un TTL de 24 h, c'est ce cron qui rythme les données de la journée.
+const STATS_CRON = process.env.RT_STATS_CRON || '0 8 * * *';
+const STATS_TZ   = process.env.RT_STATS_TZ   || 'Europe/Paris';
+
+if (cron.validate(STATS_CRON)) {
+  cron.schedule(STATS_CRON, async () => {
+    if (!process.env.RT_USER || !process.env.RT_PASS) return;
+    const year = new Date().getFullYear();
+    for (const queue of STATS_QUEUE.split(',').map(q => q.trim()).filter(Boolean)) {
+      try {
+        const started = Date.now();
+        const data = await refreshRTStats(`${queue}:${year}`, queue, year);
+        console.log(`[rt-stats-cron] ${queue} ${year} — ${data.totals.resolved} résolus en ${Date.now() - started} ms`);
+      } catch (err) {
+        // Le cache précédent reste servi : une panne RT ne vide jamais la page.
+        console.error(`[rt-stats-cron] ${queue} ${year} —`, err.message);
+      }
+    }
+  }, { timezone: STATS_TZ });
+  console.log(`[rt-stats] actualisation planifiée « ${STATS_CRON} » (${STATS_TZ})`);
+} else {
+  console.error(`[rt-stats] RT_STATS_CRON invalide : « ${STATS_CRON} » — actualisation automatique désactivée`);
+}
+
 // ─── RT Arrivées (créations de compte / nouveaux collaborateurs) ──────────────
 // Les mails RH « [LDAP][RH] Creation de compte: … » créent un ticket dans la
 // file « Arrivées … ». Le corps du mail contient des champs structurés qu'on
 // reparse pour alimenter l'onglet Arrivées.
 
-function rtGet(pathWithQuery) {
+function rtGet(pathWithQuery, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const base = process.env.RT_URL || 'http://rt.in.karavel.com';
     const url = new URL(pathWithQuery, base);
@@ -508,7 +785,7 @@ function rtGet(pathWithQuery) {
     });
     req.on('error', reject);
     // RT 4.0.4 (Perl) peut être lent : on coupe à 15 s plutôt que d'empiler les connexions.
-    req.setTimeout(15000, () => req.destroy(new Error('RT timeout')));
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('RT timeout')));
     req.end();
   });
 }
