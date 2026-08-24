@@ -21,6 +21,13 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  // `vite preview` sert le front en production derrière Nginx. Sans bloc
+  // dédié il hérite de server.host ("::") et écoute sur toutes les interfaces,
+  // ce qui permet de charger l'application en contournant l'authentification.
+  preview: {
+    host: "127.0.0.1",
+    port: 8080,
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

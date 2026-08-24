@@ -1185,6 +1185,10 @@ Le système de planning Karavel`,
 });
 
 // ─── Start ────────────────────────────────────────────────
-app.listen(PORT, () => {
+// Écoute UNIQUEMENT sur la boucle locale : Nginx est le seul point d'entrée.
+// Sans cela, on joint l'API directement depuis le réseau en contournant
+// l'authentification — et surtout on peut forger l'en-tête Remote-User
+// qu'Authelia est censé être seul à produire.
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`[api] Serveur email démarré sur le port ${PORT}`);
 });
