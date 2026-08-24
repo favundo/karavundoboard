@@ -12,16 +12,23 @@
 #     résolus, groupes karinventaire-tech (6 membres) et karinventaire-admin
 #     (1 membre) confirmés présents dans l'annuaire.
 #
-#     Il ne reste que 4 valeurs « À_REMPLIR », TOUTES des secrets, à renseigner
+#     Il ne reste que 3 valeurs « À_REMPLIR », TOUTES des secrets, à renseigner
 #     directement sur le serveur — elles n'ont jamais à transiter ailleurs.
 ###############################################################################
 
 theme: auto
-# Généré par : docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64
-jwt_secret: À_REMPLIR_SECRET_JWT
 
 server:
-  address: tcp://0.0.0.0:9091
+  # Portail servi sur un SOUS-CHEMIN du vhost existant, pas sur un sous-domaine :
+  # pas d'enregistrement DNS à demander, pas de certificat supplémentaire.
+  # Vérifié sur authelia v4.38.19 — le portail répond bien sur /authelia/ avec
+  # le bon <base href>, et le point de contrôle auth_request sur
+  # /authelia/api/authz/auth-request.
+  address: tcp://0.0.0.0:9091/authelia
+
+# Pas de jwt_secret : il est déprécié en 4.38 et ne sert qu'à la
+# réinitialisation de mot de passe, que nous désactivons plus bas.
+# Vérifié : la configuration passe validate-config sans lui.
 
 log:
   level: info
@@ -122,14 +129,16 @@ access_control:
 ###############################################################################
 session:
   name: authelia_session
-  # Généré comme le jwt_secret ci-dessus.
+  # Généré par : authelia crypto rand --length 64 (voir README, étape 1).
   secret: À_REMPLIR_SECRET_SESSION
   expiration: 12h        # une journée de travail
   inactivity: 4h
   remember_me: 1M
   cookies:
-    - domain: in.karavel.com
-      authelia_url: https://auth.in.karavel.com
+    # Domaine restreint au seul vhost concerné : le cookie de session n'est pas
+    # émis vers les autres machines de in.karavel.com.
+    - domain: karinventaire01.in.karavel.com
+      authelia_url: https://karinventaire01.in.karavel.com/authelia
       default_redirection_url: https://karinventaire01.in.karavel.com
 
 regulation:

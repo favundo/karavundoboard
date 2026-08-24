@@ -34,14 +34,17 @@ C'est ce qui permet de relier l'utilisateur connecté à son planning
 
 ## Ce qu'il reste à fournir
 
-4 valeurs, **toutes secrètes**, à renseigner directement sur le serveur :
+3 valeurs, **toutes secrètes**, à renseigner directement sur le serveur :
 
 | Placeholder | Origine |
 |---|---|
 | `À_REMPLIR_MDP_COMPTE_DE_SERVICE` | mot de passe de `cs-karinventaire` |
-| `À_REMPLIR_SECRET_JWT` | généré (étape 2) |
-| `À_REMPLIR_SECRET_SESSION` | généré (étape 2) |
-| `À_REMPLIR_CLE_CHIFFREMENT_STOCKAGE` | généré (étape 2) |
+| `À_REMPLIR_SECRET_SESSION` | généré (étape 1) |
+| `À_REMPLIR_CLE_CHIFFREMENT_STOCKAGE` | généré (étape 1) |
+
+> `jwt_secret` a été retiré : il est déprécié en 4.38 et ne sert qu'à la
+> réinitialisation de mot de passe, que nous désactivons. Vérifié — la
+> configuration passe `validate-config` sans lui.
 
 ---
 
@@ -50,38 +53,40 @@ C'est ce qui permet de relier l'utilisateur connecté à son planning
 L'ordre compte. **On valide le portail avant de brancher `auth_request`** :
 l'inverse coupe l'accès à tout le monde si Authelia ne démarre pas.
 
-### Étape 1 — Enregistrement DNS
+### Portail sur un sous-chemin — pas de DNS, pas de certificat
 
-`auth.in.karavel.com` n'existe pas encore. Il faut le créer :
+Le portail est servi sur `https://karinventaire01.in.karavel.com/authelia`,
+sur le vhost qui existe déjà. Aucun enregistrement DNS à demander à l'équipe
+qui gère la zone, aucun certificat supplémentaire.
 
-```
-auth.in.karavel.com.  A  10.12.8.12
-```
+**Vérifié sur `authelia:4.38.19`**, pas seulement lu dans la documentation :
+le portail répond sur `/authelia/` avec le bon `<base href>`, et le point de
+contrôle `auth_request` sur `/authelia/api/authz/auth-request`.
 
-(ou un CNAME vers `karinventaire01.in.karavel.com`)
+> ⚠️ Le certificat wildcard `*.in.karavel.com` en place **expire le
+> 16 septembre 2026**. Après cette date, l'appli *et* le portail tombent
+> ensemble. À renouveler indépendamment de ce chantier.
 
-Le certificat TLS en place est un **wildcard `*.in.karavel.com`** (Sectigo) :
-il couvre déjà ce sous-domaine, aucun certificat à demander.
-
-> ⚠️ Ce certificat **expire le 16 septembre 2026**. Après cette date, l'appli
-> *et* le portail tombent ensemble. À renouveler indépendamment de ce chantier.
-
-### Étape 2 — Secrets
+### Étape 1 — Secrets
 
 ```bash
-for s in jwt_secret session_secret storage_encryption_key; do
+for s in session_secret storage_encryption_key; do
   echo "$s: $(docker run --rm authelia/authelia:4.38 \
     authelia crypto rand --length 64 --charset alphanumeric | tail -1)"
 done
 ```
 
-### Étape 3 — Installer Authelia
+### Étape 2 — Installer Authelia
 
 ```bash
 sudo mkdir -p /opt/authelia && cd /opt/authelia
 # y copier configuration.yml et docker-compose.yml
-# puis remplacer les 4 À_REMPLIR dans configuration.yml
+# puis remplacer les 3 À_REMPLIR dans configuration.yml
 sudo chmod 600 configuration.yml       # il contient désormais des secrets
+
+# Contrôle avant démarrage
+docker run --rm -v /opt/authelia/configuration.yml:/config/configuration.yml:ro \
+  authelia/authelia:4.38 authelia validate-config --config /config/configuration.yml
 
 docker compose up -d
 docker compose logs -f authelia        # attendre « Startup complete »
@@ -90,25 +95,29 @@ docker compose logs -f authelia        # attendre « Startup complete »
 Si les logs mentionnent LDAP, c'est que le bind échoue : reprendre le mot de
 passe du compte de service avant d'aller plus loin.
 
-### Étape 4 — Publier le portail, et RIEN d'autre
+### Étape 3 — Publier le portail, et RIEN d'autre
 
-Ajouter le vhost `auth.in.karavel.com` (voir `nginx-karavundoboard.conf`), puis :
+Ajouter **uniquement** le bloc `location /authelia` du fichier
+`nginx-karavundoboard.conf`, puis :
 
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-**Valider maintenant, avant de toucher au vhost de l'appli :** ouvrir
-`https://auth.in.karavel.com`, se connecter avec son compte AD. Une connexion
-réussie prouve d'un coup le DNS, le certificat, le bind AD et les groupes.
+> ⚠️ Ce bloc ne doit **jamais** être protégé par `auth_request` : il faudrait
+> être connecté pour accéder à la page de connexion.
 
-Tant que cette page ne fonctionne pas, ne pas passer à l'étape 5.
+**Valider maintenant, avant de toucher au reste du vhost :** ouvrir
+`https://karinventaire01.in.karavel.com/authelia` et se connecter avec son
+compte AD. Une connexion réussie prouve d'un coup le chemin, le bind AD et les
+groupes — pendant que l'application reste accessible normalement.
 
-### Étape 5 — Protéger l'application
+Tant que cette page ne fonctionne pas, ne pas passer à l'étape 4.
+
+### Étape 4 — Protéger l'application
 
 1. Déposer `authelia-authrequest.conf` dans `/etc/nginx/snippets/`.
-2. Dans le vhost `karinventaire01`, ajouter le bloc
-   `location = /internal/authelia/authz` (voir `nginx-karavundoboard.conf`).
+2. Ajouter le bloc `location = /internal/authelia/authz`.
 3. Ajouter **une seule ligne** dans chaque `location` à protéger — `/`, `/api/`
    et celle qui sert PostgREST :
 
@@ -127,7 +136,7 @@ Tant que cette page ne fonctionne pas, ne pas passer à l'étape 5.
 > endroit qui protège réellement les données. Exemptée, l'authentification ne
 > protège que l'apparence de l'application.
 
-### Étape 6 — Boucler côté application
+### Étape 5 — Boucler côté application
 
 `server/index.js` fait `app.listen(PORT)`, donc écoute sur `0.0.0.0`. Tant que
 c'est le cas, n'importe qui sur le réseau interne peut joindre
@@ -147,7 +156,7 @@ Le scénario à connaître avant de commencer, pas pendant.
 **Symptôme :** plus personne n'entre, y compris toi.
 
 **Retour arrière immédiat** — commenter les lignes `include` ajoutées à
-l'étape 5, puis :
+l'étape 4, puis :
 
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
@@ -160,7 +169,7 @@ Authelia peut continuer de tourner, il n'est plus sur le chemin.
 
 | Symptôme | Cause probable |
 |---|---|
-| Boucle de redirection vers le portail | `session.cookies.domain` ne couvre pas le vhost |
+| Boucle de redirection vers le portail | `location /authelia` protégé par erreur, ou `session.cookies.domain` mal réglé |
 | Connexion acceptée puis « accès refusé » | compte absent de `karinventaire-tech` |
 | Erreur LDAP au démarrage | mot de passe du compte de service, ou `tls.skip_verify` |
 | 502 sur le portail | conteneur arrêté — `docker compose ps` |
