@@ -3,6 +3,7 @@ import { Upload, X, CheckCircle2, AlertCircle, Loader2, Network } from "lucide-r
 import { parseAgencyFile } from "@/lib/parseAgencyInventory";
 import { useAppendAgencyInventory, type AgencyItem } from "@/hooks/useAgencyInventory";
 import { toast } from "sonner";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -58,7 +59,11 @@ const AgencyImportModal = ({ open, onClose }: Props) => {
     onClose();
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">

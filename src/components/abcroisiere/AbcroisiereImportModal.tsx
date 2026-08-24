@@ -4,6 +4,7 @@ import { parseFile, type ParseResult } from "@/lib/parseInventory";
 import { useAppendAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
 import { type InventoryItem } from "@/data/inventoryData";
 import { toast } from "sonner";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 interface AbcroisiereImportModalProps {
   open: boolean;
@@ -77,7 +78,11 @@ const AbcroisiereImportModal = ({ open, onClose }: AbcroisiereImportModalProps) 
     }
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   const PREVIEW_COLS: { key: keyof InventoryItem; label: string }[] = [
     { key: "nom", label: "Collaborateur" },

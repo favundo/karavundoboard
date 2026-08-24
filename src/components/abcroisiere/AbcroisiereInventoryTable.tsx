@@ -5,6 +5,7 @@ import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { useAbcroisiereInventory } from "@/hooks/useAbcroisiereInventory";
 import AbcroisiereImportModal from "./AbcroisiereImportModal";
 import MultiDeviceModal from "@/components/dashboard/MultiDeviceModal";
+import { AdminOnly } from "@/components/AdminOnly";
 
 type SortKey = keyof InventoryItem;
 
@@ -134,9 +135,11 @@ const AbcroisiereInventoryTable = () => {
                 <p className="text-sm font-medium text-foreground">Aucun équipement dans l'inventaire</p>
                 <p className="mt-1 text-xs text-muted-foreground">Cliquez sur « Importer » pour charger votre fichier Excel.</p>
               </div>
-              <button onClick={() => setImportOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
-                <Upload size={14} />Importer mon fichier
-              </button>
+              <AdminOnly>
+                <button onClick={() => setImportOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
+                  <Upload size={14} />Importer mon fichier
+                </button>
+              </AdminOnly>
             </div>
           ) : (
             <table className="w-full text-xs">

@@ -13,6 +13,7 @@ import AgencyDecommissionModal from "@/components/agency/AgencyDecommissionModal
 import AgencyEsetChart from "@/components/agency/AgencyEsetChart";
 import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 import { AGENCES as BASE_AGENCES } from "@/components/agency/agencesBase";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const CUSTOM_AGENCES_KEY = "kar-custom-agences";
 const SUPPRESSED_AGENCES_KEY = "kar-suppressed-agences";
@@ -127,14 +128,16 @@ const Agency = () => {
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
               </button>
-              <button
-                onClick={() => setImportOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <Upload size={15} />
-                <span className="hidden sm:inline">Mettre à jour</span>
-                <span className="sm:hidden">Import</span>
-              </button>
+              <AdminOnly>
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Mettre à jour</span>
+                  <span className="sm:hidden">Import</span>
+                </button>
+              </AdminOnly>
             </div>
           </div>
         </div>

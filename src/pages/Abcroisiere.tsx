@@ -13,6 +13,7 @@ import AbcroisiereAffecterModal from "@/components/abcroisiere/AbcroisiereAffect
 import AbcroisiereStockModal from "@/components/abcroisiere/AbcroisiereStockModal";
 import AbcroisiereDecommissionModal from "@/components/abcroisiere/AbcroisiereDecommissionModal";
 import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const Abcroisiere = () => {
   const [importOpen, setImportOpen] = useState(false);
@@ -88,14 +89,16 @@ const Abcroisiere = () => {
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
               </button>
-              <button
-                onClick={() => setImportOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <Upload size={15} />
-                <span className="hidden sm:inline">Mettre à jour</span>
-                <span className="sm:hidden">Import</span>
-              </button>
+              <AdminOnly>
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Mettre à jour</span>
+                  <span className="sm:hidden">Import</span>
+                </button>
+              </AdminOnly>
             </div>
           </div>
         </div>

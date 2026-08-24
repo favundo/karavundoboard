@@ -4,6 +4,7 @@ import { parseFile, type ParseResult } from "@/lib/parseInventory";
 import { useAppendStockInventory } from "@/hooks/useStockInventory";
 import { type InventoryItem } from "@/data/inventoryData";
 import { toast } from "sonner";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 interface StockImportModalProps {
   open: boolean;
@@ -76,7 +77,11 @@ const StockImportModal = ({ open, onClose }: StockImportModalProps) => {
     }
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   const PREVIEW_COLS: { key: keyof InventoryItem; label: string }[] = [
     { key: "nom", label: "Collaborateur" },

@@ -6,6 +6,7 @@ import { useAppendProvinceInventory } from "@/hooks/useProvinceInventory";
 import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
 import { type InventoryItem } from "@/data/inventoryData";
 import { toast } from "sonner";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 interface ImportModalProps {
   open: boolean;
@@ -81,7 +82,11 @@ const ImportModal = ({ open, onClose, ctx = SIEGE_CTX }: ImportModalProps) => {
     }
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   const PREVIEW_COLS: { key: keyof InventoryItem; label: string }[] = [
     { key: "nom", label: "Collaborateur" },

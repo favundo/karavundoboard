@@ -5,6 +5,7 @@ import PrinterInventoryTable from "@/components/printer/PrinterInventoryTable";
 import PrinterAddModal from "@/components/printer/PrinterAddModal";
 import PrinterDeleteModal from "@/components/printer/PrinterDeleteModal";
 import PrinterImportModal from "@/components/printer/PrinterImportModal";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const PrinterInventory = () => {
   const [addOpen, setAddOpen] = useState(false);
@@ -39,13 +40,15 @@ const PrinterInventory = () => {
                   </span>
                 </div>
                 <ThemeToggle />
-                <button
-                  onClick={() => setImportOpen(true)}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-                >
-                  <Upload size={15} />
-                  <span className="hidden sm:inline">Importer</span>
-                </button>
+                <AdminOnly>
+                  <button
+                    onClick={() => setImportOpen(true)}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                  >
+                    <Upload size={15} />
+                    <span className="hidden sm:inline">Importer</span>
+                  </button>
+                </AdminOnly>
                 <button
                   onClick={() => setAddOpen(true)}
                   className="inline-flex h-9 items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 text-sm font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/20"

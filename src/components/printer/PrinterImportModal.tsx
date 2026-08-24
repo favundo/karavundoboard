@@ -3,6 +3,7 @@ import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, ChevronRight, Lo
 import { parsePrinterFile, type PrinterParseResult } from "@/lib/parsePrinters";
 import { useUpsertPrinters } from "@/hooks/usePrinterInventory";
 import { toast } from "sonner";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 interface Props {
   open: boolean;
@@ -70,7 +71,11 @@ const PrinterImportModal = ({ open, onClose }: Props) => {
     }
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

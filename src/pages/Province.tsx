@@ -18,6 +18,7 @@ import StockModal from "@/components/dashboard/StockModal";
 import DecommissionedListModal from "@/components/shared/DecommissionedListModal";
 import { useProvinceInventory } from "@/hooks/useProvinceInventory";
 import { PROVINCE_CTX } from "@/lib/inventoryContext";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const Province = () => {
   const [importOpen, setImportOpen] = useState(false);
@@ -107,14 +108,16 @@ const Province = () => {
                 <MonitorX size={15} />
                 <span className="hidden sm:inline">Décommissionner</span>
               </button>
-              <button
-                onClick={() => setImportOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <Upload size={15} />
-                <span className="hidden sm:inline">Mettre à jour</span>
-                <span className="sm:hidden">Import</span>
-              </button>
+              <AdminOnly>
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Mettre à jour</span>
+                  <span className="sm:hidden">Import</span>
+                </button>
+              </AdminOnly>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Trash2, X, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { SIEGE_CTX, type InventoryCtx } from "@/lib/inventoryContext";
+import { AdminRequired, useIsAdmin } from "@/components/AdminOnly";
 
 interface ResetModalProps {
   open: boolean;
@@ -28,7 +29,11 @@ const ResetModal = ({ open, onClose, ctx = SIEGE_CTX }: ResetModalProps) => {
     setDone(true);
   };
 
+  const isAdmin = useIsAdmin();
+
   if (!open) return null;
+  // Second rideau : même si un bouton était oublié quelque part, refus.
+  if (!isAdmin) return <AdminRequired onClose={onClose} />;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
