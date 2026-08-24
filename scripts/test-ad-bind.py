@@ -80,6 +80,15 @@ def recv_msg(s):
 def main():
     pw = os.environ.get('MDP') or getpass.getpass(f'Mot de passe de {BIND_USER} : ')
 
+    # Aide au diagnostic sans rien révéler : un collage tronqué ou un espace
+    # parasite se voit à la longueur, et se corrige sans dépenser un essai.
+    alerte = ''
+    if pw != pw.strip():
+        alerte = "  ⚠ espace en début ou fin — probablement un collage malheureux"
+    elif not pw.isascii():
+        alerte = '  ⚠ contient des caractères non-ASCII'
+    print(f"mot de passe saisi : {len(pw)} caractères{alerte}")
+
     print(f"→ {DC}:636   bind {BIND_USER}   base {BASE_DN}\n")
 
     ctx = ssl.create_default_context()
