@@ -1,0 +1,149 @@
+###############################################################################
+# Authelia — karavundoboard
+#
+# Portail d'authentification devant https://karinventaire01.in.karavel.com
+# Annuaire : Active Directory (bind LDAPS sur un contrôleur de domaine).
+#
+# ⚠️  CE FICHIER EST UN MODÈLE VERSIONNÉ — il ne doit JAMAIS contenir de
+#     secret. Copiez-le sur le serveur, remplissez-le là-bas, et ne recommittez
+#     pas la version remplie.
+#
+#     Raccordement AD VALIDÉ le 2026-08-24 par bind réel : 7/7 techniciens
+#     résolus, groupes karinventaire-tech (6 membres) et karinventaire-admin
+#     (1 membre) confirmés présents dans l'annuaire.
+#
+#     Il ne reste que 4 valeurs « À_REMPLIR », TOUTES des secrets, à renseigner
+#     directement sur le serveur — elles n'ont jamais à transiter ailleurs.
+###############################################################################
+
+theme: auto
+# Généré par : docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64
+jwt_secret: À_REMPLIR_SECRET_JWT
+
+server:
+  address: tcp://0.0.0.0:9091
+
+log:
+  level: info
+  format: text
+
+totp:
+  disable: true          # pas de MFA : appli interne, on s'appuie sur l'AD
+
+###############################################################################
+# Backend d'authentification — Active Directory
+###############################################################################
+authentication_backend:
+
+  # On n'autorise PAS Authelia à écrire dans l'AD. La réinitialisation de mot
+  # de passe reste du ressort des admins du domaine.
+  password_reset:
+    disable: true
+
+  # Cache la validation du mot de passe pendant 5 min pour ne pas marteler le DC.
+  refresh_interval: 5m
+
+  ldap:
+    # Le preset activedirectory pose d'office les filtres et attributs AD :
+    # sAMAccountName pour le login, memberOf pour les groupes.
+    implementation: activedirectory
+
+    # LDAPS obligatoire : en ldap:// (389) le mot de passe des techniciens
+    # circule EN CLAIR sur le réseau à chaque connexion.
+    # ad02 a été validé depuis la machine de dev (bind OK le 2026-08-24).
+    # ⚠️  Mais c'est UN SEUL DC : s'il tombe, plus personne ne se connecte.
+    #     Il y en a quatre (ad-rdm, ad02, ad03, ad04) et Authelia 4.38 n'accepte
+    #     qu'une adresse. Préférer un nom à répartition de charge s'il en existe
+    #     un — tester ldapadm.in.karavel.com:636 DEPUIS LE SERVEUR (injoignable
+    #     depuis le poste de dev, sous-réseau différent).
+    address: ldaps://ad02.in.karavel.com:636
+
+    tls:
+      # Le DC présente un certificat émis par une AC interne.
+      # true = « ça marche tout de suite », mais on perd la protection contre un
+      # DC usurpé. Pour faire propre : passer à false et monter la chaîne de
+      # l'AC interne via certificate_chain ci-dessous.
+      skip_verify: true
+      # certificate_chain: |
+      #   -----BEGIN CERTIFICATE-----
+      #   …
+
+    base_dn: DC=in,DC=karavel,DC=com
+
+    # Volontairement vides : les 7 techniciens ont été trouvés par une recherche
+    # en sous-arbre depuis la racine. Restreindre à une OU casserait si un compte
+    # est rangé ailleurs.
+    additional_users_dn: ""
+    additional_groups_dn: ""
+
+    # Le tech saisit son identifiant AD court (ex. « nehad »), pas son UPN.
+    # Si vous préférez l'UPN (nehad@karavel.com), remplacer sAMAccountName par
+    # userPrincipalName ci-dessous.
+    users_filter: "(&(|({username_attribute}={input})({mail_attribute}={input}))(sAMAccountType=805306368)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+    # sAMAccountType=805306368  → comptes utilisateurs uniquement
+    # userAccountControl:...803:=2 → exclut les comptes désactivés
+
+    # Groupes dont l'utilisateur est membre, imbrication comprise
+    # (1.2.840.113556.1.4.1941 = LDAP_MATCHING_RULE_IN_CHAIN, spécifique AD).
+    groups_filter: "(&(member:1.2.840.113556.1.4.1941:={dn})(objectClass=group))"
+
+    attributes:
+      username: sAMAccountName
+      display_name: displayName
+      mail: mail
+      group_name: cn
+
+    # Compte de service, en forme UPN — validée par bind réel le 2026-08-24.
+    # L'AD REFUSE le sAMAccountName nu (« cs-karinventaire ») avec un code 49
+    # trompeur qui ressemble à un mot de passe faux.
+    user: cs-karinventaire@in.karavel.com
+    password: À_REMPLIR_MDP_COMPTE_DE_SERVICE
+
+###############################################################################
+# Règles d'accès
+###############################################################################
+access_control:
+  # Tout ce qui n'est pas explicitement autorisé est refusé.
+  default_policy: deny
+
+  rules:
+    # ── Les actions sensibles ne sont pas distinguables par URL ──────────────
+    # Import, reset, décommission et ajout d'asset passent par les mêmes appels
+    # PostgREST que la consultation. Le groupe admin est donc appliqué DANS
+    # l'appli (via /api/me), pas ici. Cette règle ne fait qu'ouvrir l'accès.
+    - domain: karinventaire01.in.karavel.com
+      policy: one_factor
+      subject:
+        - "group:karinventaire-tech"
+        - "group:karinventaire-admin"
+
+###############################################################################
+# Session
+###############################################################################
+session:
+  name: authelia_session
+  # Généré comme le jwt_secret ci-dessus.
+  secret: À_REMPLIR_SECRET_SESSION
+  expiration: 12h        # une journée de travail
+  inactivity: 4h
+  remember_me: 1M
+  cookies:
+    - domain: in.karavel.com
+      authelia_url: https://auth.in.karavel.com
+      default_redirection_url: https://karinventaire01.in.karavel.com
+
+regulation:
+  max_retries: 5         # protège les comptes AD du verrouillage par bruteforce
+  find_time: 2m
+  ban_time: 5m
+
+storage:
+  local:
+    path: /config/db.sqlite3
+  encryption_key: À_REMPLIR_CLE_CHIFFREMENT_STOCKAGE
+
+notifier:
+  # Aucune notification à envoyer : pas de MFA, pas de reset de mot de passe.
+  # Authelia exige tout de même un notifier configuré.
+  filesystem:
+    filename: /config/notification.txt
