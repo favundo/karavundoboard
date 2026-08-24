@@ -543,6 +543,69 @@ app.get('/api/rt/priority', async (req, res) => {
   }
 });
 
+// ─── RT : tickets ouverts par technicien ─────────────────────────────────────
+// UNE seule requête RT pour toute l'équipe, puis regroupement ici. RT 4.0.4 est
+// lent (Perl) : sept requêtes, une par technicien, coûteraient sept fois plus
+// pour le même résultat.
+
+const OWNER_QUEUES = (process.env.RT_OWNER_QUEUES || PRIORITY_QUEUES.join(','))
+  .split(',').map(q => q.trim()).filter(Boolean);
+const OWNER_TTL = parseInt(process.env.RT_OWNER_TTL_SEC || '120', 10) * 1000;
+
+let _ownerCache = null;   // { at, data }
+
+async function buildTicketsByOwner(queues) {
+  const queueClause = queues.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
+  const text = await rtFieldSearch(
+    `(${queueClause}) AND (Status = 'new' OR Status = 'open')`,
+    'id,Subject,Status,Owner,Queue,Created,Priority',
+  );
+
+  const now = Date.now();
+  const tickets = parseRTTsv(text).map(t => {
+    const created = parseRTDate(t.Created);
+    return {
+      id: t.id,
+      subject: t.Subject || '(sans objet)',
+      status: t.Status || '',
+      owner: t.Owner || 'Nobody',
+      queue: t.Queue || '',
+      created: t.Created || null,
+      priority: parseInt(t.Priority, 10) || 0,
+      // Ancienneté en jours : c'est ce qui saute aux yeux dans une liste, plus
+      // qu'une date brute.
+      ageDays: created ? Math.floor((now - created.getTime()) / 86400000) : null,
+    };
+  });
+
+  // Les plus prioritaires d'abord, puis les plus anciens.
+  tickets.sort((a, b) => b.priority - a.priority || (b.ageDays ?? 0) - (a.ageDays ?? 0));
+
+  const byOwner = {};
+  for (const t of tickets) (byOwner[t.owner] ||= []).push(t);
+
+  return { generatedAt: new Date().toISOString(), total: tickets.length, byOwner };
+}
+
+app.get('/api/rt/by-owner', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const queues = req.query.queue ? String(req.query.queue).split(',') : OWNER_QUEUES;
+
+  if (_ownerCache && Date.now() - _ownerCache.at < OWNER_TTL && !req.query.refresh) {
+    return res.json({ ..._ownerCache.data, cached: true });
+  }
+  try {
+    const data = await buildTicketsByOwner(queues);
+    _ownerCache = { at: Date.now(), data };
+    res.json({ ...data, cached: false });
+  } catch (err) {
+    console.error('[rt-by-owner]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
 // ─── RT Stats support (onglet Stats) ─────────────────────────────────────────
 // RT 4.0.4 accepte `fields=` sur /search/ticket : la réponse est un TSV, ce qui
 // permet de récupérer l'année entière (≈3 000 tickets) en 2 requêtes au lieu

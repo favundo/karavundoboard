@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardToday from './DashboardToday';
+import TicketsByOwner from './TicketsByOwner';
 
 type Source = 'Siège' | 'Groupes Province' | 'ABcroisière' | 'Agences' | 'Stock' | 'Imprimantes';
 
@@ -302,6 +303,8 @@ export default function SupportDashboard() {
           </div>
         )}
       </section>
+
+      <TicketsByOwner />
     </div>
   );
 }
