@@ -1,8 +1,10 @@
-import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus, BarChart3 } from 'lucide-react';
+import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus, BarChart3, ShieldCheck } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Outlet } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PriorityTicker } from '@/components/support/PriorityTicker';
+import { useMe } from '@/hooks/useMe';
+import { getTechnicianById } from '@/lib/technicians';
 
 const SUB_NAV = [
   { to: '/support/dashboard',    label: 'Dashboard & Recherche rapide',          icon: LayoutDashboard },
@@ -11,6 +13,43 @@ const SUB_NAV = [
   { to: '/support/arrivees',     label: 'Arrivées',                               icon: UserPlus       },
   { to: '/support/stats',        label: 'Stats support',                           icon: BarChart3      },
 ];
+
+/**
+ * Identité du technicien connecté. Absente hors authentification : le bandeau
+ * disparaît alors sans rien casser.
+ */
+const ConnectedAs = () => {
+  const { data: me } = useMe();
+  if (!me?.authenticated) return null;
+
+  const tech = getTechnicianById(me.uid);
+
+  return (
+    <div className="flex items-center gap-2">
+      {me.dev && (
+        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+          dev
+        </span>
+      )}
+      {me.isAdmin && (
+        <span
+          title="Membre du groupe administrateurs"
+          className="flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+        >
+          <ShieldCheck size={11} />
+          admin
+        </span>
+      )}
+      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <span
+          className="inline-block h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: tech?.bgColor ?? 'currentColor' }}
+        />
+        {tech?.label ?? me.displayName}
+      </span>
+    </div>
+  );
+};
 
 const Support = () => (
   <div className="min-h-screen bg-background">
@@ -26,7 +65,10 @@ const Support = () => (
               </div>
               <h1 className="text-lg font-bold tracking-tight text-foreground">Support IT</h1>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-4">
+              <ConnectedAs />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>

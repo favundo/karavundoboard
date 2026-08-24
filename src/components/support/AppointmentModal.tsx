@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, CalendarPlus, Trash2 } from 'lucide-react';
 import { TECHNICIANS } from '@/lib/technicians';
+import { useMeAsTechnician } from '@/hooks/useMe';
 import { isBusinessDay } from '@/lib/frenchHolidays';
 import { useServices } from '@/hooks/useSupportAppointments';
 import type { SupportAppointment, AppointmentInsert } from '@/hooks/useSupportAppointments';
@@ -40,6 +41,10 @@ const labelCls = 'block text-xs font-medium text-muted-foreground mb-1';
 
 const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props) => {
   const { data: services = [] } = useServices();
+  // Le technicien connecté prend la main sur le premier de la liste : c'est lui
+  // qui planifie, dans l'écrasante majorité des cas.
+  const meTech = useMeAsTechnician();
+  const defaultTech = meTech?.id ?? TECHNICIANS[0].id;
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -47,7 +52,7 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
 
   const [uidUser, setUidUser]         = useState('');
   const [emailUser, setEmailUser]     = useState('');
-  const [technicien, setTechnicien]   = useState(TECHNICIANS[0].id);
+  const [technicien, setTechnicien]   = useState(defaultTech);
   const [service, setService]         = useState('');
   const [asset, setAsset]             = useState('');
   const [type, setType]               = useState(TYPES[0].value);
@@ -73,13 +78,20 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
       setDuree(existing.duree_minutes);
       setNotes(existing.notes ?? '');
     } else {
-      setUidUser(''); setEmailUser(''); setTechnicien(TECHNICIANS[0].id);
-      setService(services[0] ?? ''); setAsset(''); setType(TYPES[0].value);
+      setUidUser(''); setEmailUser(''); setTechnicien(defaultTech);
+      setService(''); setAsset(''); setType(TYPES[0].value);
       setDate(''); setHeure('09:00'); setDuree(60); setNotes('');
     }
     setError('');
     setConfirmDelete(false);
-  }, [open, existing]);
+  }, [open, existing, defaultTech]);
+
+  // useServices() est asynchrone : quand la liste arrive après l'ouverture du
+  // modal, le sélecteur resterait vide. On ne renseigne que s'il l'est encore,
+  // pour ne jamais écraser un choix déjà fait.
+  useEffect(() => {
+    if (open && !isEdit && !service && services.length) setService(services[0]);
+  }, [open, isEdit, service, services]);
 
   // Auto-fill email from uid
   const handleUidChange = (v: string) => {

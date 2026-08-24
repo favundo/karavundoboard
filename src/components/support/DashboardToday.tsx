@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CalendarRange, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRTPriorityTickets } from '@/hooks/useRTPriorityTickets';
@@ -6,6 +6,7 @@ import { useSupportAppointments } from '@/hooks/useSupportAppointments';
 import { useArrivees } from '@/hooks/useArrivees';
 import { useArriveesWorkflow } from '@/hooks/useArriveesWorkflow';
 import { StatTile } from './stats/StatTile';
+import { useMeAsTechnician } from '@/hooks/useMe';
 
 const RT_BASE = 'http://rt.in.karavel.com';
 const ARRIVEE_HORIZON_DAYS = 15;
@@ -69,6 +70,12 @@ export default function DashboardToday() {
   const { data: arrivees = [], isLoading: loadingArr } = useArrivees();
   const { data: workflow = {} } = useArriveesWorkflow();
 
+  // Un technicien connecté voit ses rendez-vous par défaut ; à défaut
+  // d'identité, on retombe sur la vue équipe et le sélecteur disparaît.
+  const meTech = useMeAsTechnician();
+  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const filtreMoi = Boolean(meTech) && scope === 'mine';
+
   const agenda = useMemo(() => {
     const now = new Date();
     const debutJour = startOfDay(now);
@@ -78,6 +85,7 @@ export default function DashboardToday() {
 
     const planifies = rdvs
       .filter(r => r.statut === 'planifie')
+      .filter(r => !filtreMoi || r.uid_technicien === meTech!.id)
       .map(r => ({ ...r, date: new Date(r.date_rdv) }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -86,7 +94,7 @@ export default function DashboardToday() {
     const prochain = duJour.find(r => r.date >= now) ?? null;
 
     return { duJour, semaine, prochain, restants: duJour.filter(r => r.date >= now).length };
-  }, [rdvs]);
+  }, [rdvs, filtreMoi, meTech]);
 
   const arriveesProches = useMemo(() => {
     const aujourdhui = startOfDay(new Date());
@@ -105,7 +113,29 @@ export default function DashboardToday() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-foreground">Aujourd'hui</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-foreground">Aujourd'hui</h2>
+
+        {meTech && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-xs">
+            {([['mine', 'Mes RDV'], ['all', "Toute l'équipe"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setScope(v)}
+                aria-pressed={scope === v}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                  scope === v
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <a
@@ -146,7 +176,11 @@ export default function DashboardToday() {
             icon={CalendarRange}
             label="RDV cette semaine"
             value={val(loadingRdv, agenda.semaine.length)}
-            hint={loadingRdv ? 'chargement…' : 'du lundi au dimanche'}
+            hint={
+              loadingRdv ? 'chargement…'
+                : filtreMoi ? 'vos interventions, lundi à dimanche'
+                : "toute l'équipe, lundi à dimanche"
+            }
           />
         </Clickable>
 

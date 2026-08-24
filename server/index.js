@@ -9,6 +9,62 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 app.use(express.json());
 
+// ─── Identité de l'utilisateur connecté ───────────────────
+//
+// Un SPA ne peut pas lire les en-têtes de sa propre page : il lui faut un
+// aller-retour pour savoir qui il est. Authelia renseigne Remote-User,
+// Remote-Groups, Remote-Name et Remote-Email, et Nginx les RÉÉCRIT vers ce
+// serveur (voir authelia-authrequest.conf).
+//
+// Ces en-têtes ne sont dignes de confiance que parce que DEUX conditions sont
+// réunies. Si l'une saute, n'importe qui peut se faire passer pour n'importe
+// quel technicien :
+//   1. Nginx écrase tout Remote-* venu du client, il ne se contente pas d'ajouter
+//   2. ce serveur n'écoute que sur 127.0.0.1 (voir app.listen en fin de fichier)
+
+const GROUP_TECH  = process.env.AUTH_GROUP_TECH  || 'karinventaire-tech';
+const GROUP_ADMIN = process.env.AUTH_GROUP_ADMIN || 'karinventaire-admin';
+
+app.get('/api/me', (req, res) => {
+  const uid = req.get('Remote-User');
+
+  // En développement il n'y a pas d'Authelia devant. DEV_USER doit être posé
+  // explicitement dans server/.env — absent en production, la bascule ne peut
+  // donc pas s'y déclencher par accident.
+  if (!uid && process.env.DEV_USER) {
+    const groups = (process.env.DEV_GROUPS || `${GROUP_TECH},${GROUP_ADMIN}`)
+      .split(',').map(g => g.trim()).filter(Boolean);
+    return res.json({
+      authenticated: true,
+      dev: true,
+      uid: process.env.DEV_USER,
+      displayName: process.env.DEV_USER,
+      email: null,
+      groups,
+      isTech: groups.includes(GROUP_TECH),
+      isAdmin: groups.includes(GROUP_ADMIN),
+    });
+  }
+
+  if (!uid) {
+    return res.status(401).json({ authenticated: false });
+  }
+
+  const groups = (req.get('Remote-Groups') || '')
+    .split(',').map(g => g.trim()).filter(Boolean);
+
+  res.json({
+    authenticated: true,
+    dev: false,
+    uid,
+    displayName: req.get('Remote-Name') || uid,
+    email: req.get('Remote-Email') || null,
+    groups,
+    isTech: groups.includes(GROUP_TECH),
+    isAdmin: groups.includes(GROUP_ADMIN),
+  });
+});
+
 // ─── ESET Proxy ───────────────────────────────────────────
 
 let _esetToken = null;
