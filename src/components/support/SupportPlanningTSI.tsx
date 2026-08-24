@@ -3,7 +3,7 @@ import { Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { usePlanningTSI, useSavePlanningTSI } from '@/hooks/usePlanningTSI';
-import type { MonthPlan, WeekPlan, DayCell } from '@/hooks/usePlanningTSI';
+import type { MonthPlan, WeekPlan, DayCell, TechSchedule } from '@/hooks/usePlanningTSI';
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] as const;
 

@@ -21,7 +21,7 @@ export interface SupportAppointment {
 export type AppointmentInsert = Omit<
   SupportAppointment,
   'id' | 'created_at' | 'updated_at' | 'rappel_envoye' | 'statut'
-> & { statut?: string };
+> & { statut?: SupportAppointment['statut'] };
 
 const QK = ['support_appointments'] as const;
 
