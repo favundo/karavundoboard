@@ -69,12 +69,20 @@ contrôle `auth_request` sur `/authelia/api/authz/auth-request`.
 
 ### Étape 1 — Secrets
 
+Le plus simple est de laisser `install.sh` s'en charger (voir plus bas). Pour
+les générer à la main :
+
 ```bash
 for s in session_secret storage_encryption_key; do
   echo "$s: $(docker run --rm authelia/authelia:4.38 \
-    authelia crypto rand --length 64 --charset alphanumeric | tail -1)"
+    authelia crypto rand --length 64 --charset alphanumeric \
+    | tail -1 | sed 's/^Random Value: *//')"
 done
 ```
+
+> ⚠️ Le `sed` n'est pas décoratif : `authelia crypto rand` préfixe sa sortie par
+> « Random Value: ». Recopier le préfixe injecte un deux-points dans le YAML et
+> rend le fichier illisible par Authelia.
 
 ### Étape 2 — Installer Authelia
 

@@ -17,7 +17,7 @@ DC        = os.environ.get('DC', 'ad02.in.karavel.com')
 BASE_DN   = os.environ.get('BASE_DN', 'DC=in,DC=karavel,DC=com')
 BIND_USER = os.environ.get('BIND_USER', 'cs-karinventaire@in.karavel.com')
 # Les identifiants attendus, tirés de src/lib/technicians.ts
-LOGINS    = os.environ.get('LOGINS', 'nehad,zkarroum,maabid,cananthakumar,rrinville,blouis,ext-favundo').split(',')
+LOGINS    = [l for l in os.environ.get('LOGINS', 'nehad,zkarroum,maabid,cananthakumar,rrinville,blouis,ext-favundo').split(',') if l]
 # Groupes d'accès à vérifier. L'orthographe doit être EXACTE : Authelia compare
 # les cn littéralement, une lettre de travers = « accès refusé » sans explication.
 GROUPES   = [g for g in os.environ.get('GROUPES', 'karinventaire-tech,karinvetaire-admin,karinventaire-admin').split(',') if g]
@@ -101,11 +101,29 @@ def main():
                     code = tlv(c)[1][0]
                     msg = [x for x in walk(c)]
             if code != 0:
-                print(f"✗ BIND REFUSÉ — code {code} : {RESULT_CODES.get(code, 'voir RFC 4511')}")
+                detail = ''
+                m = re.search(rb'data ([0-9a-f]{3})', body)
+                if m:
+                    AD_SUB = {
+                        b'525': "l'utilisateur n'existe pas",
+                        b'52e': 'mot de passe incorrect',
+                        b'530': 'connexion interdite à cette heure',
+                        b'531': 'connexion interdite depuis ce poste',
+                        b'532': 'mot de passe expiré',
+                        b'533': 'compte désactivé',
+                        b'701': 'compte expiré',
+                        b'773': 'changement de mot de passe obligatoire',
+                        b'775': 'COMPTE VERROUILLÉ (trop de tentatives échouées)',
+                    }
+                    detail = ' — ' + AD_SUB.get(m.group(1), f'sous-code AD {m.group(1).decode()}')
+                print(f"✗ BIND REFUSÉ — code {code} : {RESULT_CODES.get(code, 'voir RFC 4511')}{detail}")
                 return 1
             print("✓ bind accepté\n")
 
             # ── Une recherche par technicien ───────────────────────────────
+            if not LOGINS and not GROUPES:
+                return 0          # mode pré-vol : le bind seul suffisait
+
             print(f"{'login':16} {'sAMAccountName':18} {'displayName':26} groupes")
             print('─' * 90)
             ok = 0
