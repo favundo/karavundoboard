@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { useRTPriorityTickets, type RTPriorityTicket } from '@/hooks/useRTPriorityTickets';
 import { useSupportQueues } from '@/contexts/SupportQueuesContext';
-import { queueShort } from '@/lib/rtQueues';
+import { QueueBadge } from './QueueBadge';
 
 const RT_BASE = 'http://rt.in.karavel.com';
 
@@ -18,11 +18,7 @@ function TicketEntry({ ticket, showQueue }: { ticket: RTPriorityTicket; showQueu
         P{ticket.priority}
       </span>
       {/* Deux files mélangées : sans cette pastille on ne sait plus qui est concerné. */}
-      {showQueue && ticket.queue && (
-        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {queueShort(ticket.queue)}
-        </span>
-      )}
+      {showQueue && <QueueBadge queue={ticket.queue} className="!text-[11px]" />}
       <a
         href={`${RT_BASE}/Ticket/Display.html?id=${ticket.id}`}
         target="_blank"

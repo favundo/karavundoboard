@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRTTicketsByOwner, type OwnedTicket } from '@/hooks/useRTTicketsByOwner';
 import { useMe } from '@/hooks/useMe';
 import { useSupportQueues } from '@/contexts/SupportQueuesContext';
-import { queueLabel, queueShort } from '@/lib/rtQueues';
+import { queueLabel } from '@/lib/rtQueues';
+import { QueueBadge } from './QueueBadge';
 import { getTechnicianById } from '@/lib/technicians';
 
 const RT_BASE = 'http://rt.in.karavel.com';
@@ -56,9 +57,7 @@ const TicketRows = ({ tickets, showQueue }: { tickets: OwnedTicket[]; showQueue:
             {/* Colonne affichée uniquement quand plusieurs files sont mélangées. */}
             {showQueue && (
               <td className="whitespace-nowrap border-b border-border/40 px-3 py-2">
-                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  {queueShort(t.queue)}
-                </span>
+                <QueueBadge queue={t.queue} />
               </td>
             )}
             <td className="border-b border-border/40 px-3 py-2">{t.subject}</td>
@@ -131,8 +130,12 @@ export default function TicketsByOwner() {
             {data && ` · ${data.total} au total`}
           </span>
           {perQueue.length > 1 && (
-            <span className="font-normal text-muted-foreground">
-              ({perQueue.map(({ queue, count }) => `${queueShort(queue)} ${count}`).join(' · ')})
+            <span className="flex items-center gap-1.5 font-normal">
+              {perQueue.map(({ queue, count }) => (
+                <QueueBadge key={queue} queue={queue}>
+                  <span className="ml-1 tabular-nums opacity-80">{count}</span>
+                </QueueBadge>
+              ))}
             </span>
           )}
         </h2>
