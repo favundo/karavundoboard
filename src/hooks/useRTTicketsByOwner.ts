@@ -14,6 +14,8 @@ export interface OwnedTicket {
 
 export interface TicketsByOwner {
   generatedAt: string;
+  /** Files réellement interrogées, dans l'ordre renvoyé par le serveur. */
+  queues: string[];
   total: number;
   byOwner: Record<string, OwnedTicket[]>;
   cached: boolean;
@@ -21,14 +23,16 @@ export interface TicketsByOwner {
 
 /**
  * Tickets RT ouverts de toute l'équipe, groupés par propriétaire.
- * Une seule requête RT côté serveur, mise en cache 2 min : RT 4.0.4 met une
- * dizaine de secondes à répondre sur ce volume.
+ * Une seule requête RT côté serveur, mise en cache 2 min par jeu de files :
+ * RT 4.0.4 met une dizaine de secondes à répondre sur ce volume.
  */
-export function useRTTicketsByOwner() {
+export function useRTTicketsByOwner(options?: { queue?: string }) {
+  const queue = options?.queue;
+
   return useQuery<TicketsByOwner | undefined>({
-    queryKey: ['rt-by-owner'],
+    queryKey: ['rt-by-owner', queue ?? null],
     queryFn: async () => {
-      const res = await fetch('/api/rt/by-owner');
+      const res = await fetch(`/api/rt/by-owner${queue ? `?queue=${encodeURIComponent(queue)}` : ''}`);
       if (!res.ok) return undefined;
       return res.json();
     },

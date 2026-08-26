@@ -1,5 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { useRTPriorityTickets, type RTPriorityTicket } from '@/hooks/useRTPriorityTickets';
+import { useSupportQueues } from '@/contexts/SupportQueuesContext';
+import { queueShort } from '@/lib/rtQueues';
 
 const RT_BASE = 'http://rt.in.karavel.com';
 
@@ -9,12 +11,18 @@ const SECONDS_PER_TICKET = 7;
 const MIN_DURATION = 25;
 const MAX_DURATION = 120;
 
-function TicketEntry({ ticket }: { ticket: RTPriorityTicket }) {
+function TicketEntry({ ticket, showQueue }: { ticket: RTPriorityTicket; showQueue: boolean }) {
   return (
     <span className="flex shrink-0 items-center gap-2 px-5">
       <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-destructive">
         P{ticket.priority}
       </span>
+      {/* Deux files mélangées : sans cette pastille on ne sait plus qui est concerné. */}
+      {showQueue && ticket.queue && (
+        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {queueShort(ticket.queue)}
+        </span>
+      )}
       <a
         href={`${RT_BASE}/Ticket/Display.html?id=${ticket.id}`}
         target="_blank"
@@ -35,12 +43,13 @@ function TicketEntry({ ticket }: { ticket: RTPriorityTicket }) {
 }
 
 /**
- * Bandeau défilant des tickets RT à haute priorité.
+ * Bandeau défilant des tickets RT à haute priorité, sur les files choisies.
  * Le contenu est dupliqué pour que la boucle CSS (translateX -50 %) soit sans
  * raccord ; la copie est masquée aux lecteurs d'écran.
  */
 export function PriorityTicker() {
-  const { data: tickets, isError } = useRTPriorityTickets();
+  const { queueParam, multi } = useSupportQueues();
+  const { data: tickets, isError } = useRTPriorityTickets({ queue: queueParam });
 
   if (isError || !tickets?.length) return null;
 
@@ -62,9 +71,9 @@ export function PriorityTicker() {
             className="flex w-max animate-marquee group-hover:[animation-play-state:paused] motion-reduce:animate-none"
             style={{ animationDuration: `${duration}s` }}
           >
-            {tickets.map(t => <TicketEntry key={t.id} ticket={t} />)}
+            {tickets.map(t => <TicketEntry key={t.id} ticket={t} showQueue={multi} />)}
             <span className="flex" aria-hidden="true">
-              {tickets.map(t => <TicketEntry key={`dup-${t.id}`} ticket={t} />)}
+              {tickets.map(t => <TicketEntry key={`dup-${t.id}`} ticket={t} showQueue={multi} />)}
             </span>
           </div>
           {/* Fondus latéraux : les tickets apparaissent/disparaissent en douceur */}

@@ -503,6 +503,19 @@ const PRIORITY_QUEUES = (process.env.RT_PRIORITY_QUEUES || 'sos').split(',').map
 // tronque côté serveur, sinon un seuil bas ferait défiler des centaines d'entrées.
 const PRIORITY_ROWS   = parseInt(process.env.RT_PRIORITY_ROWS || '20', 10);
 
+/**
+ * Files demandées par le client. Les noms partent dans une requête RT : on ne
+ * garde que ce qui ressemble à un nom de file, et on retombe sur la valeur par
+ * défaut si la liste est vide.
+ */
+function parseQueues(raw, fallback) {
+  const asked = String(raw || '')
+    .split(',')
+    .map(q => q.trim())
+    .filter(q => /^[\w \-.éèêàçÉÈÊÀÇ]{1,64}$/.test(q));
+  return asked.length ? [...new Set(asked)] : fallback;
+}
+
 function rtPrioritySearch(min, queues) {
   const queueClause = queues.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
   const query = `(${queueClause}) AND (Status = 'new' OR Status = 'open') AND Priority >= ${min}`;
@@ -517,12 +530,35 @@ function rtPrioritySearch(min, queues) {
   return rtGet(`/REST/1.0/search/ticket?${params}`);
 }
 
+/**
+ * Tronque à `rows` en servant les files à tour de rôle, le plus prioritaire
+ * d'abord dans chacune. Une troncature globale coupait tout `sos-agences` : RT
+ * rend `sos` en premier et le plafond tombait avant.
+ */
+function capPerQueue(tickets, queues, rows) {
+  if (tickets.length <= rows || queues.length < 2) return tickets.slice(0, rows);
+
+  const piles = new Map(queues.map(q => [q, []]));
+  // Une file inconnue (ticket déplacé entre-temps) garde sa propre pile.
+  for (const t of tickets) (piles.get(t.queue) ?? piles.set(t.queue, []).get(t.queue)).push(t);
+
+  const out = [];
+  for (let i = 0; out.length < rows; i++) {
+    const before = out.length;
+    for (const pile of piles.values()) {
+      if (pile[i] && out.length < rows) out.push(pile[i]);
+    }
+    if (out.length === before) break;   // toutes les piles sont épuisées
+  }
+  return out.sort((a, b) => b.priority - a.priority);
+}
+
 app.get('/api/rt/priority', async (req, res) => {
   if (!process.env.RT_USER || !process.env.RT_PASS) {
     return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
   }
   const min = parseInt(req.query.min, 10);
-  const queues = req.query.queue ? String(req.query.queue).split(',') : PRIORITY_QUEUES;
+  const queues = parseQueues(req.query.queue, PRIORITY_QUEUES);
   try {
     const text = await rtPrioritySearch(Number.isNaN(min) ? PRIORITY_MIN : min, queues);
     // parseRTSearch ne remonte pas Priority : on la relit par ticket depuis le bloc brut.
@@ -534,9 +570,8 @@ app.get('/api/rt/priority', async (req, res) => {
     }
     const tickets = parseRTSearch(text)
       .map(t => ({ id: t.id, subject: t.subject, status: t.status, owner: t.owner, queue: t.queue, created: t.created, priority: priorities[t.id] ?? 0 }))
-      .sort((a, b) => b.priority - a.priority)
-      .slice(0, PRIORITY_ROWS);
-    res.json(tickets);
+      .sort((a, b) => b.priority - a.priority);
+    res.json(capPerQueue(tickets, queues, PRIORITY_ROWS));
   } catch (err) {
     console.error('[rt-priority]', err.message);
     res.status(500).json({ error: 'Erreur connexion RT' });
@@ -552,7 +587,9 @@ const OWNER_QUEUES = (process.env.RT_OWNER_QUEUES || PRIORITY_QUEUES.join(','))
   .split(',').map(q => q.trim()).filter(Boolean);
 const OWNER_TTL = parseInt(process.env.RT_OWNER_TTL_SEC || '120', 10) * 1000;
 
-let _ownerCache = null;   // { at, data }
+// Le cache est indexé par jeu de files : sinon un passage « Siège » → « les deux »
+// resservirait la liste de l'autre périmètre pendant deux minutes.
+const _ownerCache = new Map();   // 'sos,sos-agences' → { at, data }
 
 async function buildTicketsByOwner(queues) {
   const queueClause = queues.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
@@ -584,21 +621,23 @@ async function buildTicketsByOwner(queues) {
   const byOwner = {};
   for (const t of tickets) (byOwner[t.owner] ||= []).push(t);
 
-  return { generatedAt: new Date().toISOString(), total: tickets.length, byOwner };
+  return { generatedAt: new Date().toISOString(), queues, total: tickets.length, byOwner };
 }
 
 app.get('/api/rt/by-owner', async (req, res) => {
   if (!process.env.RT_USER || !process.env.RT_PASS) {
     return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
   }
-  const queues = req.query.queue ? String(req.query.queue).split(',') : OWNER_QUEUES;
+  const queues = parseQueues(req.query.queue, OWNER_QUEUES);
+  const key = queues.join(',');
 
-  if (_ownerCache && Date.now() - _ownerCache.at < OWNER_TTL && !req.query.refresh) {
-    return res.json({ ..._ownerCache.data, cached: true });
+  const cached = _ownerCache.get(key);
+  if (cached && Date.now() - cached.at < OWNER_TTL && !req.query.refresh) {
+    return res.json({ ...cached.data, cached: true });
   }
   try {
     const data = await buildTicketsByOwner(queues);
-    _ownerCache = { at: Date.now(), data };
+    _ownerCache.set(key, { at: Date.now(), data });
     res.json({ ...data, cached: false });
   } catch (err) {
     console.error('[rt-by-owner]', err.message);

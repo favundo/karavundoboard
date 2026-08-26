@@ -3,6 +3,8 @@ import { Ticket, ExternalLink, Inbox, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRTTicketsByOwner, type OwnedTicket } from '@/hooks/useRTTicketsByOwner';
 import { useMe } from '@/hooks/useMe';
+import { useSupportQueues } from '@/contexts/SupportQueuesContext';
+import { queueLabel, queueShort } from '@/lib/rtQueues';
 import { getTechnicianById } from '@/lib/technicians';
 
 const RT_BASE = 'http://rt.in.karavel.com';
@@ -27,12 +29,12 @@ const STATUS_BADGE: Record<string, string> = {
   open: 'bg-blue-100 text-blue-800',
 };
 
-const TicketRows = ({ tickets }: { tickets: OwnedTicket[] }) => (
+const TicketRows = ({ tickets, showQueue }: { tickets: OwnedTicket[]; showQueue: boolean }) => (
   <div className="overflow-x-auto rounded-lg border border-border">
     <table className="w-full text-sm border-collapse">
       <thead>
         <tr className="bg-muted/50 text-left">
-          {['N°', 'Objet', 'État', 'Prio', 'Âge'].map(h => (
+          {['N°', ...(showQueue ? ['File'] : []), 'Objet', 'État', 'Prio', 'Âge'].map(h => (
             <th key={h} className="whitespace-nowrap border-b border-border px-3 py-2 font-semibold">{h}</th>
           ))}
         </tr>
@@ -51,6 +53,14 @@ const TicketRows = ({ tickets }: { tickets: OwnedTicket[] }) => (
                 <ExternalLink size={11} />
               </a>
             </td>
+            {/* Colonne affichée uniquement quand plusieurs files sont mélangées. */}
+            {showQueue && (
+              <td className="whitespace-nowrap border-b border-border/40 px-3 py-2">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  {queueShort(t.queue)}
+                </span>
+              </td>
+            )}
             <td className="border-b border-border/40 px-3 py-2">{t.subject}</td>
             <td className="border-b border-border/40 px-3 py-2">
               <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[t.status] ?? 'bg-muted text-foreground'}`}>
@@ -69,12 +79,13 @@ const TicketRows = ({ tickets }: { tickets: OwnedTicket[] }) => (
 );
 
 /**
- * Tickets RT ouverts, par propriétaire. Le technicien connecté est sélectionné
- * d'office ; à défaut, on ouvre sur la pile non assignée, qui est celle qui
- * réclame une décision.
+ * Tickets RT ouverts, par propriétaire, sur la ou les files choisies en haut de
+ * page. Le technicien connecté est sélectionné d'office ; à défaut, on ouvre sur
+ * la pile non assignée, qui est celle qui réclame une décision.
  */
 export default function TicketsByOwner() {
-  const { data, isFetching } = useRTTicketsByOwner();
+  const { queues, queueParam, multi } = useSupportQueues();
+  const { data, isFetching } = useRTTicketsByOwner({ queue: queueParam });
   const { data: me } = useMe();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
@@ -89,6 +100,18 @@ export default function TicketsByOwner() {
         || b.tickets.length - a.tickets.length);
   }, [data]);
 
+  // Répartition par file : sur une vue mixte, savoir d'où vient le volume.
+  const perQueue = useMemo(() => {
+    if (!data || !multi) return [];
+    const counts = new Map<string, number>();
+    for (const tickets of Object.values(data.byOwner)) {
+      for (const t of tickets) counts.set(t.queue, (counts.get(t.queue) ?? 0) + 1);
+    }
+    return queues
+      .map(q => ({ queue: q, count: counts.get(q) ?? 0 }))
+      .filter(({ count }) => count > 0);
+  }, [data, multi, queues]);
+
   const current =
     selected ??
     (me?.uid && data?.byOwner[me.uid] ? me.uid : owners[0]?.login) ??
@@ -100,10 +123,18 @@ export default function TicketsByOwner() {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <h2 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
           <Ticket size={15} className="text-muted-foreground" />
           Tickets RT ouverts
-          {data && <span className="font-normal text-muted-foreground">— {data.total} au total</span>}
+          <span className="font-normal text-muted-foreground">
+            — {queues.map(queueLabel).join(' + ')}
+            {data && ` · ${data.total} au total`}
+          </span>
+          {perQueue.length > 1 && (
+            <span className="font-normal text-muted-foreground">
+              ({perQueue.map(({ queue, count }) => `${queueShort(queue)} ${count}`).join(' · ')})
+            </span>
+          )}
         </h2>
         <button
           type="button"
@@ -169,7 +200,7 @@ export default function TicketsByOwner() {
           </div>
 
           {tickets.length > 0
-            ? <TicketRows tickets={tickets} />
+            ? <TicketRows tickets={tickets} showQueue={multi} />
             : (
               <div className="rounded-lg border border-dashed border-border bg-muted/20 py-10 text-center text-sm text-muted-foreground">
                 Aucun ticket ouvert pour {current ? ownerLabel(current) : '—'}.
