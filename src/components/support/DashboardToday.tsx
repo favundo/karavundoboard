@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, CalendarRange, UserPlus } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CalendarRange, Trophy, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRTPriorityTickets } from '@/hooks/useRTPriorityTickets';
 import { useSupportAppointments } from '@/hooks/useSupportAppointments';
 import { useArrivees } from '@/hooks/useArrivees';
 import { useArriveesWorkflow } from '@/hooks/useArriveesWorkflow';
+import { useRTScore } from '@/hooks/useRTScore';
 import { StatTile } from './stats/StatTile';
 import { useMeAsTechnician } from '@/hooks/useMe';
 
@@ -69,12 +70,17 @@ export default function DashboardToday() {
   const { data: rdvs = [], isLoading: loadingRdv } = useSupportAppointments();
   const { data: arrivees = [], isLoading: loadingArr } = useArrivees();
   const { data: workflow = {} } = useArriveesWorkflow();
+  const { data: score, isLoading: loadingScore } = useRTScore();
 
   // Un technicien connecté voit ses rendez-vous par défaut ; à défaut
   // d'identité, on retombe sur la vue équipe et le sélecteur disparaît.
   const meTech = useMeAsTechnician();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const filtreMoi = Boolean(meTech) && scope === 'mine';
+
+  // Score personnel. Sans identité — dev sans DEV_USER, compte hors
+  // technicians.ts — la tuile le dit plutôt que d'afficher le score de personne.
+  const monScore = meTech ? score?.owners.find((o) => o.owner === meTech.id) : undefined;
 
   const agenda = useMemo(() => {
     const now = new Date();
@@ -137,7 +143,7 @@ export default function DashboardToday() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <a
           href={`${RT_BASE}/Search/Results.html?Query=${encodeURIComponent("Status = 'new' OR Status = 'open'")}`}
           target="_blank"
@@ -181,6 +187,22 @@ export default function DashboardToday() {
                 : filtreMoi ? 'vos interventions, lundi à dimanche'
                 : "toute l'équipe, lundi à dimanche"
             }
+          />
+        </Clickable>
+
+        <Clickable onClick={() => navigate('/support/stats')}>
+          <StatTile
+            icon={Trophy}
+            label="Mon score"
+            value={!meTech ? '—' : val(loadingScore, monScore?.score ?? 0)}
+            hint={
+              !meTech ? 'technicien non identifié'
+                : loadingScore ? 'chargement…'
+                : monScore?.today
+                  ? `+${monScore.today} aujourd'hui — ${monScore.todayTickets} ticket${monScore.todayTickets > 1 ? 's' : ''}`
+                  : `aucun point aujourd'hui — ${score?.year ?? ''} en cumul`
+            }
+            tone={monScore?.today ? 'good' : 'neutral'}
           />
         </Clickable>
 

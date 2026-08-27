@@ -664,6 +664,14 @@ const STATS_TTL    = parseInt(process.env.RT_STATS_TTL_MIN || '1440', 10) * 6000
 const _statsCache  = new Map();   // `${queue}:${year}` → { at, data }
 const _statsInFlight = new Map(); // même clé → Promise, évite 2 calculs concurrents
 
+// Score personnel du dashboard. Les deux files où le champ Difficulté existe.
+const SCORE_QUEUES = (process.env.RT_SCORE_QUEUES || 'sos,sos-agences')
+  .split(',').map(q => q.trim()).filter(Boolean);
+// 5 min et non 24 h : « aujourd'hui » doit bouger dans la journée.
+const SCORE_TTL = parseInt(process.env.RT_SCORE_TTL_MIN || '5', 10) * 60000;
+const _scoreCache    = new Map();
+const _scoreInFlight = new Map();
+
 // RT choisit lui-même l'ordre des colonnes de `fields` (pas celui demandé) :
 // toujours parser via la ligne d'en-tête, jamais par position.
 function parseRTTsv(text) {
@@ -949,6 +957,124 @@ app.get('/api/rt/stats', async (req, res) => {
     res.json({ ...data, cachedAt: data.generatedAt, stale: false });
   } catch (err) {
     console.error('[rt-stats]', err.message);
+    res.status(500).json({ error: 'Erreur connexion RT' });
+  }
+});
+
+/**
+ * Score par technicien sur l'année, plus la part faite aujourd'hui. Six requêtes
+ * sélectives suffisent : cinq pour les notes de difficulté, une pour les tickets
+ * urgents. Pas besoin de balayer toute la file comme le fait /api/rt/stats — on
+ * ne demande que les tickets qui rapportent des points. `Resolved` étant un
+ * champ natif, la ventilation par jour se fait sans requête de plus.
+ */
+async function buildRTScore(queues, year) {
+  const from = `${year}-01-01`;
+  const to   = `${year + 1}-01-01`;
+  const queueClause = queues.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
+  const window = `(${queueClause}) AND Status = 'resolved' `
+    + `AND Resolved > '${from}' AND Resolved < '${to}'`;
+  const today = new Date().toDateString();
+
+  const owners = new Map();
+  const get = (login) => {
+    const key = login || 'Nobody';
+    if (!owners.has(key)) {
+      owners.set(key, {
+        owner: key, difficultyScore: 0, scored: 0, bonus: 0, urgent: 0,
+        today: 0, todayIds: new Set(),
+      });
+    }
+    return owners.get(key);
+  };
+  const isToday = (t) => {
+    const d = parseRTDate(t.Resolved);
+    return d && d.toDateString() === today;
+  };
+
+  for (const level of DIFFICULTY_LEVELS) {
+    const text = await rtFieldSearch(`${window} AND '${DIFFICULTY_CF}' = '${level}'`, 'id,Owner,Resolved');
+    for (const t of parseRTTsv(text)) {
+      const o = get(t.Owner);
+      o.difficultyScore += level;
+      o.scored++;
+      if (isToday(t)) { o.today += level; o.todayIds.add(t.id); }
+    }
+  }
+
+  const urgentText = await rtFieldSearch(`${window} AND Priority >= ${PRIORITY_BONUS[PRIORITY_BONUS.length - 1].min}`,
+    'id,Owner,Resolved,Priority');
+  for (const t of parseRTTsv(urgentText)) {
+    const points = priorityBonus(parseInt(t.Priority, 10) || 0);
+    if (!points) continue;
+    const o = get(t.Owner);
+    o.bonus += points;
+    o.urgent++;
+    if (isToday(t)) { o.today += points; o.todayIds.add(t.id); }
+  }
+
+  const list = [...owners.values()].map(o => ({
+    owner:  o.owner,
+    score:  o.difficultyScore + o.bonus,
+    today:  o.today,
+    todayTickets: o.todayIds.size,
+    difficultyScore: o.difficultyScore,
+    bonus:  o.bonus,
+    urgent: o.urgent,
+    scored: o.scored,
+  })).sort((a, b) => b.score - a.score);
+
+  const sum = (f) => list.reduce((s, o) => s + f(o), 0);
+  return {
+    year,
+    queues,
+    generatedAt: new Date().toISOString(),
+    owners: list,
+    team: {
+      score: sum(o => o.score),
+      today: sum(o => o.today),
+      todayTickets: sum(o => o.todayTickets),
+      difficultyScore: sum(o => o.difficultyScore),
+      bonus: sum(o => o.bonus),
+      urgent: sum(o => o.urgent),
+      scored: sum(o => o.scored),
+    },
+  };
+}
+
+function refreshRTScore(key, queues, year) {
+  if (_scoreInFlight.has(key)) return _scoreInFlight.get(key);
+  const p = buildRTScore(queues, year)
+    .then((data) => { _scoreCache.set(key, { at: Date.now(), data }); return data; })
+    .finally(() => _scoreInFlight.delete(key));
+  _scoreInFlight.set(key, p);
+  return p;
+}
+
+app.get('/api/rt/score', async (req, res) => {
+  if (!process.env.RT_USER || !process.env.RT_PASS) {
+    return res.status(503).json({ error: 'RT_USER / RT_PASS non configurés' });
+  }
+  const queues = parseQueues(req.query.queue, SCORE_QUEUES);
+  const year   = parseInt(req.query.year, 10) || new Date().getFullYear();
+  if (year < 2000 || year > 2100) return res.status(400).json({ error: 'Année invalide' });
+
+  const key    = `${queues.join(',')}:${year}`;
+  const cached = _scoreCache.get(key);
+  const fresh  = cached && Date.now() - cached.at < SCORE_TTL;
+
+  // Même politique que /api/rt/stats : le périmé part tout de suite, le
+  // recalcul se fait derrière. Un dashboard ne doit jamais attendre RT.
+  if (cached) {
+    if (!fresh) refreshRTScore(key, queues, year).catch(() => {});
+    return res.json({ ...cached.data, cachedAt: new Date(cached.at).toISOString(), stale: !fresh });
+  }
+
+  try {
+    const data = await refreshRTScore(key, queues, year);
+    res.json({ ...data, cachedAt: data.generatedAt, stale: false });
+  } catch (err) {
+    console.error('[rt-score]', err.message);
     res.status(500).json({ error: 'Erreur connexion RT' });
   }
 });
