@@ -34,9 +34,11 @@ const SupportStats = () => {
 
   const exportCsv = () => {
     if (!data) return;
-    const head = ['Technicien', 'Résolus', 'Rejetés', 'Part', 'Délai médian (h)', 'P90 (h)', 'Jour même', 'Mois n°1', ...MONTH_LABELS];
+    const head = ['Technicien', 'Résolus', 'Rejetés', 'Part', 'Score', 'Tickets notés', 'Difficulté moyenne',
+      'Délai médian (h)', 'P90 (h)', 'Jour même', 'Mois n°1', ...MONTH_LABELS];
     const rows = data.owners.map((o) => [
       ownerLabel(o.owner), o.resolved, o.rejected, o.share === null ? '' : (o.share * 100).toFixed(1),
+      o.score, o.scored, o.avgDifficulty?.toFixed(2) ?? '',
       o.medianHours?.toFixed(1) ?? '', o.p90Hours?.toFixed(0) ?? '',
       (o.sameDayPct * 100).toFixed(0), o.crowns, ...o.months,
     ]);
@@ -176,6 +178,8 @@ const SupportStats = () => {
                     <th className="px-2 py-2 text-right font-medium">Résolus</th>
                     <th className="px-2 py-2 text-right font-medium">Rejetés</th>
                     <th className="px-2 py-2 text-right font-medium">Part</th>
+                    <th className="px-2 py-2 text-right font-medium">Score</th>
+                    <th className="px-2 py-2 text-right font-medium">Diff. moy.</th>
                     <th className="px-2 py-2 text-right font-medium">Délai méd.</th>
                     <th className="px-2 py-2 text-right font-medium">P90</th>
                     <th className="px-2 py-2 text-right font-medium">Jour même</th>
@@ -197,6 +201,15 @@ const SupportStats = () => {
                       <td className="px-2 py-2 text-right font-semibold tabular-nums text-foreground">{o.resolved}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{o.rejected}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{o.share === null ? '—' : pct(o.share)}</td>
+                      <td
+                        className="px-2 py-2 text-right tabular-nums text-foreground"
+                        title={o.scored ? `${o.scored} ticket${o.scored > 1 ? 's' : ''} noté${o.scored > 1 ? 's' : ''} sur ${o.resolved} résolu${o.resolved > 1 ? 's' : ''}` : 'aucun ticket noté'}
+                      >
+                        {o.scored ? o.score : '—'}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                        {o.avgDifficulty === null ? '—' : o.avgDifficulty.toFixed(1)}
+                      </td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{formatHours(o.medianHours)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{formatHours(o.p90Hours)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{pct(o.sameDayPct)}</td>
@@ -214,6 +227,14 @@ const SupportStats = () => {
               effectivement passé le statut à « resolved » : un ticket réattribué après coup est crédité à son dernier
               propriétaire. RT 4.0.4 ne permet pas de remonter l'auteur de la transaction sans lire l'historique de
               chaque ticket, ce que la file ne supporterait pas.
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Le <strong>score</strong> est la somme des notes de difficulté (1 à 5) des tickets résolus.{' '}
+              {data.totals.scored > 0
+                ? `${data.totals.scored} ticket${data.totals.scored > 1 ? 's' : ''} noté${data.totals.scored > 1 ? 's' : ''} sur ${data.totals.resolved} résolus`
+                : 'Aucun ticket noté pour l\'instant'} — les tickets sans note n'entrent ni dans le score ni dans la
+              difficulté moyenne, un ticket non noté n'est pas un ticket facile. Le champ n'existe que depuis le
+              26 août 2026 : rien d'antérieur ne peut être noté rétroactivement.
             </p>
           </div>
         </>

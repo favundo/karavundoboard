@@ -5,6 +5,10 @@ export interface RTOwnerStats {
   resolved: number;
   rejected: number;
   share: number | null;      // part du travail assigné ; null pour « Non assigné »
+  score: number;             // somme des notes de difficulté des tickets notés
+  scored: number;            // nombre de tickets notés (le reste est hors score)
+  difficulty: number[];      // répartition des notes, index 0 = note 1
+  avgDifficulty: number | null;
   months: number[];          // 12 entrées, index 0 = janvier
   medianHours: number | null;
   p90Hours: number | null;
@@ -36,6 +40,8 @@ export interface RTStats {
     unassigned: number;
     perWorkday: number;
     workdays: number;
+    score: number;
+    scored: number;
   };
   team: {
     medianHours: number | null;

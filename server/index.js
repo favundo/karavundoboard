@@ -651,6 +651,10 @@ app.get('/api/rt/by-owner', async (req, res) => {
 // d'un /show par ticket. Chaque requête coûte ~9 s côté RT (Perl) → cache.
 
 const STATS_QUEUE  = process.env.RT_STATS_QUEUE || 'sos';
+// Nom exact vérifié contre RT le 27/08/2026 : pas d'espace avant l'accolade,
+// contrairement à son voisin `CF.{Lieu }`. Surchargeable, il a déjà été renommé.
+const DIFFICULTY_CF = process.env.RT_DIFFICULTY_CF || 'CF.{Difficulté}';
+const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5];
 const STATS_TTL    = parseInt(process.env.RT_STATS_TTL_MIN || '1440', 10) * 60000;  // 24 h : le cron du matin fait l'actualisation
 const _statsCache  = new Map();   // `${queue}:${year}` → { at, data }
 const _statsInFlight = new Map(); // même clé → Promise, évite 2 calculs concurrents
@@ -742,6 +746,7 @@ async function buildRTStats(queue, year) {
       owners.set(key, {
         owner: key, resolved: 0, rejected: 0, sameDay: 0,
         months: new Array(12).fill(0), delays: [], bestDay: null,
+        score: 0, scored: 0, difficulty: new Array(DIFFICULTY_LEVELS.length).fill(0),
       });
     }
     return owners.get(key);
@@ -791,6 +796,28 @@ async function buildRTStats(queue, year) {
     if (t.Status === 'rejected') m.rejectedCreated++;
   }
 
+  // Score de difficulté : une requête par note, pas une par ticket. RT 4.0.4
+  // refuse les champs personnalisés dans `fields=` (400) mais les accepte dans
+  // `query=`, et Owner est un champ natif — cinq requêtes couvrent donc toute
+  // l'équipe et toute l'année.
+  //
+  // Les tickets sans note sont hors score, décision explicite : le champ date du
+  // 26/08/2026, les compter comme des 1 ferait du score une copie du nombre de
+  // tickets. Les rejets en sont exclus aussi — un rejet n'est pas du travail.
+  for (const level of DIFFICULTY_LEVELS) {
+    const text = await rtFieldSearch(
+      `Queue = '${q}' AND Status = 'resolved' AND Resolved > '${from}' AND Resolved < '${to}' `
+      + `AND '${DIFFICULTY_CF}' = '${level}'`,
+      'id,Owner',
+    );
+    for (const t of parseRTTsv(text)) {
+      const o = owner(t.Owner);
+      o.difficulty[level - 1]++;
+      o.scored++;
+      o.score += level;
+    }
+  }
+
   // Meilleure journée de chaque technicien + de l'équipe
   let teamBestDay = null;
   for (const [date, d] of perDay) {
@@ -827,6 +854,10 @@ async function buildRTStats(queue, year) {
       resolved:    o.resolved,
       rejected:    o.rejected,
       share:       o.owner === 'Nobody' || !assignedResolved ? null : o.resolved / assignedResolved,
+      score:       o.score,
+      scored:      o.scored,        // tickets notés — le reste du volume n'entre pas dans le score
+      difficulty:  o.difficulty,    // répartition des notes, index 0 = note 1
+      avgDifficulty: o.scored ? o.score / o.scored : null,
       months:      o.months,
       medianHours: median(o.delays),
       p90Hours:    quantile(o.delays, 0.9),
@@ -860,6 +891,8 @@ async function buildRTStats(queue, year) {
       unassigned: owners.get('Nobody')?.resolved || 0,
       perWorkday: workdays ? totalResolved / workdays : 0,
       workdays,
+      score:      [...owners.values()].reduce((s, o) => s + o.score, 0),
+      scored:     [...owners.values()].reduce((s, o) => s + o.scored, 0),
     },
     team: {
       medianHours: median(delays),
