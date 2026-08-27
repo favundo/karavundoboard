@@ -655,6 +655,11 @@ const STATS_QUEUE  = process.env.RT_STATS_QUEUE || 'sos';
 // contrairement à son voisin `CF.{Lieu }`. Surchargeable, il a déjà été renommé.
 const DIFFICULTY_CF = process.env.RT_DIFFICULTY_CF || 'CF.{Difficulté}';
 const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5];
+// Bonus de priorité : 4 = urgent (+1), 5 = bloquant (+2). Des seuils et non des
+// égalités — quelques tickets portent 9 ou 10, hérités de l'échelle 0-100 de RT,
+// et les ignorer reviendrait à ne pas récompenser les plus urgents de tous.
+const PRIORITY_BONUS = [{ min: 5, points: 2 }, { min: 4, points: 1 }];
+const priorityBonus = (p) => PRIORITY_BONUS.find(b => p >= b.min)?.points || 0;
 const STATS_TTL    = parseInt(process.env.RT_STATS_TTL_MIN || '1440', 10) * 60000;  // 24 h : le cron du matin fait l'actualisation
 const _statsCache  = new Map();   // `${queue}:${year}` → { at, data }
 const _statsInFlight = new Map(); // même clé → Promise, évite 2 calculs concurrents
@@ -717,7 +722,7 @@ async function buildRTStats(queue, year) {
   // recherches aussi larges.
   const closedText = await rtFieldSearch(
     `Queue = '${q}' AND (Status = 'resolved' OR Status = 'rejected') AND Resolved > '${from}' AND Resolved < '${to}'`,
-    'id,Owner,Status,Created,Resolved',
+    'id,Owner,Status,Created,Resolved,Priority',
   );
   const createdText = await rtFieldSearch(
     `Queue = '${q}' AND Created > '${from}' AND Created < '${to}'`,
@@ -746,7 +751,8 @@ async function buildRTStats(queue, year) {
       owners.set(key, {
         owner: key, resolved: 0, rejected: 0, sameDay: 0,
         months: new Array(12).fill(0), delays: [], bestDay: null,
-        score: 0, scored: 0, difficulty: new Array(DIFFICULTY_LEVELS.length).fill(0),
+        difficultyScore: 0, scored: 0, difficulty: new Array(DIFFICULTY_LEVELS.length).fill(0),
+        bonus: 0, urgent: 0,
       });
     }
     return owners.get(key);
@@ -763,6 +769,11 @@ async function buildRTStats(queue, year) {
     o.resolved++;
     o.months[m]++;
     months[m].resolved++;
+
+    // Le bonus récompense la prise en charge d'un ticket urgent, indépendamment
+    // de sa note de difficulté : un bloquant traité vite peut être simple.
+    const bonus = priorityBonus(parseInt(t.Priority, 10) || 0);
+    if (bonus) { o.bonus += bonus; o.urgent++; }
     heat[(res.getDay() + 6) % 7][res.getHours()]++;   // lundi = 0
 
     const day = t.Resolved.slice(0, 10);
@@ -814,7 +825,7 @@ async function buildRTStats(queue, year) {
       const o = owner(t.Owner);
       o.difficulty[level - 1]++;
       o.scored++;
-      o.score += level;
+      o.difficultyScore += level;
     }
   }
 
@@ -854,10 +865,13 @@ async function buildRTStats(queue, year) {
       resolved:    o.resolved,
       rejected:    o.rejected,
       share:       o.owner === 'Nobody' || !assignedResolved ? null : o.resolved / assignedResolved,
-      score:       o.score,
+      score:       o.difficultyScore + o.bonus,
+      difficultyScore: o.difficultyScore,
+      bonus:       o.bonus,         // points de priorité, hors notes de difficulté
+      urgent:      o.urgent,        // tickets résolus en priorité >= 4
       scored:      o.scored,        // tickets notés — le reste du volume n'entre pas dans le score
       difficulty:  o.difficulty,    // répartition des notes, index 0 = note 1
-      avgDifficulty: o.scored ? o.score / o.scored : null,
+      avgDifficulty: o.scored ? o.difficultyScore / o.scored : null,
       months:      o.months,
       medianHours: median(o.delays),
       p90Hours:    quantile(o.delays, 0.9),
@@ -891,8 +905,10 @@ async function buildRTStats(queue, year) {
       unassigned: owners.get('Nobody')?.resolved || 0,
       perWorkday: workdays ? totalResolved / workdays : 0,
       workdays,
-      score:      [...owners.values()].reduce((s, o) => s + o.score, 0),
+      score:      [...owners.values()].reduce((s, o) => s + o.difficultyScore + o.bonus, 0),
       scored:     [...owners.values()].reduce((s, o) => s + o.scored, 0),
+      bonus:      [...owners.values()].reduce((s, o) => s + o.bonus, 0),
+      urgent:     [...owners.values()].reduce((s, o) => s + o.urgent, 0),
     },
     team: {
       medianHours: median(delays),

@@ -5,7 +5,10 @@ export interface RTOwnerStats {
   resolved: number;
   rejected: number;
   share: number | null;      // part du travail assigné ; null pour « Non assigné »
-  score: number;             // somme des notes de difficulté des tickets notés
+  score: number;             // difficulté + bonus de priorité
+  difficultyScore: number;   // somme des notes des tickets notés
+  bonus: number;             // points de priorité (>= 4 : +1, >= 5 : +2)
+  urgent: number;            // tickets résolus en priorité >= 4
   scored: number;            // nombre de tickets notés (le reste est hors score)
   difficulty: number[];      // répartition des notes, index 0 = note 1
   avgDifficulty: number | null;
@@ -42,6 +45,8 @@ export interface RTStats {
     workdays: number;
     score: number;
     scored: number;
+    bonus: number;
+    urgent: number;
   };
   team: {
     medianHours: number | null;

@@ -56,13 +56,15 @@ describe('SupportStats', () => {
   it('affiche le score de difficulté, et un tiret pour les non notés', async () => {
     renderPage();
 
-    // maabid : 40 tickets notés → score 99, difficulté moyenne 2,5
-    expect(await screen.findByText('99')).toBeInTheDocument();
+    // maabid : 40 tickets notés (99 pts) + 3 urgents (4 pts) → 103, moyenne 2,5
+    expect(await screen.findByText('103')).toBeInTheDocument();
+    expect(screen.getByText('+4')).toBeInTheDocument();
     expect(screen.getByText('2.5')).toBeInTheDocument();
 
     // Un ticket sans note n'est pas un ticket facile : score à «\u00a0—\u00a0», jamais à 0
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     expect(screen.getByText(/76 tickets notés sur 2528 résolus/)).toBeInTheDocument();
+    expect(screen.getByText(/4 tickets urgents sur la période/)).toBeInTheDocument();
   });
 
   it('interroge le bon endpoint', async () => {

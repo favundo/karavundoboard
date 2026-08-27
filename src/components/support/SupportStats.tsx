@@ -34,11 +34,12 @@ const SupportStats = () => {
 
   const exportCsv = () => {
     if (!data) return;
-    const head = ['Technicien', 'Résolus', 'Rejetés', 'Part', 'Score', 'Tickets notés', 'Difficulté moyenne',
+    const head = ['Technicien', 'Résolus', 'Rejetés', 'Part', 'Score', 'Points difficulté', 'Bonus priorité',
+      'Tickets urgents', 'Tickets notés', 'Difficulté moyenne',
       'Délai médian (h)', 'P90 (h)', 'Jour même', 'Mois n°1', ...MONTH_LABELS];
     const rows = data.owners.map((o) => [
       ownerLabel(o.owner), o.resolved, o.rejected, o.share === null ? '' : (o.share * 100).toFixed(1),
-      o.score, o.scored, o.avgDifficulty?.toFixed(2) ?? '',
+      o.score, o.difficultyScore, o.bonus, o.urgent, o.scored, o.avgDifficulty?.toFixed(2) ?? '',
       o.medianHours?.toFixed(1) ?? '', o.p90Hours?.toFixed(0) ?? '',
       (o.sameDayPct * 100).toFixed(0), o.crowns, ...o.months,
     ]);
@@ -203,9 +204,12 @@ const SupportStats = () => {
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{o.share === null ? '—' : pct(o.share)}</td>
                       <td
                         className="px-2 py-2 text-right tabular-nums text-foreground"
-                        title={o.scored ? `${o.scored} ticket${o.scored > 1 ? 's' : ''} noté${o.scored > 1 ? 's' : ''} sur ${o.resolved} résolu${o.resolved > 1 ? 's' : ''}` : 'aucun ticket noté'}
+                        title={o.scored || o.bonus
+                          ? `${o.difficultyScore} pt de difficulté (${o.scored} ticket${o.scored > 1 ? 's' : ''} noté${o.scored > 1 ? 's' : ''} sur ${o.resolved}) + ${o.bonus} de bonus (${o.urgent} urgent${o.urgent > 1 ? 's' : ''})`
+                          : 'aucun ticket noté, aucun ticket urgent'}
                       >
-                        {o.scored ? o.score : '—'}
+                        {o.scored || o.bonus ? o.score : '—'}
+                        {o.bonus > 0 && <span className="ml-1 text-[11px] font-medium text-muted-foreground">+{o.bonus}</span>}
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
                         {o.avgDifficulty === null ? '—' : o.avgDifficulty.toFixed(1)}
@@ -235,6 +239,15 @@ const SupportStats = () => {
                 : 'Aucun ticket noté pour l\'instant'} — les tickets sans note n'entrent ni dans le score ni dans la
               difficulté moyenne, un ticket non noté n'est pas un ticket facile. Le champ n'existe que depuis le
               26 août 2026 : rien d'antérieur ne peut être noté rétroactivement.
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              S'y ajoute un <strong>bonus de priorité</strong> sur les tickets résolus : +1 à partir de la priorité 4
+              (urgent), +2 à partir de la 5 (bloquant). Des seuils et non des égalités — quelques tickets portent
+              encore 9 ou 10, hérités de l'échelle 0-100 de RT. Le bonus ne dépend pas de la note : un bloquant peut
+              être simple à traiter, le prendre en charge compte quand même.{' '}
+              {data.totals.urgent > 0
+                ? `${data.totals.urgent} ticket${data.totals.urgent > 1 ? 's' : ''} urgent${data.totals.urgent > 1 ? 's' : ''} sur la période.`
+                : 'Aucun ticket en priorité 4 ou plus sur la période.'}
             </p>
           </div>
         </>
