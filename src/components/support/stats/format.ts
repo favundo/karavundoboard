@@ -29,6 +29,19 @@ export function formatHours(h: number | null | undefined): string {
 
 export const pct = (v: number) => `${Math.round(v * 100)} %`;
 
+/**
+ * Demande réelle : les entrées moins celles qui ont fini rejetées. Un rejet est
+ * quasi toujours du spam ou un ticket mal aiguillé — pas une demande adressée à
+ * l'équipe. Les compter au dénominateur ferait passer l'équipe pour débordée.
+ * Le `?? 0` couvre un serveur pas encore à jour.
+ */
+export const realDemand = (t: { created: number; rejectedCreated?: number }) =>
+  t.created - (t.rejectedCreated ?? 0);
+
+/** Part des entrées qui ont fini rejetées — le signal d'une file mal aiguillée. */
+export const rejectRate = (t: { created: number; rejectedCreated?: number }) =>
+  t.created ? (t.rejectedCreated ?? 0) / t.created : 0;
+
 export const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 export const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];

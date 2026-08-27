@@ -726,7 +726,10 @@ async function buildRTStats(queue, year) {
   const owners = new Map();   // login → agrégat
   const months = Array.from({ length: 12 }, (_, i) => ({
     month: `${year}-${String(i + 1).padStart(2, '0')}`,
-    created: 0, resolved: 0, rejected: 0,
+    // created = tout ce qui entre ; rejectedCreated = la part de ces entrées qui
+    // a fini rejetée (spam, ticket mal aiguillé). La demande réelle est la
+    // différence des deux — c'est elle qui sert de dénominateur à l'absorption.
+    created: 0, rejected: 0, rejectedCreated: 0, resolved: 0,
   }));
   const heat    = Array.from({ length: 7 }, () => new Array(24).fill(0));
   const perDay  = new Map();  // 'YYYY-MM-DD' → { total, byOwner }
@@ -777,9 +780,15 @@ async function buildRTStats(queue, year) {
     }
   }
 
+  // Les rejets sont comptés ici par mois de *création*, pas de clôture : mélanger
+  // les deux cohortes fausserait « créés - rejetés ». La recherche `created`
+  // remonte déjà Status, donc ça ne coûte aucune requête RT supplémentaire.
   for (const t of created) {
     const cre = parseRTDate(t.Created);
-    if (cre && cre.getFullYear() === year) months[cre.getMonth()].created++;
+    if (!cre || cre.getFullYear() !== year) continue;
+    const m = months[cre.getMonth()];
+    m.created++;
+    if (t.Status === 'rejected') m.rejectedCreated++;
   }
 
   // Meilleure journée de chaque technicien + de l'équipe
@@ -805,12 +814,19 @@ async function buildRTStats(queue, year) {
 
   const totalResolved = [...owners.values()].reduce((s, o) => s + o.resolved, 0);
 
+  // « Nobody » n'est pas un technicien : ses résolutions sortent du dénominateur
+  // des parts. Les y laisser diluait la part de tout le monde (157 tickets non
+  // assignés en 2026, soit 6 % retirés à chacun). Sa propre part vaut null —
+  // « part de rien » n'a pas de sens, l'affichage met un tiret.
+  const assignedResolved = [...owners.values()]
+    .reduce((s, o) => (o.owner === 'Nobody' ? s : s + o.resolved), 0);
+
   const ownerList = [...owners.values()]
     .map(o => ({
       owner:       o.owner,
       resolved:    o.resolved,
       rejected:    o.rejected,
-      share:       totalResolved ? o.resolved / totalResolved : 0,
+      share:       o.owner === 'Nobody' || !assignedResolved ? null : o.resolved / assignedResolved,
       months:      o.months,
       medianHours: median(o.delays),
       p90Hours:    quantile(o.delays, 0.9),
@@ -839,6 +855,7 @@ async function buildRTStats(queue, year) {
       resolved:   totalResolved,
       rejected:   [...owners.values()].reduce((s, o) => s + o.rejected, 0),
       created:    months.reduce((s, m) => s + m.created, 0),
+      rejectedCreated: months.reduce((s, m) => s + m.rejectedCreated, 0),
       openFromYear: backlog.length,
       unassigned: owners.get('Nobody')?.resolved || 0,
       perWorkday: workdays ? totalResolved / workdays : 0,

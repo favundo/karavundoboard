@@ -59,7 +59,7 @@ export const Podium = ({ owners, palette }: PodiumProps) => {
               <Avatar login={o.owner} size={rank === 0 ? 48 : 40} />
               <p className="mt-2 truncate text-sm font-semibold text-foreground max-w-full">{ownerLabel(o.owner)}</p>
               <p className="text-2xl font-bold tabular-nums text-foreground sm:text-3xl">{o.resolved}</p>
-              <p className="text-[11px] text-muted-foreground">{pct(o.share)} du total</p>
+              <p className="text-[11px] text-muted-foreground">{pct(o.share ?? 0)} des tickets assignés</p>
 
               <div
                 className="mt-2 w-full rounded-t-md transition-[height] duration-700 ease-out"

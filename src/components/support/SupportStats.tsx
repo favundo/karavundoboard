@@ -12,7 +12,7 @@ import { MonthlyFlowChart } from './stats/MonthlyFlowChart';
 import { ResolutionHeatmap } from './stats/ResolutionHeatmap';
 import { TechSparklines } from './stats/TechSparklines';
 import { RecordCards } from './stats/RecordCards';
-import { formatHours, MONTH_LABELS, ownerColor, ownerLabel, pct } from './stats/format';
+import { formatHours, MONTH_LABELS, ownerColor, ownerLabel, pct, realDemand } from './stats/format';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [0, 1, 2, 3].map((n) => CURRENT_YEAR - n);
@@ -36,7 +36,7 @@ const SupportStats = () => {
     if (!data) return;
     const head = ['Technicien', 'Résolus', 'Rejetés', 'Part', 'Délai médian (h)', 'P90 (h)', 'Jour même', 'Mois n°1', ...MONTH_LABELS];
     const rows = data.owners.map((o) => [
-      ownerLabel(o.owner), o.resolved, o.rejected, (o.share * 100).toFixed(1),
+      ownerLabel(o.owner), o.resolved, o.rejected, o.share === null ? '' : (o.share * 100).toFixed(1),
       o.medianHours?.toFixed(1) ?? '', o.p90Hours?.toFixed(0) ?? '',
       (o.sameDayPct * 100).toFixed(0), o.crowns, ...o.months,
     ]);
@@ -128,10 +128,10 @@ const SupportStats = () => {
             />
             <StatTile
               icon={Scale}
-              tone={data.totals.created && data.totals.resolved / data.totals.created >= 0.95 ? 'good' : 'warning'}
+              tone={realDemand(data.totals) > 0 && data.totals.resolved / realDemand(data.totals) >= 0.95 ? 'good' : 'warning'}
               label="Absorption"
-              value={data.totals.created ? pct(data.totals.resolved / data.totals.created) : '—'}
-              hint="résolus ÷ créés"
+              value={realDemand(data.totals) > 0 ? pct(data.totals.resolved / realDemand(data.totals)) : '—'}
+              hint="résolus ÷ demande réelle"
             />
             <StatTile
               icon={Clock}
@@ -196,7 +196,7 @@ const SupportStats = () => {
                       </td>
                       <td className="px-2 py-2 text-right font-semibold tabular-nums text-foreground">{o.resolved}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{o.rejected}</td>
-                      <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{pct(o.share)}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{o.share === null ? '—' : pct(o.share)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{formatHours(o.medianHours)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{formatHours(o.p90Hours)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{pct(o.sameDayPct)}</td>

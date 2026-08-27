@@ -41,7 +41,7 @@ describe('SupportStats', () => {
     // Chiffres clés
     expect(await screen.findByText('2528')).toBeInTheDocument();   // résolus
     expect(screen.getByText('2974')).toBeInTheDocument();          // créés
-    expect(screen.getByText('85 %')).toBeInTheDocument();          // absorption 2528/2974
+    expect(screen.getByText('99 %')).toBeInTheDocument();          // absorption 2528 / (2974 - 411 rejetés)
 
     // Podium : le premier du classement et son volume
     const podium = await screen.findByText('🥇');

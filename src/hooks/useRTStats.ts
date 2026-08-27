@@ -4,7 +4,7 @@ export interface RTOwnerStats {
   owner: string;
   resolved: number;
   rejected: number;
-  share: number;
+  share: number | null;      // part du travail assigné ; null pour « Non assigné »
   months: number[];          // 12 entrées, index 0 = janvier
   medianHours: number | null;
   p90Hours: number | null;
@@ -16,8 +16,9 @@ export interface RTOwnerStats {
 export interface RTMonthStats {
   month: string;             // 'YYYY-MM'
   created: number;
+  rejected: number;          // rejets clôturés dans le mois
+  rejectedCreated: number;   // entrées du mois qui ont fini rejetées
   resolved: number;
-  rejected: number;
 }
 
 export interface RTStats {
@@ -30,6 +31,7 @@ export interface RTStats {
     resolved: number;
     rejected: number;
     created: number;
+    rejectedCreated: number;
     openFromYear: number;
     unassigned: number;
     perWorkday: number;

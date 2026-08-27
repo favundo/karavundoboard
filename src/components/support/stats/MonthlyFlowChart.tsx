@@ -1,6 +1,6 @@
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { type RTMonthStats } from '@/hooks/useRTStats';
-import { MONTH_LABELS } from './format';
+import { MONTH_LABELS, pct, realDemand, rejectRate } from './format';
 import { type VizPalette } from '@/lib/vizColors';
 
 interface Props {
@@ -31,7 +31,8 @@ interface FlowTooltipProps {
 const FlowTooltip = ({ active, payload, label, palette }: FlowTooltipProps) => {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
-  const ratio = row.created ? Math.round((row.resolved / row.created) * 100) : null;
+  const demand = realDemand(row);
+  const ratio = demand > 0 ? Math.round((row.resolved / demand) * 100) : null;
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-xl">
       <p className="mb-1 text-xs font-semibold text-foreground">{label}</p>
@@ -43,9 +44,16 @@ const FlowTooltip = ({ active, payload, label, palette }: FlowTooltipProps) => {
         <span className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle" style={{ backgroundColor: palette.created }} />
         {row.created} créés
       </p>
+      {row.rejectedCreated > 0 && (
+        <p className="text-xs text-muted-foreground">
+          <span className="mr-1.5 inline-block h-2 w-2 align-middle" aria-hidden />
+          dont {row.rejectedCreated} rejetés ({pct(rejectRate(row))})
+        </p>
+      )}
       {ratio !== null && (
         <p className="mt-1 border-t border-border pt-1 text-xs font-medium text-foreground">
           Absorption {ratio} %
+          <span className="ml-1 font-normal text-muted-foreground">— {row.resolved} ÷ {demand}</span>
         </p>
       )}
     </div>
@@ -54,7 +62,9 @@ const FlowTooltip = ({ active, payload, label, palette }: FlowTooltipProps) => {
 
 /**
  * Flux entrant / sortant de la file. Les deux séries comptent des tickets :
- * un seul axe, jamais deux échelles.
+ * un seul axe, jamais deux échelles. La ligne « créés » reste le total des
+ * entrées — c'est ce qu'un graphe d'entrées doit montrer ; c'est l'absorption
+ * de l'infobulle qui écarte les rejets, eux ne sont pas de la demande.
  */
 export const MonthlyFlowChart = ({ months, palette }: Props) => {
   // Les mois à venir ne sont pas « zéro ticket », ils n'existent pas encore.
