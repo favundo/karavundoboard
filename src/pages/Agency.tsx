@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Network, Upload, PlusCircle, MapPin, MapPinOff, Archive, MonitorX, ClipboardList } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/LogoutButton";
 import AgencyStatsCards from "@/components/agency/AgencyStatsCards";
 import AgencyMap from "@/components/agency/AgencyMap";
 import AgencyTable from "@/components/agency/AgencyTable";
@@ -85,6 +86,7 @@ const Agency = () => {
                 </span>
               </div>
               <ThemeToggle />
+              <LogoutButton />
               <button
                 onClick={() => setDecommListOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"

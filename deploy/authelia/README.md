@@ -184,6 +184,23 @@ Authelia peut continuer de tourner, il n'est plus sur le chemin.
 
 ---
 
+## Déconnexion
+
+Le portail expose une route `/logout` sur son sous-chemin :
+`https://karinventaire01.in.karavel.com/authelia/logout`. Elle détruit la
+session puis renvoie vers `default_redirection_url` — l'application, qui sans
+session repasse par l'écran de connexion.
+
+Côté appli, `src/components/LogoutButton.tsx` pointe dessus et est posé à côté
+de `<ThemeToggle />` dans l'en-tête de chaque page. Il ne s'affiche ni hors
+authentification ni en mode `DEV_USER`, où aucun Authelia n'est devant Vite.
+
+> ⚠️ Ce lien ne fonctionne que parce que `location /authelia` **n'est pas**
+> protégé par `auth_request` (étape 3). L'y ajouter casserait aussi la
+> déconnexion, pas seulement la connexion.
+
+---
+
 ## Ensuite : la personnalisation
 
 Une fois le portail en place, l'application récupère l'identité via un endpoint

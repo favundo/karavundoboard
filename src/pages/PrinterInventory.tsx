@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Printer, PlusCircle, Trash2, Upload } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/LogoutButton";
 import PrinterInventoryTable from "@/components/printer/PrinterInventoryTable";
 import PrinterAddModal from "@/components/printer/PrinterAddModal";
 import PrinterDeleteModal from "@/components/printer/PrinterDeleteModal";
@@ -40,6 +41,7 @@ const PrinterInventory = () => {
                   </span>
                 </div>
                 <ThemeToggle />
+                <LogoutButton />
                 <AdminOnly>
                   <button
                     onClick={() => setImportOpen(true)}

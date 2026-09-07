@@ -2,6 +2,7 @@ import { HeadsetIcon, LayoutDashboard, CalendarDays, ClipboardList, UserPlus, Ba
 import { NavLink } from '@/components/NavLink';
 import { Outlet } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { LogoutButton } from '@/components/LogoutButton';
 import { PriorityTicker } from '@/components/support/PriorityTicker';
 import { QueueFilter } from '@/components/support/QueueFilter';
 import { SupportQueuesProvider } from '@/contexts/SupportQueuesContext';
@@ -71,6 +72,7 @@ const Support = () => (
               <div className="flex items-center gap-4">
                 <ConnectedAs />
                 <ThemeToggle />
+                <LogoutButton />
               </div>
             </div>
           </div>

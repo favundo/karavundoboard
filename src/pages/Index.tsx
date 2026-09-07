@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Server, Upload, Trash2, MonitorX, PlusCircle, Handshake, UserCheck, Archive, ClipboardList } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/LogoutButton";
 import StatsCards from "@/components/dashboard/StatsCards";
 import ServiceChart from "@/components/dashboard/ServiceChart";
 import DeviceTypeChart from "@/components/dashboard/DeviceTypeChart";
@@ -61,6 +62,7 @@ const Index = () => {
                 </span>
               </div>
               <ThemeToggle />
+              <LogoutButton />
 <button
                 onClick={() => setDecommListOpen(true)}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"

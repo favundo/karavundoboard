@@ -1,9 +1,11 @@
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/LogoutButton";
 
 const Gestion = () => (
   <div className="min-h-screen bg-background flex flex-col">
     <header className="border-b border-border px-6 py-3 flex justify-end">
       <ThemeToggle />
+      <LogoutButton />
     </header>
     <div className="flex-1 flex items-center justify-center">
       <div className="text-center">
