@@ -56,6 +56,32 @@ authenticated technician can still call PostgREST directly with the anon key
 from the browser console. A real boundary would require routing writes through
 the Express API, which can check `Remote-Groups` server-side.
 
+## Téléphonie (Axialys)
+
+Statistiques de la ligne du support IT, onglet `Support → Téléphonie`
+(`src/components/support/SupportTelephonie.tsx`).
+
+**Le point non-évident :** l'API Axialys (`api.axialys.com`, header
+`Authorization: APIKey`) **ignore les paramètres de période** `dt` / `dt_end` et
+ne renvoie que les dernières 24-48 h — vérifié le 07/09/2026, six fenêtres de
+mars à septembre ont rendu exactement les mêmes appels. L'historique n'est donc
+pas rejouable : il se **constitue** par le job quotidien (04h05) de
+`server/index.js`, qui écrit dans la table `axialys_calls`. Ce qui n'est pas
+capturé une nuit est perdu.
+
+Le rattrapage du passé se fait par export CSV du portail, via
+`server/scripts/import-axialys-csv.js`. Cet export ne porte ni temps d'attente
+ni post-appel (colonnes `source='csv'`, moyennes d'attente à `null`).
+
+Variables d'environnement : `AXIALYS_TOKEN` (obligatoire, sinon l'ingestion est
+désactivée), `AXIALYS_GROUP` (défaut `Support IT KVL`), `AXIALYS_TZ`,
+`AXIALYS_CRON`.
+
+Le token voit **toute** la téléphonie Karavel, relation client sous-traitée
+comprise : le filtre sur le groupe est appliqué à l'ingestion, jamais à
+l'affichage. Les agents de la ligne sont l'équipe TSI, **distincte** de
+`src/lib/technicians.ts`.
+
 ## Key Utilities
 
 - `src/lib/parseInventory.ts` — parses Excel files with flexible French/English column name mapping

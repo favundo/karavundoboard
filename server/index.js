@@ -1474,6 +1474,384 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
+// ─── Axialys — téléphonie du support IT ──────────────────────────────────────
+//
+// Contrairement à RT, on ne peut PAS interroger Axialys à la demande :
+// /vm/calls/in et /vm/calls/out ignorent dt / dt_end et renvoient toujours les
+// dernières 24-48 h. Vérifié le 07/09/2026 — six fenêtres de mars à septembre
+// ont rendu exactement les mêmes 2100 appels. L'historique n'est donc pas
+// rejouable : ce qui n'est pas capturé chaque nuit est perdu pour toujours.
+//
+// D'où le renversement : un job quotidien écrit dans axialys_calls, et les
+// statistiques se calculent sur la table. Pas de cache mémoire ici — là où RT
+// met 18 s à balayer l'année, quelques milliers de lignes Postgres se lisent en
+// millisecondes.
+//
+// Le token voit TOUTE la téléphonie Karavel, y compris la relation client
+// sous-traitée chez Intelcia. Le filtre sur le groupe est appliqué À
+// L'INGESTION : rien d'autre que le support IT n'entre jamais en base.
+
+const AX_BASE  = process.env.AXIALYS_URL   || 'https://api.axialys.com';
+const AX_TOKEN = process.env.AXIALYS_TOKEN;
+const AX_GROUP = process.env.AXIALYS_GROUP || 'Support IT KVL';
+const AX_TZ    = process.env.AXIALYS_TZ    || 'Europe/Paris';
+// 04h05 : Axialys ne renseigne op_name que ~2 h après l'appel, et la fenêtre
+// glissante de l'API couvre largement la veille entière.
+const AX_CRON  = process.env.AXIALYS_CRON  || '5 4 * * *';
+
+/** POST JSON authentifié. Le schéma est « APIKey », pas « Bearer » — non standard. */
+function axialysPost(path, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const url  = new URL(path, AX_BASE);
+    const lib  = url.protocol === 'https:' ? https : http;
+
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        Authorization: `APIKey ${AX_TOKEN}`,
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          return reject(new Error(`HTTP ${res.statusCode} — ${data.slice(0, 200)}`));
+        }
+        try {
+          const json = JSON.parse(data);
+          resolve(Array.isArray(json) ? json : (json.data || []));
+        } catch (e) { reject(new Error(`Réponse illisible : ${data.slice(0, 120)}`)); }
+      });
+    });
+    req.on('error', reject);
+    // 3 min : la réponse couvre toute la téléphonie Karavel, pas seulement la nôtre.
+    req.setTimeout(180000, () => req.destroy(new Error('timeout Axialys')));
+    req.write(body);
+    req.end();
+  });
+}
+
+const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+
+/**
+ * Un enregistrement Axialys → une ligne de axialys_calls.
+ *
+ * Les champs des sortants n'ont pas la même richesse que ceux des entrants (pas
+ * d'attente en file sur un appel qu'on passe soi-même) : tout est donc lu en
+ * optionnel plutôt que supposé présent. Une colonne absente vaut null, et les
+ * moyennes l'écartent — ce qui est juste. La supposer à 0 fausserait tout.
+ */
+function normalizeAxialysCall(c, direction) {
+  return {
+    id_appel:         num(c.id_appel),
+    direction,
+    call_date:        c.date || null,
+    status:           c.status || null,
+    service_number:   c.service_number ? String(c.service_number) : null,
+    caller_number:    c.caller_number ? String(c.caller_number) : null,
+    called_number:    c.called_number ? String(c.called_number) : null,
+    group_name:       c.group_name || null,
+    first_group_name: c.first_group_name || null,
+    rub_name:         c.rub_name || null,
+    op_name:          c.op_name || null,
+    id_op:            num(c.id_op),
+    tags:             c.id_tags ? String(c.id_tags) : null,
+    duration:         num(c.duration),
+    duration_ring:    num(c.duration_ring),
+    duration_svi:     num(c.duration_svi),
+    duration_wait:    num(c.duration_wait),
+    duration_comm:    num(c.duration_comm),
+    duration_hold:    num(c.duration_hold),
+    post_appel:       num(c.post_appel),
+    source:           'api',
+  };
+}
+
+const inSupportGroup = (c) =>
+  c.group_name === AX_GROUP || c.first_group_name === AX_GROUP;
+
+/**
+ * Une passe d'ingestion : les deux sens, filtrés sur le groupe support, écrits
+ * en upsert sur id_appel. Idempotent par construction — le job recouvre
+ * forcément la veille, et rejouer une journée ne duplique rien.
+ */
+async function ingestAxialys() {
+  if (!AX_TOKEN) throw new Error('AXIALYS_TOKEN non configuré');
+
+  // dt / dt_end sont ignorés par l'API mais restent obligatoires : sans eux
+  // elle répond 400 INVALID_VARS « check: dt,dt_end ».
+  const today     = new Date();
+  const yesterday = new Date(today.getTime() - 86400000);
+  const window    = { dt: yesterday.toISOString().slice(0, 10), dt_end: today.toISOString().slice(0, 10) };
+
+  const rows = [];
+  const seen = new Set();
+  for (const [path, direction] of [['/vm/calls/in', 'in'], ['/vm/calls/out', 'out']]) {
+    let raw;
+    try {
+      raw = await axialysPost(path, window);
+    } catch (err) {
+      // Un sens qui tombe ne doit pas emporter l'autre : mieux vaut la moitié
+      // des appels de la nuit que rien du tout.
+      console.error(`[axialys] ${path} :`, err.message);
+      continue;
+    }
+    for (const c of raw.filter(inSupportGroup)) {
+      const row = normalizeAxialysCall(c, direction);
+      // id_appel est la clé primaire : sans lui la ligne n'est pas déduplicable,
+      // et l'ingérer créerait un doublon à chaque passe.
+      if (row.id_appel === null || seen.has(row.id_appel)) continue;
+      seen.add(row.id_appel);
+      rows.push(row);
+    }
+  }
+
+  let written = 0;
+  for (let i = 0; i < rows.length; i += 500) {
+    const batch = rows.slice(i, i + 500);
+    const { error } = await supabase
+      .from('axialys_calls')
+      .upsert(batch, { onConflict: 'id_appel' });
+    if (error) throw new Error(error.message);
+    written += batch.length;
+  }
+  console.log(`[axialys] ${written} appels ingérés (${AX_GROUP})`);
+  return { ingested: written };
+}
+
+// ─── Statistiques téléphonie ─────────────────────────────────────────────────
+
+/** Découpage local d'une date ISO : Axialys horodate en UTC, on compte en Paris. */
+const _axDay  = new Intl.DateTimeFormat('en-CA', { timeZone: AX_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const _axHour = new Intl.DateTimeFormat('en-GB', { timeZone: AX_TZ, hour: '2-digit', hour12: false });
+const _axWday = new Intl.DateTimeFormat('en-US', { timeZone: AX_TZ, weekday: 'short' });
+
+function axLocal(iso) {
+  const d = new Date(iso);
+  return {
+    day:  _axDay.format(d),                       // 2026-09-07
+    hour: parseInt(_axHour.format(d), 10),        // 0-23, heure de Paris
+    wday: _axWday.format(d),                      // Mon…Sun
+  };
+}
+
+const axNums   = (xs) => xs.filter(v => typeof v === 'number' && Number.isFinite(v));
+const axAvg    = (xs) => { const a = axNums(xs); return a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : null; };
+const axMedian = (xs) => { const a = axNums(xs).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+
+/**
+ * Rattrapage des appels manqués : un entrant non décroché a-t-il été suivi d'un
+ * sortant vers le même numéro ?
+ *
+ * Fenêtre de 24 h délibérée. Sans borne, un appel sans rapport passé cinq jours
+ * plus tard au même collaborateur serait compté comme un rappel — sur les
+ * données d'août, cela gonflait le taux de 10 % à 25 %. La borne ne rend pas la
+ * mesure exacte, mais elle la rend honnête.
+ */
+function axialysCallbacks(calls) {
+  const WINDOW = 24 * 3600 * 1000;
+  const outs = new Map();
+  for (const c of calls) {
+    if (c.direction !== 'out' || !c.caller_number) continue;
+    if (!outs.has(c.caller_number)) outs.set(c.caller_number, []);
+    outs.get(c.caller_number).push(new Date(c.call_date).getTime());
+  }
+  for (const v of outs.values()) v.sort((a, b) => a - b);
+
+  const missed = calls.filter(c => c.direction === 'in' && c.status !== 'ANSWER');
+  const delays = [];
+  for (const m of missed) {
+    const t = new Date(m.call_date).getTime();
+    const hit = (outs.get(m.caller_number) || []).find(o => o > t && o - t <= WINDOW);
+    if (hit) delays.push(Math.round((hit - t) / 60000));   // minutes
+  }
+  return {
+    missed:       missed.length,
+    calledBack:   delays.length,
+    rate:         missed.length ? delays.length / missed.length : null,
+    medianDelayMin: axMedian(delays),
+    windowHours:  24,
+  };
+}
+
+function computeAxialysStats(calls) {
+  const ins  = calls.filter(c => c.direction === 'in');
+  const outs = calls.filter(c => c.direction === 'out');
+  const answered = ins.filter(c => c.status === 'ANSWER');
+  const missed   = ins.filter(c => c.status !== 'ANSWER');
+
+  const byStatus = {};
+  for (const c of ins) byStatus[c.status || 'INCONNU'] = (byStatus[c.status || 'INCONNU'] || 0) + 1;
+
+  // Par agent : id_op est la seule clé stable, op_name n'est qu'un prénom suivi
+  // de l'équipe. Les agents téléphonie ne sont PAS ceux de technicians.ts —
+  // deux des quatre observés n'y figurent pas.
+  //
+  // Mais les lignes rattrapées depuis un export CSV n'ont QUE le nom : le
+  // portail n'exporte pas id_op. Grouper sur id_op seul les rendrait invisibles,
+  // et grouper sur le nom seul dédoublerait un agent renommé. On reconstruit
+  // donc la correspondance nom → id_op à partir des lignes qui portent les deux,
+  // et on s'en sert pour rattacher les autres. Un agent jamais vu par l'API
+  // reste groupé sous son nom, ce qui vaut mieux que de le perdre.
+  const nameToId = new Map();
+  for (const c of calls) {
+    if (c.id_op !== null && c.id_op !== undefined && c.op_name) nameToId.set(c.op_name, c.id_op);
+  }
+  const agentKey = (c) => {
+    const id = c.id_op ?? (c.op_name ? nameToId.get(c.op_name) : undefined);
+    if (id !== null && id !== undefined) return `op:${id}`;
+    return c.op_name ? `name:${c.op_name}` : null;
+  };
+
+  const agents = new Map();
+  for (const c of calls) {
+    const key = agentKey(c);
+    if (!key) continue;                     // appel manqué : aucun agent ne l'a pris
+    if (!agents.has(key)) {
+      agents.set(key, {
+        idOp: c.id_op ?? nameToId.get(c.op_name) ?? null,
+        name: c.op_name || `#${c.id_op}`,
+        in: 0, out: 0, commSec: 0, comms: [], posts: [],
+      });
+    }
+    const a = agents.get(key);
+    if (c.op_name) a.name = c.op_name;
+    if (a.idOp === null && c.id_op !== null && c.id_op !== undefined) a.idOp = c.id_op;
+    if (c.direction === 'in') a.in++; else a.out++;
+    if (typeof c.duration_comm === 'number') { a.commSec += c.duration_comm; a.comms.push(c.duration_comm); }
+    if (typeof c.post_appel === 'number') a.posts.push(c.post_appel);
+  }
+
+  // `order` explicite plutôt qu'un tri par défaut : en texte, « 9 » passe après
+  // « 17 » et lundi après vendredi. Une courbe de charge horaire dans le
+  // désordre est fausse sans en avoir l'air.
+  const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const bucket = (list, keyFn, order) => {
+    const m = new Map();
+    for (const c of list) {
+      const k = keyFn(c);
+      if (!m.has(k)) m.set(k, { key: k, total: 0, answered: 0 });
+      const b = m.get(k);
+      b.total++;
+      if (c.status === 'ANSWER') b.answered++;
+    }
+    const rank = order
+      ? (k) => order.indexOf(k)
+      : (k) => (typeof k === 'number' ? k : String(k));
+    return [...m.values()].sort((a, b) => {
+      const ra = rank(a.key), rb = rank(b.key);
+      return typeof ra === 'string' ? ra.localeCompare(rb) : ra - rb;
+    });
+  };
+
+  return {
+    period: {
+      from: calls.length ? calls.reduce((m, c) => c.call_date < m ? c.call_date : m, calls[0].call_date) : null,
+      to:   calls.length ? calls.reduce((m, c) => c.call_date > m ? c.call_date : m, calls[0].call_date) : null,
+      timezone: AX_TZ,
+    },
+    inbound: {
+      total:      ins.length,
+      answered:   answered.length,
+      missed:     missed.length,
+      answerRate: ins.length ? answered.length / ins.length : null,
+      byStatus,
+      // duration_wait n'existe que sur les lignes issues de l'API : les
+      // rattrapages CSV ne le portent pas. axNums les écarte, plutôt que de
+      // les compter comme des attentes nulles.
+      waitMedianSec: axMedian(answered.map(c => c.duration_wait)),
+      waitAvgSec:    axAvg(answered.map(c => c.duration_wait)),
+      commMedianSec: axMedian(answered.map(c => c.duration_comm)),
+      commAvgSec:    axAvg(answered.map(c => c.duration_comm)),
+      // null et non 0 quand aucune ligne ne porte de temps d'attente : sur une
+      // période rattrapée depuis un CSV, l'information n'existe pas. Un « 0
+      // abandon rapide » se lirait comme une bonne nouvelle alors qu'il ne
+      // veut rien dire.
+      abandonUnder15: missed.some(c => typeof c.duration_wait === 'number')
+        ? missed.filter(c => typeof c.duration_wait === 'number' && c.duration_wait < 15).length
+        : null,
+    },
+    outbound: {
+      total:      outs.length,
+      answered:   outs.filter(c => c.status === 'ANSWER').length,
+      commAvgSec: axAvg(outs.map(c => c.duration_comm)),
+    },
+    agents: [...agents.values()]
+      .map(a => ({
+        idOp: a.idOp, name: a.name, in: a.in, out: a.out, total: a.in + a.out,
+        commTotalSec: a.commSec, commAvgSec: axAvg(a.comms), postAvgSec: axAvg(a.posts),
+      }))
+      .sort((x, y) => y.total - x.total),
+    byDay:     bucket(ins, c => axLocal(c.call_date).day),
+    byHour:    bucket(ins, c => axLocal(c.call_date).hour),
+    byWeekday: bucket(ins, c => axLocal(c.call_date).wday, WEEKDAYS),
+    // Réservé aux administrateurs côté interface : le taux de rappel met
+    // l'équipe en cause et n'a pas sa place sur un tableau de bord partagé.
+    callbacks: axialysCallbacks(calls),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * GET /api/axialys/stats?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * Lit axialys_calls, jamais Axialys : l'API ne sait pas rendre l'historique.
+ */
+app.get('/api/axialys/stats', async (req, res) => {
+  const to   = String(req.query.to   || new Date().toISOString().slice(0, 10));
+  const from = String(req.query.from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ error: 'Dates attendues au format YYYY-MM-DD' });
+  }
+
+  try {
+    // `to` inclus : on borne au lendemain 00:00 plutôt qu'à `to` 00:00, sans
+    // quoi la journée demandée disparaît du résultat.
+    const toExclusive = new Date(`${to}T00:00:00Z`);
+    toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+
+    const { data, error } = await supabase
+      .from('axialys_calls')
+      .select('*')
+      .gte('call_date', `${from}T00:00:00Z`)
+      .lt('call_date', toExclusive.toISOString())
+      .order('call_date', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    res.json(computeAxialysStats(data || []));
+  } catch (err) {
+    console.error('[axialys-stats]', err.message);
+    res.status(500).json({ error: 'Erreur lecture des appels' });
+  }
+});
+
+/** Déclenchement manuel de l'ingestion, pour ne pas attendre la nuit. */
+app.post('/api/axialys/ingest', async (req, res) => {
+  try {
+    res.json(await ingestAxialys());
+  } catch (err) {
+    console.error('[axialys-ingest]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// L'API n'ayant qu'une fenêtre glissante de 24-48 h, ce cron n'est pas une
+// optimisation : c'est le seul moyen d'avoir un historique. S'il ne tourne pas
+// pendant deux jours, les appels de ces jours-là sont définitivement perdus.
+if (AX_TOKEN) {
+  cron.schedule(AX_CRON, () => {
+    ingestAxialys().catch(err => console.error('[axialys-cron]', err.message));
+  }, { timezone: AX_TZ });
+  console.log(`[axialys] ingestion planifiée « ${AX_CRON} » (${AX_TZ})`);
+} else {
+  console.log('[axialys] AXIALYS_TOKEN absent — ingestion désactivée');
+}
+
 // ─── Cron : rappel 24h avant ─────────────────────────────
 // Runs every hour — finds appointments starting in 23–25h that haven't been reminded yet
 cron.schedule('0 * * * *', async () => {

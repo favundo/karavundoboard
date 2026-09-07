@@ -17,6 +17,7 @@ import SupportCalendar from "./components/support/SupportCalendar";
 import SupportPlanningTSI from "./components/support/SupportPlanningTSI";
 import SupportArrivees from "./components/support/SupportArrivees";
 import SupportStats from "./components/support/SupportStats";
+import SupportTelephonie from "./components/support/SupportTelephonie";
 import FichePoste from "./pages/FichePoste";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="planning-tsi" element={<SupportPlanningTSI />} />
             <Route path="arrivees" element={<SupportArrivees />} />
             <Route path="stats" element={<SupportStats />} />
+            <Route path="telephonie" element={<SupportTelephonie />} />
             <Route path="poste/:source/:id" element={<FichePoste />} />
           </Route>
           <Route path="/gestion" element={<Gestion />} />
