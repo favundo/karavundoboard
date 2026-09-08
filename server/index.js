@@ -1799,6 +1799,85 @@ function computeAxialysStats(calls) {
 }
 
 /**
+ * Effectif TSI planifié par jour, lu depuis `planning_tsi`.
+ *
+ * Sert à répondre, en regardant le graphique, à la question qu'on ne peut pas
+ * trancher autrement : un jour creux, est-ce que personne n'a appelé, ou est-ce
+ * que personne n'était là ?
+ *
+ * Trois particularités du planning qu'il faut absorber ici, toutes constatées
+ * sur les données réelles le 08/09/2026 :
+ *
+ *   1. Les dates sont stockées en « JJ/MM », SANS année. On les résout contre
+ *      la période demandée : une date qui n'y tombe pas est simplement ignorée.
+ *      C'est aussi ce qui borne le travail au strict nécessaire.
+ *   2. Le planning contient des SEMAINES EN DOUBLE — les semaines 23 à 26
+ *      portent les mêmes dates que 28 à 31. Sans déduplication par (jour,
+ *      technicien), l'effectif de ces journées serait compté deux fois.
+ *   3. Une cellule travaillée porte son horaire en clair (« 9h00 - 17h30 ») ;
+ *      les autres valeurs sont des absences (OFF, CP, Repos hebdo, Récup,
+ *      Férié, RTT, ou vide). Seules les premières comptent.
+ */
+const SHIFT_RE = /(\d{1,2})h(\d{2})\s*-\s*(\d{1,2})h(\d{2})/;
+
+async function axialysCoverage(from, to) {
+  const { data, error } = await supabase
+    .from('planning_tsi')
+    .select('data')
+    .eq('id', 'current')
+    .maybeSingle();
+
+  // Absence de planning n'est pas un effectif nul : on le dit, et l'interface
+  // masque la bande plutôt que d'afficher des zéros qui passeraient pour réels.
+  if (error || !data?.data?.weeks) return { available: false, days: [] };
+
+  // « JJ/MM » → date pleine, résolue contre la période. Une seule année possible
+  // tant que la période fait moins d'un an, ce qui est le cas des vues proposées.
+  const index = new Map();
+  const cursor = new Date(`${from}T00:00:00Z`);
+  const last = new Date(`${to}T00:00:00Z`);
+  while (cursor <= last) {
+    const iso = cursor.toISOString().slice(0, 10);
+    index.set(`${iso.slice(8, 10)}/${iso.slice(5, 7)}`, iso);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  const seen = new Map();   // `${jour}|${technicien}` → durée en heures
+  for (const week of data.data.weeks) {
+    const dates = week?.dates || [];
+    for (const tech of week?.technicians || []) {
+      (tech.schedule || []).forEach((cell, i) => {
+        const day = index.get(dates[i]);
+        if (!day) return;                       // hors période
+        const m = SHIFT_RE.exec(String(cell?.value || ''));
+        if (!m) return;                         // absence, ou cellule vide
+        const key = `${day}|${tech.name}`;
+        if (seen.has(key)) return;              // semaine dupliquée
+        const hours = (+m[3] + +m[4] / 60) - (+m[1] + +m[2] / 60);
+        if (hours > 0) seen.set(key, hours);
+      });
+    }
+  }
+
+  const byDay = new Map();
+  for (const [key, hours] of seen) {
+    const day = key.slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, { day, techs: 0, techHours: 0 });
+    const d = byDay.get(day);
+    d.techs += 1;
+    d.techHours += hours;
+  }
+
+  const days = [...byDay.values()]
+    .map(d => ({ ...d, techHours: Math.round(d.techHours * 10) / 10 }))
+    .sort((a, b) => a.day.localeCompare(b.day));
+
+  // Un planning chargé mais sans aucune date dans la période vaut « pas de
+  // donnée », pas « zéro technicien » — la distinction se voit à l'écran.
+  return { available: days.length > 0, days };
+}
+
+/**
  * GET /api/axialys/stats?from=YYYY-MM-DD&to=YYYY-MM-DD
  * Lit axialys_calls, jamais Axialys : l'API ne sait pas rendre l'historique.
  */
@@ -1823,7 +1902,8 @@ app.get('/api/axialys/stats', async (req, res) => {
       .order('call_date', { ascending: true });
 
     if (error) throw new Error(error.message);
-    res.json(computeAxialysStats(data || []));
+    const coverage = await axialysCoverage(from, to);
+    res.json({ ...computeAxialysStats(data || []), coverage });
   } catch (err) {
     console.error('[axialys-stats]', err.message);
     res.status(500).json({ error: 'Erreur lecture des appels' });

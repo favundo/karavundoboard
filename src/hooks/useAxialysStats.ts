@@ -16,6 +16,13 @@ export interface AxialysBucket {
   answered: number;
 }
 
+export interface AxialysCoverageDay {
+  /** 'YYYY-MM-DD' */
+  day: string;
+  techs: number;
+  techHours: number;
+}
+
 export interface AxialysAgent {
   /** Identifiant Axialys. `null` sur une période rattrapée depuis un CSV : le
    *  portail n'exporte que le nom de l'agent. */
@@ -52,6 +59,14 @@ export interface AxialysStats {
   byDay: AxialysBucket[];
   byHour: AxialysBucket[];
   byWeekday: AxialysBucket[];
+  /**
+   * Effectif TSI planifié, issu de `planning_tsi`.
+   *
+   * `available: false` signifie « pas de planning pour cette période », ce qui
+   * n'est PAS la même chose qu'un effectif nul : l'interface masque alors la
+   * bande au lieu d'afficher des zéros qui passeraient pour réels.
+   */
+  coverage: { available: boolean; days: AxialysCoverageDay[] };
   /** Rattrapage des manqués. Réservé aux administrateurs à l'affichage. */
   callbacks: {
     missed: number;

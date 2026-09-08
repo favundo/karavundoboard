@@ -8,6 +8,7 @@ import { VIZ } from '@/lib/vizColors';
 import { AdminOnly } from '@/components/AdminOnly';
 import { StatTile } from './stats/StatTile';
 import { CallsBarChart } from './telephonie/CallsBarChart';
+import { CoverageStrip } from './telephonie/CoverageStrip';
 import { formatDayKey, formatHourKey, formatWeekdayKey } from './telephonie/format';
 
 /** Périodes proposées. En jours, bornées à hier — le jour en cours est partiel. */
@@ -19,6 +20,24 @@ const RANGES = [
 ];
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Les trois façons de manquer un appel, dans le vocabulaire d'Axialys.
+ *
+ * La distinction n'est pas cosmétique : elle dit à quel moment l'appel s'est
+ * perdu, et donc quoi corriger. Le mesuré sur août 2026 : à 13 h, 20 manqués
+ * sur 23 sont des abandons et AUCUN n'est un non-répondu — les techniciens ne
+ * sont pas absents de leur poste, ils se sont mis en pause, et un agent en
+ * pause n'est jamais sollicité. Afficher « 66 abort » ne permettait pas de le
+ * voir.
+ */
+const MISS_KINDS: Record<string, { label: string; hint: string }> = {
+  ABORT:    { label: 'abandons',     hint: "raccroché dans la file, avant qu'aucun poste ne sonne" },
+  CANCEL:   { label: 'annulés',      hint: 'raccroché pendant la sonnerie du poste' },
+  NOANSWER: { label: 'non répondus', hint: "le poste a sonné, personne n'a pris" },
+  BUSY:     { label: 'occupés',      hint: 'poste déjà pris par un appel hors Axialys' },
+};
+
 
 /** Secondes → « 1 min 23 » ou « 45 s ». `null` reste un tiret, jamais un zéro. */
 const dur = (s: number | null | undefined) => {
@@ -63,6 +82,37 @@ const SupportTelephonie = () => {
   };
 
   const worstHour = data ? worstBucket(data.byHour, 10) : undefined;
+
+  /**
+   * Série journalière alignée sur le calendrier, et non sur les seuls jours où
+   * un appel a eu lieu.
+   *
+   * L'API ne renvoie que les jours ayant au moins un appel. Les afficher seuls
+   * escamote les journées vides : un dimanche sans appel disparaît, et la
+   * courbe donne l'illusion d'une activité continue. Or la question posée à ce
+   * graphique est justement « ce creux, est-ce l'absence de demande ou
+   * l'absence de monde ? » — il faut donc que le vide se voie. Un jour absent
+   * de la réponse a bien reçu zéro appel : la période est complète en base.
+   *
+   * Au-delà de 90 jours on s'abstient : une barre par jour sur un an est
+   * illisible, et remplir les creux ne ferait qu'ajouter du bruit.
+   */
+  const { dailyCalls, dailyCoverage } = useMemo(() => {
+    if (!data) return { dailyCalls: [], dailyCoverage: [] };
+    if (days > 90) {
+      return { dailyCalls: data.byDay, dailyCoverage: data.coverage.days };
+    }
+    const calls = new Map(data.byDay.map((b) => [String(b.key), b]));
+    const cover = new Map(data.coverage.days.map((c) => [c.day, c]));
+    const dates: string[] = [];
+    for (const d = new Date(`${from}T00:00:00Z`); iso(d) <= to; d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(iso(d));
+    }
+    return {
+      dailyCalls: dates.map((d) => calls.get(d) ?? { key: d, total: 0, answered: 0 }),
+      dailyCoverage: dates.map((d) => cover.get(d) ?? { day: d, techs: 0, techHours: 0 }),
+    };
+  }, [data, days, from, to]);
 
   return (
     <div className="space-y-4">
@@ -149,8 +199,8 @@ const SupportTelephonie = () => {
             <StatTile
               icon={PhoneMissed} label="Appels manqués" value={String(data.inbound.missed)}
               hint={Object.entries(data.inbound.byStatus)
-                .filter(([s]) => s !== 'ANSWER')
-                .map(([s, n]) => `${n} ${s.toLowerCase()}`)
+                .filter(([k]) => k !== 'ANSWER')
+                .map(([k, n]) => `${n} ${MISS_KINDS[k]?.label ?? k.toLowerCase()}`)
                 .join(' · ') || undefined}
               tone={data.inbound.missed > 0 ? 'warning' : 'neutral'}
             />
@@ -165,6 +215,32 @@ const SupportTelephonie = () => {
               hint={`${data.outbound.answered} aboutis`}
             />
           </div>
+
+          {data.inbound.missed > 0 && (
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Nature des appels manqués
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {Object.entries(data.inbound.byStatus)
+                  .filter(([k]) => k !== 'ANSWER')
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([k, n]) => (
+                    <div key={k}>
+                      <p className="text-sm font-semibold text-foreground">
+                        {n} {MISS_KINDS[k]?.label ?? k.toLowerCase()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{MISS_KINDS[k]?.hint ?? k}</p>
+                    </div>
+                  ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Les trois ne se corrigent pas de la même façon : un abandon dit que personne
+                n'était joignable, une annulation qu'on n'a pas décroché assez vite, un non-répondu
+                que le poste a sonné dans le vide.
+              </p>
+            </div>
+          )}
 
           {/* Le graphique qui porte la décision : où sont les trous de couverture. */}
           <div className="rounded-xl border border-border bg-card p-4">
@@ -194,7 +270,23 @@ const SupportTelephonie = () => {
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">Jour par jour</h3>
-              <CallsBarChart data={data.byDay} palette={palette} formatKey={formatDayKey} height={200} />
+              <CallsBarChart data={dailyCalls} palette={palette} formatKey={formatDayKey} height={200} />
+
+              {/* Effectif planifié, en bande alignée sous les appels : sans lui,
+                  un jour creux ne se distingue pas d'un jour sans personne. */}
+              {data.coverage.available ? (
+                <div className="mt-3 border-t border-border/60 pt-3">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Techniciens TSI planifiés
+                  </p>
+                  <CoverageStrip data={dailyCoverage} palette={palette} formatKey={formatDayKey} height={80} />
+                </div>
+              ) : (
+                <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                  Effectif planifié indisponible sur cette période — le planning TSI ne la couvre pas.
+                  Ce n'est pas un effectif nul.
+                </p>
+              )}
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { type AxialysBucket } from '@/hooks/useAxialysStats';
 import { type VizPalette } from '@/lib/vizColors';
+import { CHART_MARGIN, CHART_Y_WIDTH } from './format';
 
 /**
  * Volume d'appels entrants sur un axe ordonné (heure, jour, jour de semaine),
@@ -75,7 +76,7 @@ export const CallsBarChart = ({ data, palette, formatKey = String, height = 220 
       <Legend palette={palette} />
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+          <BarChart data={rows} margin={CHART_MARGIN}>
             <CartesianGrid vertical={false} stroke={palette.grid} />
             <XAxis
               dataKey="key"
@@ -86,6 +87,7 @@ export const CallsBarChart = ({ data, palette, formatKey = String, height = 220 
             />
             <YAxis
               allowDecimals={false}
+              width={CHART_Y_WIDTH}
               tick={{ fontSize: 11, fill: palette.axis }}
               axisLine={false}
               tickLine={false}
