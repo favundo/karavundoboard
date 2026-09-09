@@ -13,8 +13,15 @@ const TYPES = [
   { value: 'installation',       label: 'Installation' },
 ];
 
-const DURATIONS = Array.from({ length: 16 }, (_, i) => {
-  const mins = (i + 1) * 30;
+/**
+ * De 15 minutes à 8 heures, par quart d'heure. Le pas était d'une demi-heure :
+ * trop grossier pour les interventions courtes, qui étaient alors saisies à
+ * 30 min faute de mieux et gonflaient le temps compté dans les statistiques.
+ * Toutes les durées déjà enregistrées sont des multiples de 30, donc présentes
+ * dans cette liste : aucun rendez-vous existant ne perd sa valeur.
+ */
+const DURATIONS = Array.from({ length: 32 }, (_, i) => {
+  const mins = (i + 1) * 15;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return { value: mins, label: h > 0 ? `${h}h${m > 0 ? m : ''}` : `${m}min` };
