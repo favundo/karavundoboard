@@ -12,6 +12,7 @@ import { MonthlyFlowChart } from './stats/MonthlyFlowChart';
 import { ResolutionHeatmap } from './stats/ResolutionHeatmap';
 import { TechSparklines } from './stats/TechSparklines';
 import { RecordCards } from './stats/RecordCards';
+import { InterventionTime } from './stats/InterventionTime';
 import { formatHours, MONTH_LABELS, ownerColor, ownerLabel, pct, realDemand } from './stats/format';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -252,6 +253,10 @@ const SupportStats = () => {
           </div>
         </>
       )}
+
+      {/* Planning support IT — autre source, autre logique : monté hors du bloc
+          RT pour rester consultable même quand RT ne répond pas. */}
+      <InterventionTime palette={palette} />
     </div>
   );
 };

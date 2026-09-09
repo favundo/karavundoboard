@@ -38,6 +38,30 @@ export const useSupportAppointments = () =>
     },
   });
 
+/**
+ * Les rendez-vous à partir d'une date, pour les statistiques de temps passé.
+ *
+ * Requête distincte de `useSupportAppointments` à dessein : celle-ci ramène
+ * toute la table, et PostgREST plafonne à 1 000 lignes. Comme le tri est
+ * croissant, ce sont les rendez-vous les plus **récents** qui disparaîtraient
+ * une fois le seuil franchi — précisément ceux que mesure cette statistique.
+ * Borner la période met le calcul à l'abri, et allège la réponse.
+ */
+export const useAppointmentsSince = (fromISO: string) =>
+  useQuery({
+    queryKey: [...QK, 'since', fromISO],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('support_appointments')
+        .select('*')
+        .gte('date_rdv', fromISO)
+        .order('date_rdv', { ascending: true });
+      if (error) throw error;
+      return data as SupportAppointment[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const useCreateAppointment = () => {
   const qc = useQueryClient();
   return useMutation({

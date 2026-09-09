@@ -16,6 +16,12 @@ vi.mock('recharts', async () => {
   };
 });
 
+// Le bloc « temps d'intervention » lit Supabase, pas RT : hors sujet ici, et
+// sans ce mock son fetch se mêlerait à celui que ces tests inspectent.
+vi.mock('@/hooks/useSupportAppointments', () => ({
+  useAppointmentsSince: () => ({ data: [], isLoading: false, error: null }),
+}));
+
 const renderPage = () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
