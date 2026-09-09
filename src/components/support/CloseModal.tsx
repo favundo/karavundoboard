@@ -3,6 +3,8 @@ import { useState } from 'react';
 import type { SupportAppointment } from '@/hooks/useSupportAppointments';
 import { getTechnicianById } from '@/lib/technicians';
 
+const RT_BASE = 'http://rt.in.karavel.com';
+
 const TYPE_LABELS: Record<string, string> = {
   changement_machine: 'Changement de machine',
   remasterisation:    'Remasterisation',
@@ -62,6 +64,20 @@ const CloseModal = ({ open, appointment, onClose, onConfirm }: Props) => {
               <span className="text-muted-foreground">Type</span>
               <span className="font-medium">{TYPE_LABELS[appointment.type_intervention] ?? appointment.type_intervention}</span>
             </div>
+            {appointment.ticket_rt && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Ticket RT</span>
+                {/* Le technicien qui clôture ici a le ticket à clôturer là-bas. */}
+                <a
+                  href={`${RT_BASE}/Ticket/Display.html?id=${appointment.ticket_rt}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-primary hover:underline"
+                >
+                  #{appointment.ticket_rt}
+                </a>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Technicien</span>
               <span className="font-medium">{tech?.label ?? appointment.uid_technicien}</span>

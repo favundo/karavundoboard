@@ -4,6 +4,7 @@ import { TECHNICIANS } from '@/lib/technicians';
 import { useMeAsTechnician } from '@/hooks/useMe';
 import { isBusinessDay } from '@/lib/frenchHolidays';
 import { useServices } from '@/hooks/useSupportAppointments';
+import { normaliseTicketNumber } from '@/lib/rtTicket';
 import type { SupportAppointment, AppointmentInsert } from '@/hooks/useSupportAppointments';
 
 const TYPES = [
@@ -66,6 +67,7 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
   const [date, setDate]               = useState('');
   const [heure, setHeure]             = useState('09:00');
   const [duree, setDuree]             = useState(60);
+  const [ticketRt, setTicketRt]       = useState('');
   const [notes, setNotes]             = useState('');
 
   const isEdit = !!existing;
@@ -83,11 +85,12 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
       setDate(dt.toISOString().slice(0, 10));
       setHeure(`${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`);
       setDuree(existing.duree_minutes);
+      setTicketRt(existing.ticket_rt ?? '');
       setNotes(existing.notes ?? '');
     } else {
       setUidUser(''); setEmailUser(''); setTechnicien(defaultTech);
       setService(''); setAsset(''); setType(TYPES[0].value);
-      setDate(''); setHeure('09:00'); setDuree(60); setNotes('');
+      setDate(''); setHeure('09:00'); setDuree(60); setTicketRt(''); setNotes('');
     }
     setError('');
     setConfirmDelete(false);
@@ -117,6 +120,12 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
       setError('La date sélectionnée est un week-end ou un jour férié.');
       return;
     }
+    const ticket = normaliseTicketNumber(ticketRt);
+    if (!ticket) {
+      setError('Numéro de ticket RT attendu — par exemple 376886.');
+      return;
+    }
+
     const [h, m] = heure.split(':').map(Number);
     const dateRdv = new Date(date);
     dateRdv.setHours(h, m, 0, 0);
@@ -133,6 +142,7 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
         type_intervention: type,
         date_rdv: dateRdv.toISOString(),
         duree_minutes: duree,
+        ticket_rt: ticket,
         notes: notes.trim() || null,
       });
       onClose();
@@ -251,6 +261,20 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
                 value={asset}
                 onChange={(e) => setAsset(e.target.value)}
                 placeholder="ex: PC-12345"
+                className={inputCls}
+              />
+            </div>
+
+            {/* Ticket RT — obligatoire : une intervention sans ticket n'est
+                rattachable à rien, ni pour l'utilisateur ni dans les stats. */}
+            <div>
+              <label className={labelCls}>N° de ticket RT *</label>
+              <input
+                required
+                inputMode="numeric"
+                value={ticketRt}
+                onChange={(e) => { setTicketRt(e.target.value); setError(''); }}
+                placeholder="ex: 376886"
                 className={inputCls}
               />
             </div>

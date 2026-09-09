@@ -11,6 +11,9 @@ export interface SupportAppointment {
   type_intervention: string;
   date_rdv: string;
   duree_minutes: number;
+  /** N° du ticket RT rattaché. Obligatoire à la saisie ; `null` sur les
+   *  rendez-vous antérieurs à l'ajout du champ, le 09/09/2026. */
+  ticket_rt: string | null;
   statut: 'planifie' | 'cloture';
   notes: string | null;
   rappel_envoye: boolean;

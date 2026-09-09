@@ -17,6 +17,7 @@ const rdv = (
   type_intervention: 'installation',
   date_rdv: date,
   duree_minutes: duree,
+  ticket_rt: '376886',
   statut,
   notes: null, rappel_envoye: false,
   created_at: date, updated_at: date,

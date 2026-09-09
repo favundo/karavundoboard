@@ -31,7 +31,7 @@ const rdv = (
   uid_technicien: uid,
   service: 'Compta', asset: 'UC00001',
   type_intervention: 'installation',
-  date_rdv: date, duree_minutes: duree, statut,
+  date_rdv: date, duree_minutes: duree, statut, ticket_rt: '376886',
   notes: null, rappel_envoye: false,
   created_at: date, updated_at: date,
 });

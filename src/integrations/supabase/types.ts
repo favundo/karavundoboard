@@ -196,6 +196,7 @@ export type Database = {
           type_intervention: string
           date_rdv: string
           duree_minutes: number
+          ticket_rt: string | null
           statut: string
           notes: string | null
           rappel_envoye: boolean
@@ -212,6 +213,7 @@ export type Database = {
           type_intervention: string
           date_rdv: string
           duree_minutes?: number
+          ticket_rt?: string | null
           statut?: string
           notes?: string | null
           rappel_envoye?: boolean
@@ -228,6 +230,7 @@ export type Database = {
           type_intervention?: string
           date_rdv?: string
           duree_minutes?: number
+          ticket_rt?: string | null
           statut?: string
           notes?: string | null
           rappel_envoye?: boolean

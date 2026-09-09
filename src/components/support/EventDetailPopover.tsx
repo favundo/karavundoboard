@@ -2,6 +2,8 @@ import { X, Pencil, CheckCircle2 } from 'lucide-react';
 import type { SupportAppointment } from '@/hooks/useSupportAppointments';
 import { getTechnicianById } from '@/lib/technicians';
 
+const RT_BASE = 'http://rt.in.karavel.com';
+
 const TYPE_LABELS: Record<string, string> = {
   changement_machine: 'Changement de machine',
   remasterisation:    'Remasterisation',
@@ -64,6 +66,18 @@ const EventDetailPopover = ({ appointment, onClose, onEdit, onCloseAppointment }
               </span>
             </Row>
             <Row label="Machine" value={appointment.asset} />
+            {appointment.ticket_rt && (
+              <Row label="Ticket RT">
+                <a
+                  href={`${RT_BASE}/Ticket/Display.html?id=${appointment.ticket_rt}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  #{appointment.ticket_rt}
+                </a>
+              </Row>
+            )}
             <Row label="Service" value={appointment.service} />
             <Row label="Durée" value={`${appointment.duree_minutes >= 60 ? Math.floor(appointment.duree_minutes / 60) + 'h' : ''}${appointment.duree_minutes % 60 > 0 ? appointment.duree_minutes % 60 + 'min' : ''}`} />
             {appointment.notes && <Row label="Notes" value={appointment.notes} />}
