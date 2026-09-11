@@ -63,11 +63,15 @@ Statistiques de la ligne du support IT, onglet `Support → Téléphonie`
 
 **Le point non-évident :** l'API Axialys (`api.axialys.com`, header
 `Authorization: APIKey`) **ignore les paramètres de période** `dt` / `dt_end` et
-ne renvoie que les dernières 24-48 h — vérifié le 07/09/2026, six fenêtres de
-mars à septembre ont rendu exactement les mêmes appels. L'historique n'est donc
-pas rejouable : il se **constitue** par le job quotidien (04h05) de
-`server/index.js`, qui écrit dans la table `axialys_calls`. Ce qui n'est pas
-capturé une nuit est perdu.
+ne renvoie que **le jour courant depuis minuit** (Europe/Paris) — sondé le
+11/09/2026 à 11h16 : 3398 appels, tous du 11/09, le plus ancien à 00h36, rien de
+la veille. `server/scripts/probe-axialys-window.js` rejoue la mesure.
+
+L'historique n'est donc pas rejouable : il se **constitue** par les crons de
+`server/index.js`, qui écrivent dans `axialys_calls`. Ils tournent **pendant la
+journée** (toutes les heures, plus une passe de clôture à 23h58) — une ingestion
+nocturne ne capturerait rien, ce qui a coûté les journées du 08 au 10/09/2026.
+Une journée non capturée est perdue ; seul l'export CSV peut la rattraper.
 
 Le rattrapage du passé se fait par export CSV du portail, via
 `server/scripts/import-axialys-csv.js`. Cet export ne porte ni temps d'attente
@@ -75,7 +79,11 @@ ni post-appel (colonnes `source='csv'`, moyennes d'attente à `null`).
 
 Variables d'environnement : `AXIALYS_TOKEN` (obligatoire, sinon l'ingestion est
 désactivée), `AXIALYS_GROUP` (défaut `Support IT KVL`), `AXIALYS_TZ`,
-`AXIALYS_CRON`.
+`AXIALYS_CRON` (défaut `5 * * * *`), `AXIALYS_CRON_CLOSE` (défaut `58 23 * * *`).
+
+La ligne de log d'une passe donne les ingérés **et** le total rendu avant filtre
+(`30 appels ingérés sur 3398 rendus`) : c'est ce qui distingue une journée calme
+d'une ingestion en panne, les deux affichant sinon le même zéro.
 
 Le token voit **toute** la téléphonie Karavel, relation client sous-traitée
 comprise : le filtre sur le groupe est appliqué à l'ingestion, jamais à

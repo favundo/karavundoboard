@@ -2,10 +2,11 @@
 /**
  * Rattrapage de l'historique téléphonie depuis un export CSV du portail Axialys.
  *
- * POURQUOI CE SCRIPT EXISTE : l'API Axialys ne rend que les dernières 24-48 h
- * (elle ignore dt / dt_end). Le job quotidien de server/index.js capture donc
- * l'avenir, mais il ne peut rien pour le passé. Le seul moyen de récupérer
- * l'historique est un export depuis admin.axialys.net.
+ * POURQUOI CE SCRIPT EXISTE : l'API Axialys ne rend que le jour courant depuis
+ * minuit (elle ignore dt / dt_end). Les crons de server/index.js capturent donc
+ * l'avenir, mais ils ne peuvent rien pour le passé — ni pour une journée qu'ils
+ * ont manquée. Le seul moyen de récupérer l'historique est un export depuis
+ * admin.axialys.net.
  *
  * CE QUE L'EXPORT NE CONTIENT PAS, et qu'il faut avoir en tête :
  *   • ni duration_wait, ni duration_svi, ni post_appel — donc aucune mesure de

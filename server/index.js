@@ -1477,12 +1477,22 @@ app.post('/api/send-email', async (req, res) => {
 // ─── Axialys — téléphonie du support IT ──────────────────────────────────────
 //
 // Contrairement à RT, on ne peut PAS interroger Axialys à la demande :
-// /vm/calls/in et /vm/calls/out ignorent dt / dt_end et renvoient toujours les
-// dernières 24-48 h. Vérifié le 07/09/2026 — six fenêtres de mars à septembre
-// ont rendu exactement les mêmes 2100 appels. L'historique n'est donc pas
-// rejouable : ce qui n'est pas capturé chaque nuit est perdu pour toujours.
+// /vm/calls/in et /vm/calls/out ignorent dt / dt_end. Vérifié le 07/09/2026 —
+// six fenêtres de mars à septembre ont rendu exactement les mêmes appels.
 //
-// D'où le renversement : un job quotidien écrit dans axialys_calls, et les
+// CE QUE REND L'API, EXACTEMENT : le jour courant depuis minuit (Europe/Paris),
+// et rien d'autre. Sondé le 11/09/2026 à 11h16 — 3398 appels rendus, tous du
+// 11/09, le plus ancien à 00h36, pas une ligne de la veille. Ce n'est donc pas
+// une fenêtre glissante de 24-48 h comme on l'a d'abord cru : elle repart de
+// zéro à minuit. Voir scripts/probe-axialys-window.js pour rejouer la mesure.
+//
+// LA CONSÉQUENCE, qui a coûté trois jours de statistiques (08 au 10/09/2026) :
+// une ingestion nocturne ne capture rien. Le job de 04h05 ne voyait que les
+// deux ou trois appels de la nuit et repartait, l'air d'avoir travaillé. Il
+// faut ingérer PENDANT la journée, et repasser assez souvent pour que la
+// dernière passe précède minuit — après quoi la journée est hors d'atteinte.
+//
+// D'où le renversement : un job récurrent écrit dans axialys_calls, et les
 // statistiques se calculent sur la table. Pas de cache mémoire ici — là où RT
 // met 18 s à balayer l'année, quelques milliers de lignes Postgres se lisent en
 // millisecondes.
@@ -1495,9 +1505,17 @@ const AX_BASE  = process.env.AXIALYS_URL   || 'https://api.axialys.com';
 const AX_TOKEN = process.env.AXIALYS_TOKEN;
 const AX_GROUP = process.env.AXIALYS_GROUP || 'Support IT KVL';
 const AX_TZ    = process.env.AXIALYS_TZ    || 'Europe/Paris';
-// 04h05 : Axialys ne renseigne op_name que ~2 h après l'appel, et la fenêtre
-// glissante de l'API couvre largement la veille entière.
-const AX_CRON  = process.env.AXIALYS_CRON  || '5 4 * * *';
+// Toutes les heures : l'upsert sur id_appel est idempotent, donc repasser sur
+// des appels déjà en base ne duplique rien — et c'est même l'intérêt, puisque
+// Axialys ne renseigne op_name que ~2 h après l'appel. Une passe ultérieure du
+// même jour vient donc compléter l'agent sur les lignes déjà écrites.
+const AX_CRON = process.env.AXIALYS_CRON || '5 * * * *';
+// La passe de clôture est la plus importante du lot : à minuit la journée
+// disparaît de l'API, et tout ce qui n'a pas été pris entre 23h00 et 23h58 le
+// serait trop tard. Reste un angle mort assumé — un appel passé après 23h58, et
+// l'agent des appels de la dernière heure, que le délai de ~2 h sur op_name met
+// hors de portée. Le support ne travaille pas à ces heures-là.
+const AX_CRON_CLOSE = process.env.AXIALYS_CRON_CLOSE || '58 23 * * *';
 
 /** POST JSON authentifié. Le schéma est « APIKey », pas « Bearer » — non standard. */
 function axialysPost(path, payload) {
@@ -1584,14 +1602,16 @@ const inSupportGroup = (c) =>
 async function ingestAxialys() {
   if (!AX_TOKEN) throw new Error('AXIALYS_TOKEN non configuré');
 
-  // dt / dt_end sont ignorés par l'API mais restent obligatoires : sans eux
-  // elle répond 400 INVALID_VARS « check: dt,dt_end ».
+  // dt / dt_end ne servent à rien — l'API rend le jour courant quoi qu'on
+  // demande — mais restent obligatoires : sans eux elle répond 400 INVALID_VARS
+  // « check: dt,dt_end ». On les garde donc, sans leur prêter d'effet.
   const today     = new Date();
   const yesterday = new Date(today.getTime() - 86400000);
   const window    = { dt: yesterday.toISOString().slice(0, 10), dt_end: today.toISOString().slice(0, 10) };
 
   const rows = [];
   const seen = new Set();
+  let fetched = 0;   // tous groupes Karavel confondus, avant filtre
   for (const [path, direction] of [['/vm/calls/in', 'in'], ['/vm/calls/out', 'out']]) {
     let raw;
     try {
@@ -1602,6 +1622,7 @@ async function ingestAxialys() {
       console.error(`[axialys] ${path} :`, err.message);
       continue;
     }
+    fetched += raw.length;
     for (const c of raw.filter(inSupportGroup)) {
       const row = normalizeAxialysCall(c, direction);
       // id_appel est la clé primaire : sans lui la ligne n'est pas déduplicable,
@@ -1621,8 +1642,12 @@ async function ingestAxialys() {
     if (error) throw new Error(error.message);
     written += batch.length;
   }
-  console.log(`[axialys] ${written} appels ingérés (${AX_GROUP})`);
-  return { ingested: written };
+  // Le total avant filtre est dans la ligne de log à dessein : c'est lui qui
+  // distingue « le support n'a pas appelé » de « l'API ne rend plus rien »,
+  // deux pannes qui affichent le même zéro. Un 0 sur 3000 accuse le filtre de
+  // groupe ; un 0 sur 0 accuse la fenêtre ou le token.
+  console.log(`[axialys] ${written} appels ingérés sur ${fetched} rendus (${AX_GROUP})`);
+  return { ingested: written, fetched };
 }
 
 // ─── Statistiques téléphonie ─────────────────────────────────────────────────
@@ -1920,16 +1945,21 @@ app.post('/api/axialys/ingest', async (req, res) => {
   }
 });
 
-// L'API n'ayant qu'une fenêtre glissante de 24-48 h, ce cron n'est pas une
-// optimisation : c'est le seul moyen d'avoir un historique. S'il ne tourne pas
-// pendant deux jours, les appels de ces jours-là sont définitivement perdus.
+// L'API ne rendant que le jour courant, ces crons ne sont pas une optimisation :
+// ils sont le seul moyen d'avoir un historique. Une journée pendant laquelle ils
+// n'ont pas tourné est perdue sans retour — seul un export CSV du portail peut
+// la rattraper, et sans les temps d'attente.
 if (AX_TOKEN) {
-  cron.schedule(AX_CRON, () => {
-    ingestAxialys().catch(err => console.error('[axialys-cron]', err.message));
-  }, { timezone: AX_TZ });
-  console.log(`[axialys] ingestion planifiée « ${AX_CRON} » (${AX_TZ})`);
+  for (const [expr, label] of [[AX_CRON, 'ingestion'], [AX_CRON_CLOSE, 'clôture du jour']]) {
+    cron.schedule(expr, () => {
+      ingestAxialys().catch(err => console.error('[axialys-cron]', err.message));
+    }, { timezone: AX_TZ });
+    console.log(`[axialys] ${label} planifiée « ${expr} » (${AX_TZ})`);
+  }
 } else {
-  console.log('[axialys] AXIALYS_TOKEN absent — ingestion désactivée');
+  // En error, pas en log : sans token l'onglet Téléphonie continue de répondre
+  // avec les données déjà en base, et la panne ne se voit nulle part ailleurs.
+  console.error('[axialys] AXIALYS_TOKEN absent — ingestion désactivée, aucune journée ne sera capturée');
 }
 
 // ─── Cron : rappel 24h avant ─────────────────────────────
