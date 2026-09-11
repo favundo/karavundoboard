@@ -2,19 +2,30 @@
 /**
  * Sonde en LECTURE SEULE de la fenêtre réellement rendue par l'API Axialys.
  *
- * POURQUOI : le job quotidien de 04h05 n'ingère que 0 à 3 appels par nuit, alors
- * que le support en traite 20-30 par jour. L'hypothèse est que la fenêtre de
- * l'API n'est pas « les dernières 24-48 h » mais un créneau ancré sur le jour
- * courant — auquel cas à 04h05 il n'y a rien à prendre, et l'heure du cron est
- * le bug. Ce script répond à la question : quelles dates l'API rend-elle,
- * à l'instant où on l'appelle ?
+ * POURQUOI : le job quotidien n'ingérait que 0 à 3 appels par nuit. La sonde a
+ * montré le 11/09/2026 que l'API ne rend que le jour courant depuis minuit
+ * lorsqu'on l'interroge avec dt / dt_end.
+ *
+ * MAIS la documentation (guide.axialys.com/guide/call-history-api) nomme les
+ * paramètres de période « date » et « date_end », pas « dt » / « dt_end ».
+ * L'API valide bien la présence de dt / dt_end — sans eux, 400 INVALID_VARS
+ * « check: dt,dt_end » — mais rien ne dit qu'elle s'en serve pour filtrer.
+ * D'où le soupçon : dt passe la validation, le vrai filtre reste vide, et
+ * l'API retombe sur son défaut, le jour courant.
+ *
+ * Ce script essaie les trois combinaisons sur une période PASSÉE et affiche les
+ * dates réellement rendues par chacune. Si « date / date_end » rend la période
+ * demandée, l'historique est rejouable et tout le dispositif de capture
+ * quotidienne devient un simple confort.
+ *
+ * La doc précise que la recherche est limitée à un mois quand les deux bornes
+ * sont fournies.
  *
  * Il n'écrit rien, ne touche pas à Supabase, et peut tourner en prod sans risque.
- * À lancer plusieurs fois dans la journée (matin, midi, soir) pour voir si la
- * fenêtre glisse ou si elle repart de minuit.
  *
  * Usage :
  *   cd /opt/karavundoboard/server && node scripts/probe-axialys-window.js
+ *   cd /opt/karavundoboard/server && node scripts/probe-axialys-window.js 2026-09-08 2026-09-10
  */
 
 require('dotenv').config();
@@ -133,18 +144,36 @@ function report(label, calls) {
   console.log(`Sonde lancée le ${localTime(new Date().toISOString())} (${AX_TZ})`);
   console.log(`Groupe filtré : « ${AX_GROUP} »`);
 
-  // Mêmes paramètres que le job : ignorés par l'API, mais obligatoires sans quoi
-  // elle répond 400 INVALID_VARS « check: dt,dt_end ».
-  const today     = new Date();
-  const yesterday = new Date(today.getTime() - 86400000);
-  const window    = { dt: yesterday.toISOString().slice(0, 10), dt_end: today.toISOString().slice(0, 10) };
-  console.log(`Paramètres envoyés : dt=${window.dt} dt_end=${window.dt_end}`);
+  // Par défaut on sonde une période passée et fermée : c'est le seul cas qui
+  // distingue un filtre qui marche d'un filtre ignoré. Sonder aujourd'hui ne
+  // prouverait rien, puisque le défaut de l'API est déjà aujourd'hui.
+  const [argFrom, argTo] = process.argv.slice(2);
+  const from = argFrom || '2026-09-08';
+  const to   = argTo   || '2026-09-10';
+  console.log(`Période demandée : ${from} → ${to}`);
 
-  for (const [path, label] of [['/vm/calls/in', 'ENTRANTS'], ['/vm/calls/out', 'SORTANTS']]) {
-    try {
-      report(label, await axialysPost(path, window));
-    } catch (err) {
-      console.error(`\n═══ ${label} — échec : ${err.message}`);
+  // Trois jeux de paramètres, même période. Seul celui qui rend autre chose que
+  // la date du jour prouve que le filtre est pris en compte.
+  const variantes = [
+    ['dt / dt_end (ce que fait le code aujourd\'hui)', { dt: from, dt_end: to }],
+    ['date / date_end (ce que dit la documentation)',   { date: from, date_end: to }],
+    ['les quatre ensemble',                             { dt: from, dt_end: to, date: from, date_end: to }],
+  ];
+
+  for (const [label, payload] of variantes) {
+    console.log(`\n${'━'.repeat(70)}`);
+    console.log(`VARIANTE — ${label}`);
+    console.log(`  payload : ${JSON.stringify(payload)}`);
+    for (const [path, sens] of [['/vm/calls/in', 'ENTRANTS'], ['/vm/calls/out', 'SORTANTS']]) {
+      try {
+        report(`${label} · ${sens}`, await axialysPost(path, payload));
+      } catch (err) {
+        console.error(`\n═══ ${sens} — échec : ${err.message}`);
+      }
     }
   }
+
+  console.log(`\n${'━'.repeat(70)}`);
+  console.log(`Lecture : une variante qui rend ${from}…${to} filtre vraiment.`);
+  console.log(`Une variante qui ne rend que ${localDay(new Date().toISOString())} ignore ses paramètres.`);
 })();
