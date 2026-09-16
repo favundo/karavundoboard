@@ -52,6 +52,9 @@ const EsetChart = ({ items: itemsProp, isLoading: loadingProp }: EsetChartProps 
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
+      {/* Pas de bouton « Maj » ici, contrairement au camembert Versions
+          Windows : ESET ne publie pas le produit installé, cette colonne reste
+          alimentée par l'import Excel. Voir CLAUDE.md. */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Type app. ESET

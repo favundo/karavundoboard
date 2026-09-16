@@ -355,6 +355,8 @@ export type Database = {
           warranty_duration: number | null
           warranty_end_date: string | null
           windows_version: string | null
+          synced_at: string | null
+          sync_source: string | null
         }
         Insert: {
           absence?: boolean | null
@@ -375,6 +377,8 @@ export type Database = {
           warranty_duration?: number | null
           warranty_end_date?: string | null
           windows_version?: string | null
+          synced_at?: string | null
+          sync_source?: string | null
         }
         Update: {
           absence?: boolean | null
@@ -395,6 +399,53 @@ export type Database = {
           warranty_duration?: number | null
           warranty_end_date?: string | null
           windows_version?: string | null
+          synced_at?: string | null
+          sync_source?: string | null
+        }
+        Relationships: []
+      }
+      inventory_sync_runs: {
+        Row: {
+          id: string
+          started_at: string
+          finished_at: string | null
+          table_name: string
+          trigger: string
+          uid_declencheur: string | null
+          eset_devices: number
+          ocs_lookups: number
+          matched: number
+          updated: number
+          unmatched: number
+          error_message: string | null
+        }
+        Insert: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          table_name?: string
+          trigger: string
+          uid_declencheur?: string | null
+          eset_devices?: number
+          ocs_lookups?: number
+          matched?: number
+          updated?: number
+          unmatched?: number
+          error_message?: string | null
+        }
+        Update: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          table_name?: string
+          trigger?: string
+          uid_declencheur?: string | null
+          eset_devices?: number
+          ocs_lookups?: number
+          matched?: number
+          updated?: number
+          unmatched?: number
+          error_message?: string | null
         }
         Relationships: []
       }

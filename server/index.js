@@ -132,17 +132,19 @@ let _esetDeviceCacheExpiry = 0;
 
 async function esetGetAllDevices() {
   if (_esetDeviceCache && Date.now() < _esetDeviceCacheExpiry) return _esetDeviceCache;
-  // On interroge le groupe racine "Tous" en récursif : une seule passe ramène
-  // l'intégralité du parc. Itérer les 4 groupes conteneurs (Siège, Agence,
-  // Nomades, Abcroisière) ratait ~111 postes rangés dans d'autres groupes.
-  const ROOT_GROUP_UUID = '00000000-0000-0000-7001-000000000001'; // "Tous"
+  // /v1/devices rend l'objet COMPLET — operatingSystem, statut, IP — là où
+  // /v1/device_groups/{racine}/devices ne rend que displayName, groupUuid et
+  // uuid, obligeant à un aller-retour de détail par poste. Les deux rendent
+  // exactement le même parc : 904 devices en une page, mesuré le 16/09/2026 par
+  // scripts/probe-eset-fields.js. (L'ancienne version passait par le groupe
+  // racine « Tous » en récursif ; itérer les 4 groupes conteneurs ratait ~111
+  // postes rangés ailleurs, ce piège-là reste d'actualité si on y revient.)
   const allDevices = [];
   let pageToken = '';
   do {
-    // recurseSubgroups=true : sinon l'API ne renvoie que les membres directs.
-    const params = new URLSearchParams({ recurseSubgroups: 'true', pageSize: '1000' });
+    const params = new URLSearchParams({ pageSize: '1000' });
     if (pageToken) params.set('pageToken', pageToken);
-    const { data: devData } = await esetFetch(`/v1/device_groups/${ROOT_GROUP_UUID}/devices?${params}`);
+    const { data: devData } = await esetFetch(`/v1/devices?${params}`);
     const devices = devData?.devices ?? devData?.items ?? [];
     allDevices.push(...devices);
     pageToken = devData?.nextPageToken ?? '';
@@ -1960,6 +1962,241 @@ if (AX_TOKEN) {
   // En error, pas en log : sans token l'onglet Téléphonie continue de répondre
   // avec les données déjà en base, et la panne ne se voit nulle part ailleurs.
   console.error('[axialys] AXIALYS_TOKEN absent — ingestion désactivée, aucune journée ne sera capturée');
+}
+
+// ─── Synchronisation de l'inventaire depuis ESET et OCS ───
+//
+// PÉRIMÈTRE : windows_version, et elle seule.
+//
+// eset_app reste à la saisie manuelle (import Excel) : ESET ne sait pas dire
+// quel produit est installé sur ses propres machines — activeProducts et
+// deployedComponents vides sur les 904 devices, et 404 sur toutes les autres
+// ressources REST, sondé le 16/09/2026. La colonne « Application de sécurité »
+// de l'export de console vient de son moteur de rapports, sans équivalent REST.
+// Décision du 16/09/2026 : on n'y revient pas, la solution antivirus doit
+// changer.
+//
+// ORDRE DES SOURCES : ESET d'abord, OCS en repli. Une requête paginée sur
+// /v1/devices ramène tout le parc avec son OS ; OCS n'a pas d'équivalent de
+// masse et coûte deux requêtes par poste, il ne sert donc qu'à rattraper les
+// machines sans agent ESET — et sous un plafond, sinon une passe de nuit part
+// en plusieurs milliers d'appels.
+//
+// CE QUI N'EST JAMAIS ÉCRIT : une valeur nulle. Un poste éteint depuis un mois
+// disparaît des outils ; effacer sa version au motif qu'on ne l'a pas vue
+// remplacerait une donnée vieillie par une case vide, ce qui est pire. La
+// fraîcheur se lit sur synced_at, pas sur le contenu de la colonne.
+
+const SYNC_CRON    = process.env.INVENTORY_SYNC_CRON || '30 2 * * *';
+const SYNC_TZ      = process.env.INVENTORY_SYNC_TZ   || 'Europe/Paris';
+// Plafond du repli OCS, en postes. Au-delà, la passe s'arrête et le dit : un
+// parc soudain absent d'ESET est une panne d'ESET, pas une invitation à lancer
+// 700 recherches OCS.
+const SYNC_OCS_MAX = parseInt(process.env.INVENTORY_SYNC_OCS_MAX || '150', 10);
+
+const {
+  normalizeOs, esetDeviceOs, inventoryMatchKeys,
+} = require('./lib/inventoryNormalize');
+
+/** Recherche un poste dans OCS par son nom court. Null si introuvable. */
+async function ocsLookupByName(shortName) {
+  let ids = [];
+  for (const name of [shortName.toUpperCase(), shortName.toLowerCase()]) {
+    const qs = new URLSearchParams({ start: '0', limit: '10', NAME: name });
+    const { data } = await ocsFetch(`/ocsapi/v1/computers/search?${qs}`);
+    ids = ocsExtractIds(data);
+    if (ids.length) break;
+  }
+  if (!ids.length) return null;
+
+  // La recherche OCS est un LIKE : elle rend « port137 » pour « port13 ». On
+  // exige la correspondance exacte, sans quoi la synchro écrirait la version
+  // d'une machine voisine.
+  const target = shortName.toLowerCase();
+  for (const id of ids.slice(0, 5)) {
+    const { data } = await ocsFetch(`/ocsapi/v1/computer/${id}`);
+    const entry = ocsExtractEntry(data);
+    if ((entry?.hardware?.NAME ?? '').toLowerCase() === target) return entry;
+  }
+  return null;
+}
+
+/**
+ * Une passe complète sur inventory_items.
+ *
+ * @param {'cron'|'manual'} trigger
+ * @param {string|null} uid  sAMAccountName du déclencheur (passes manuelles)
+ */
+async function syncInventory(trigger = 'cron', uid = null) {
+  const startedAt = new Date().toISOString();
+  const run = {
+    table_name: 'inventory_items', trigger, uid_declencheur: uid,
+    eset_devices: 0, ocs_lookups: 0, matched: 0, updated: 0, unmatched: 0,
+  };
+
+  try {
+    const { data: rows, error } = await supabase
+      .from('inventory_items')
+      .select('id, dns, asset, windows_version');
+    if (error) throw new Error(`Lecture inventaire : ${error.message}`);
+
+    // ── 1. ESET, en une passe sur tout le parc
+    const byName = new Map();
+    if (process.env.ESET_USER && process.env.ESET_PASS) {
+      const devices = await esetGetAllDevices();
+      run.eset_devices = devices.length;
+      for (const d of devices) {
+        const name = String(d.displayName ?? '').trim().toLowerCase();
+        if (name) byName.set(name.split('.')[0], d);
+      }
+    } else {
+      console.error('[inv-sync] ESET_USER / ESET_PASS absents — source principale ignorée');
+    }
+
+    const resolved = new Map();   // id → { windows_version, sync_source }
+    const needDetail = [];        // devices matchés dont la liste ne dit pas tout
+    const missing = [];           // lignes absentes d'ESET
+
+    for (const row of rows) {
+      const device = inventoryMatchKeys(row).map(k => byName.get(k)).find(Boolean);
+      if (!device) { missing.push(row); continue; }
+      const os = esetDeviceOs(device);
+      // Seul un OS manquant justifie un appel de détail — 2 devices sur 904 au
+      // dernier relevé, contre 700 si on interrogeait chaque poste.
+      if (!os) needDetail.push({ row, device });
+      else resolved.set(row.id, { windows_version: os, sync_source: 'eset' });
+    }
+
+    if (needDetail.length) {
+      await mapLimit(needDetail, 6, async ({ row, device }) => {
+        try {
+          const { data } = await esetFetch(`/v1/devices/${device.uuid}`);
+          const os = esetDeviceOs(data?.device ?? data);
+          if (os) resolved.set(row.id, { windows_version: os, sync_source: 'eset' });
+          else missing.push(row);
+        } catch (e) {
+          console.error(`[inv-sync] détail ESET ${device.uuid} : ${e.message}`);
+          missing.push(row);
+        }
+      });
+    }
+
+    // ── 2. OCS, en repli, sous plafond
+    if (missing.length && process.env.OCS_USER && process.env.OCS_PASS) {
+      const candidates = missing.filter(r => inventoryMatchKeys(r).length);
+      const batch = candidates.slice(0, SYNC_OCS_MAX);
+      if (candidates.length > SYNC_OCS_MAX) {
+        console.warn(`[inv-sync] repli OCS plafonné : ${candidates.length} postes absents d'ESET, ${SYNC_OCS_MAX} interrogés`);
+      }
+      await mapLimit(batch, 4, async (row) => {
+        for (const key of inventoryMatchKeys(row)) {
+          try {
+            run.ocs_lookups += 1;
+            const entry = await ocsLookupByName(key);
+            const os = normalizeOs(entry?.hardware?.OSNAME);
+            if (os) { resolved.set(row.id, { windows_version: os, sync_source: 'ocs' }); return; }
+          } catch (e) {
+            console.error(`[inv-sync] OCS ${key} : ${e.message}`);
+          }
+        }
+      });
+    }
+
+    // ── 3. Écriture, groupée par valeurs identiques
+    //
+    // Un update par poste ferait ~700 requêtes PostgREST par nuit pour une
+    // poignée de changements réels. Les postes partagent en pratique moins de
+    // dix combinaisons (OS, produit, source) : on écrit une fois par
+    // combinaison, avec un `in` sur les identifiants.
+    const byId = new Map(rows.map(r => [r.id, r]));
+    const groups = new Map();
+    for (const [id, vals] of resolved) {
+      const before = byId.get(id);
+      const changed = vals.windows_version !== (before.windows_version || null);
+      if (changed) run.updated += 1;
+      // synced_at est rafraîchi même sans changement : c'est la preuve que le
+      // poste a bien été revu cette nuit, et la seule façon de repérer ensuite
+      // ceux qui ne répondent plus.
+      const key = JSON.stringify(vals);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(id);
+    }
+
+    for (const [key, ids] of groups) {
+      const vals = { ...JSON.parse(key), synced_at: startedAt };
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error: upErr } = await supabase
+          .from('inventory_items').update(vals).in('id', ids.slice(i, i + 200));
+        if (upErr) throw new Error(`Écriture inventaire : ${upErr.message}`);
+      }
+    }
+
+    run.matched = resolved.size;
+    run.unmatched = rows.length - resolved.size;
+
+    // Une passe en panne et un parc stable rendent tous les deux « 0 mis à
+    // jour ». Les volumes rendus par les sources, eux, les séparent — c'est la
+    // leçon des trois journées Axialys perdues.
+    console.log(
+      `[inv-sync] ${rows.length} postes : ${run.matched} retrouvés, ${run.updated} mis à jour, ` +
+      `${run.unmatched} introuvables — ESET a rendu ${run.eset_devices} devices, ${run.ocs_lookups} recherches OCS`
+    );
+  } catch (err) {
+    run.error_message = err.message;
+    console.error('[inv-sync]', err.message);
+  }
+
+  const { data: saved } = await supabase
+    .from('inventory_sync_runs')
+    .insert({ ...run, started_at: startedAt, finished_at: new Date().toISOString() })
+    .select().single();
+
+  if (run.error_message) throw new Error(run.error_message);
+  return saved ?? run;
+}
+
+/**
+ * POST /api/inventory/sync — bouton « Maj » du dashboard.
+ *
+ * Contrairement aux autres actions de masse, celle-ci passe par l'API Express :
+ * le contrôle du groupe se fait donc côté serveur, sur l'en-tête que Nginx
+ * réécrit, et c'est une vraie barrière — pas seulement le garde-fou d'interface
+ * qu'est <AdminOnly>. Voir CLAUDE.md, « Authentication and Sensitive Actions ».
+ */
+app.post('/api/inventory/sync', async (req, res) => {
+  const groups = (req.get('Remote-Groups') || '').split(',').map(g => g.trim()).filter(Boolean);
+  if (!groups.includes(GROUP_ADMIN)) {
+    return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  }
+  try {
+    res.json(await syncInventory('manual', req.get('Remote-User') || null));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** GET /api/inventory/sync/last — dernière passe, pour dater l'affichage. */
+app.get('/api/inventory/sync/last', async (req, res) => {
+  const { data, error } = await supabase
+    .from('inventory_sync_runs')
+    .select('*')
+    .eq('table_name', 'inventory_items')
+    .order('started_at', { ascending: false })
+    .limit(1).maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data ?? null);
+});
+
+// La passe de nuit : les postes sont éteints, mais ESET et OCS répondent sur
+// leur dernier état connu — aucune des deux sources n'exige que la machine soit
+// allumée, contrairement à Axialys dont la fenêtre repart à minuit.
+if (process.env.ESET_USER || process.env.OCS_USER) {
+  cron.schedule(SYNC_CRON, () => {
+    syncInventory('cron').catch(err => console.error('[inv-sync-cron]', err.message));
+  }, { timezone: SYNC_TZ });
+  console.log(`[inv-sync] passe de nuit planifiée « ${SYNC_CRON} » (${SYNC_TZ})`);
+} else {
+  console.error('[inv-sync] ni ESET ni OCS configurés — synchronisation désactivée');
 }
 
 // ─── Cron : rappel 24h avant ─────────────────────────────

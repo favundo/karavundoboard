@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useInventory } from "@/hooks/useInventory";
+import { InventorySyncButton, LastSyncLabel } from "@/components/dashboard/InventorySyncButton";
 import { type InventoryItem } from "@/data/inventoryData";
 
 const normalizeVersion = (v: string): string =>
@@ -53,13 +54,24 @@ const WindowsVersionChart = ({ items: itemsProp, isLoading: loadingProp }: Windo
 
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
+  // Province réutilise ce camembert en lui passant `items` : il montre alors
+  // province_inventory, que la synchro ESET/OCS ne couvre pas encore. Le bouton
+  // et la date de fraîcheur ne s'affichent donc que sur le parc du siège, dont
+  // ce composant est la source par défaut.
+  const isSiege = itemsProp === undefined;
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Versions Windows
-        </h3>
-        <p className="text-xs text-muted-foreground mt-0.5">{total} équipements</p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Versions Windows
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {total} équipements{isSiege && <> · <LastSyncLabel /></>}
+          </p>
+        </div>
+        {isSiege && <InventorySyncButton />}
       </div>
 
       {isLoading ? (

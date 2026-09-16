@@ -90,6 +90,70 @@ comprise : le filtre sur le groupe est appliqué à l'ingestion, jamais à
 l'affichage. Les agents de la ligne sont l'équipe TSI, **distincte** de
 `src/lib/technicians.ts`.
 
+## Synchronisation de l'inventaire (ESET / OCS)
+
+`inventory_items.windows_version` ne se saisit plus à la main : elle est reprise
+aux outils par `syncInventory()` (`server/index.js`), que déclenchent une passe
+de nuit et le bouton « Maj » du camembert *Versions Windows*.
+
+**Le périmètre s'arrête à l'OS**, et ce n'est pas un choix : **ESET ne publie pas
+le produit installé**. `activeProducts` et `deployedComponents` sont vides sur
+les 904 devices, et son API REST n'expose que `/v1/devices` et
+`/v1/device_groups` — 404 sur une douzaine d'autres ressources, sans le moindre
+401/403, donc ce n'est pas une question de droits (sondé le 16/09/2026). La
+colonne « Application de sécurité » de l'export de console vient de son moteur
+de rapports, qui n'a pas d'équivalent REST. `eset_app` reste donc alimentée par
+l'import Excel, et le camembert *Type app. ESET* n'a **volontairement pas** de
+bouton « Maj ». Décision du 16/09/2026 : on n'y revient pas, la solution
+antivirus doit changer.
+
+**Lire `/v1/devices`, jamais `/v1/device_groups/{racine}/devices`.** Le premier
+rend l'objet complet, OS compris ; le second ne rend que `displayName`,
+`groupUuid` et `uuid`, ce qui obligeait à un appel de détail par poste — 700
+allers-retours au lieu d'une page. Les deux couvrent le même parc. Le détail
+unitaire ne sert plus qu'aux rares devices sans OS (2 sur 904).
+
+**ESET d'abord, OCS en repli.** OCS n'a pas d'endpoint de masse — deux requêtes
+par poste — et ne sert donc qu'aux machines absentes d'ESET, sous le plafond
+`INVENTORY_SYNC_OCS_MAX` (150). Au-delà, la passe s'arrête et le dit : un parc
+soudain absent d'ESET est une panne d'ESET, pas une invitation à lancer 700
+recherches OCS.
+
+**Les libellés sont normalisés**, dans `server/lib/inventoryNormalize.js` (le
+seul morceau testable sans réseau — `src/test/inventoryNormalize.test.ts`).
+ESET rend « Microsoft Windows 11 Pro », OCS « Microsoft Windows 11
+Professionnel » : sans normalisation le camembert éclate en parts d'un poste.
+Le hors-Windows est regroupé en « Linux » / « macOS », Zorin et Rocky compris —
+ils sont apparus au premier relevé réel, un poste chacun.
+
+**Une valeur nulle n'est jamais écrite.** Un poste éteint depuis un mois sort des
+outils ; effacer sa version remplacerait une donnée vieillie par une case vide.
+La fraîcheur se lit sur `inventory_items.synced_at` (dernier rapprochement
+*réussi*, pas dernière passe) et `sync_source`.
+
+**Le piège, déjà payé sur Axialys :** une source en panne et un parc stable
+rendent tous les deux « 0 mis à jour ». `inventory_sync_runs` enregistre donc
+aussi `eset_devices`, le volume rendu AVANT rapprochement — 0 device est une
+panne, 900 devices sans changement est un parc à jour. L'interface le dit aussi
+(« ESET muet le … » sous le titre du camembert).
+
+`POST /api/inventory/sync` vérifie `Remote-Groups` **côté serveur** : contrairement
+aux autres actions de masse, celle-ci est une vraie barrière et pas seulement le
+garde-fou `<AdminOnly>`, parce qu'elle transite par l'API Express.
+
+Variables d'environnement : `ESET_URL` / `ESET_USER` / `ESET_PASS`, `OCS_URL` /
+`OCS_USER` / `OCS_PASS`, `INVENTORY_SYNC_CRON` (défaut `30 2 * * *`),
+`INVENTORY_SYNC_TZ` (défaut `Europe/Paris`), `INVENTORY_SYNC_OCS_MAX`.
+Sans aucun identifiant, la synchro est désactivée et le dit au démarrage.
+
+`server/scripts/probe-eset-fields.js` revérifie que la source tient ses
+promesses : parc complet, OS toujours rempli, et ce que vaudrait le camembert
+après normalisation.
+
+Seul le siège est couvert ; `agency_inventory`, `province_inventory` et
+`abcroisiere_inventory` suivront et partageront `inventory_sync_runs`
+(colonne `table_name`).
+
 ## Key Utilities
 
 - `src/lib/parseInventory.ts` — parses Excel files with flexible French/English column name mapping
