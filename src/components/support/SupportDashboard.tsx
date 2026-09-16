@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardToday from './DashboardToday';
 import TicketsByOwner from './TicketsByOwner';
+import OcsUserResult from './OcsUserResult';
 
 type Source = 'Siège' | 'Groupes Province' | 'ABcroisière' | 'Agences' | 'Stock' | 'Imprimantes';
 
@@ -212,6 +213,12 @@ export default function SupportDashboard() {
           </p>
         )}
 
+        {/* OCS, en plus des inventaires. Placé avant le tableau : la
+            correspondance est exacte sur l'uid, donc plus sûre que les `ilike`
+            des inventaires, et cinquante lignes de résultats la repousseraient
+            hors de l'écran. */}
+        {query && !isFetching && <OcsUserResult query={query} />}
+
         {/* Tableau */}
         {rows.length > 0 && (
           <div className="rounded-lg border border-border overflow-x-auto">
@@ -289,10 +296,10 @@ export default function SupportDashboard() {
           </div>
         )}
 
-        {/* Aucun résultat */}
+        {/* Aucun résultat dans les inventaires */}
         {query && !isFetching && results.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-muted/20 py-12 text-center text-sm text-muted-foreground">
-            Aucun résultat pour «&nbsp;{query}&nbsp;»
+            Aucun résultat pour «&nbsp;{query}&nbsp;» dans les inventaires
           </div>
         )}
 

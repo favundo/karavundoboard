@@ -154,6 +154,51 @@ Seul le siège est couvert ; `agency_inventory`, `province_inventory` et
 `abcroisiere_inventory` suivront et partageront `inventory_sync_runs`
 (colonne `table_name`).
 
+## Localiser un collaborateur du réseau agences
+
+`GET /api/ocs/user/:uid` rend les machines sur lesquelles un uid a ouvert une
+session, d'après OCS, avec l'agence déduite de l'IP. Il s'exécute **en plus** des
+inventaires dans la recherche rapide du support (`OcsUserResult.tsx`), pas
+seulement quand ceux-ci ne rendent rien : un collaborateur peut avoir une ligne
+au siège et une session relevée ailleurs, et c'est l'écart qui renseigne. Le
+volet s'affiche avant le tableau — la correspondance est exacte sur l'uid, donc
+plus sûre que les `ilike` des inventaires. L'appel n'est déclenché que si la
+saisie ressemble à un identifiant (`looksLikeUid`), sinon chaque frappe
+interrogerait OCS pour rien.
+
+**Pourquoi ça ne peut pas venir des tables d'inventaire :** les collaborateurs
+du réseau agences n'y sont **volontairement pas saisis**. Ils n'ont pas de poste
+attribué et changent d'agence régulièrement — une ligne d'inventaire serait
+fausse le mois suivant. Leur uid ne dit donc rien de leur localisation.
+
+**Pourquoi pas ESET :** il est centré machine et n'expose aucun utilisateur
+connecté, d'où le `loggedInUsers: null` de `/api/eset/computer`.
+
+**OCS répond** parce que `hardware.USERID` porte la session ouverte au dernier
+inventaire, et `IPADDR` l'adresse de la machine. `/computers/search?USERID=`
+accepte bien ce critère : une requête, pas un parcours — le parcours complet du
+parc prend 21 s pour 1177 machines (`server/scripts/probe-ocs-user.js`). `USERID`
+est renseigné sur 1048 d'entre elles.
+
+**L'agence vient du sous-réseau** (`server/lib/agencySubnet.js`, testé dans
+`src/test/agencySubnet.test.ts`). `agency_inventory.sous_reseau` n'est affiché
+nulle part dans l'interface et rien n'en garantit l'écriture : le rapprochement
+accepte `10.12.145.0`, `10.12.145.0/24`, `10.12.145` et `10.12.145.x`, lit
+`masque` quand il ressemble à un masque, et retombe sur /24 sinon. Le réseau le
+plus spécifique gagne, sans quoi un /8 englobant répondrait à la place d'un /24
+d'agence. L'agence est **toujours rendue avec le sous-réseau qui l'a désignée**,
+pour qu'un rapprochement faux se voie au lieu de se deviner.
+
+**Ce que la réponse vaut** — et l'interface le dit avant d'afficher la donnée :
+c'est la session ouverte **au dernier inventaire**, pas une position en direct.
+Quelqu'un qui a changé d'agence depuis apparaît encore à l'ancienne. L'âge est
+affiché en clair et vire à l'ambre au-delà de quinze jours ; une IP de trois
+semaines ne se tente pas.
+
+La recherche OCS étant un `LIKE`, `dlelong` ramènerait `dlelong2` : la
+correspondance exacte sur l'uid est revérifiée côté serveur avant de rendre quoi
+que ce soit — le résultat sert à localiser une personne.
+
 ## Key Utilities
 
 - `src/lib/parseInventory.ts` — parses Excel files with flexible French/English column name mapping

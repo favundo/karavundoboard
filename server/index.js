@@ -361,6 +361,122 @@ app.get('/api/ocs/computer', async (req, res) => {
   }
 });
 
+// ─── Localiser un poste par son IP ────────────────────────
+//
+// L'agence trouvée est TOUJOURS rendue avec le sous-réseau qui l'a désignée :
+// un rapprochement faux doit se voir, pas se deviner. L'arithmétique est dans
+// lib/agencySubnet.js, avec ses tests.
+
+const { buildSubnets, matchSubnet } = require('./lib/agencySubnet');
+
+const AGENCY_SUBNET_TTL = 10 * 60 * 1000;
+let _agencySubnets = null;
+let _agencySubnetsAt = 0;
+
+/**
+ * Sous-réseaux des agences, lus une fois pour dix minutes.
+ *
+ * Le parc d'agences bouge à l'échelle du mois : relire la table à chaque
+ * recherche du support n'apporterait rien. En cas d'erreur on garde le cache
+ * précédent plutôt que de perdre la localisation pour une lecture ratée.
+ */
+async function agencySubnets() {
+  if (_agencySubnets && Date.now() - _agencySubnetsAt < AGENCY_SUBNET_TTL) return _agencySubnets;
+  const { data, error } = await supabase
+    .from('agency_inventory')
+    .select('agence, sous_reseau, masque');
+  if (error) { console.error('[ocs-user] sous-réseaux agences :', error.message); return _agencySubnets ?? []; }
+  _agencySubnets = buildSubnets(data);
+  _agencySubnetsAt = Date.now();
+  return _agencySubnets;
+}
+
+/** Agence dont le sous-réseau contient cette IP, ou null. */
+const agencyForIp = async (ip) => matchSubnet(ip, await agencySubnets());
+
+/**
+ * GET /api/ocs/user/:uid — les machines d'un collaborateur, vues par OCS.
+ *
+ * POURQUOI, ALORS QUE LA RECHERCHE GLOBALE EXISTE DÉJÀ : elle interroge les
+ * tables d'inventaire, et les collaborateurs du réseau agences n'y sont
+ * VOLONTAIREMENT pas saisis — ils n'ont pas de poste attribué et changent
+ * d'agence régulièrement, une ligne d'inventaire serait fausse le mois suivant.
+ * Leur uid ne dit donc rien de leur localisation. OCS, lui, connaît la dernière
+ * machine sur laquelle ils ont ouvert une session, et son IP donne l'agence par
+ * son sous-réseau. C'est le repli du bloc « Aucun résultat ».
+ *
+ * ESET ne peut pas rendre ce service : il est centré machine et n'expose aucun
+ * utilisateur connecté (d'où `loggedInUsers: null` dans /api/eset/computer).
+ *
+ * CE QUE LA RÉPONSE VAUT : USERID est la session ouverte AU DERNIER INVENTAIRE
+ * de l'agent, pas une connexion en direct, et l'IP est celle de la machine à cet
+ * instant — en DHCP elle a pu changer. `lastInventory` accompagne donc toujours
+ * l'adresse, et l'interface l'affiche : sans la date, cette donnée se lit comme
+ * du temps réel et induit en erreur.
+ *
+ * Coût : une recherche + un détail par machine trouvée (une ou deux en
+ * pratique). Le critère USERID est bien accepté par /computers/search — vérifié
+ * le 16/09/2026 sur un parc de 1177 machines, USERID renseigné sur 1048. Le
+ * parcours complet du parc, lui, prend 21 s : à ne pas faire ici.
+ */
+app.get('/api/ocs/user/:uid', async (req, res) => {
+  const uid = String(req.params.uid || '').trim();
+  if (!uid) return res.status(400).json({ error: 'uid requis' });
+  if (!process.env.OCS_USER || !process.env.OCS_PASS) {
+    return res.status(503).json({ error: 'OCS_USER / OCS_PASS non configurés' });
+  }
+
+  // « KARAVEL\dlelong », « dlelong@in.karavel.com » → « dlelong ».
+  const shortUser = (v) => String(v ?? '').trim().split(/[\\/]/).pop().split('@')[0].toLowerCase();
+  const target = shortUser(uid);
+
+  try {
+    const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
+
+    let ids = [];
+    for (const value of [uid, uid.toUpperCase(), uid.toLowerCase()]) {
+      const qs = new URLSearchParams({ start: '0', limit: '20', USERID: value });
+      const { data } = await ocsFetch(`/ocsapi/v1/computers/search?${qs}`);
+      ids = ocsExtractIds(data);
+      if (ids.length) break;
+    }
+    if (!ids.length) return res.status(404).json({ error: 'Aucune machine pour cet utilisateur dans OCS' });
+
+    const machines = [];
+    for (const id of ids.slice(0, 10)) {
+      const { data } = await ocsFetch(`/ocsapi/v1/computer/${id}`);
+      const entry = ocsExtractEntry(data);
+      if (!entry) continue;
+      const hw = ocsParseComputer(entry);
+      // La recherche OCS est un LIKE : « dlelong » ramènerait « dlelong2 ». On
+      // exige la correspondance exacte, sinon on désigne le mauvais poste — et
+      // ici le résultat sert à localiser quelqu'un.
+      if (shortUser(hw.userId) !== target) continue;
+      machines.push({
+        ...hw,
+        // Le réseau agences n'a pas de postes attribués : l'IP est le seul
+        // indice de l'endroit où la personne se trouvait.
+        agence: await agencyForIp(hw.ipAddress),
+        consoleUrl: hw.id
+          ? `${base}/ocsreports/index.php?function=computer&head=1&val_id=${hw.id}`
+          : `${base}/ocsreports/`,
+      });
+    }
+
+    if (!machines.length) return res.status(404).json({ error: 'Aucune machine pour cet utilisateur dans OCS' });
+
+    // La plus récemment inventoriée d'abord : c'est celle dont l'IP a le plus de
+    // chances d'être encore valable.
+    machines.sort((a, b) =>
+      new Date(b.lastInventory ?? 0) - new Date(a.lastInventory ?? 0));
+
+    res.json({ uid: target, machines });
+  } catch (err) {
+    console.error('[ocs-user]', err.message);
+    res.status(500).json({ error: 'Erreur connexion OCS' });
+  }
+});
+
 // ─── RT Proxy ─────────────────────────────────────────────
 
 function rtFetch(ticketId) {
