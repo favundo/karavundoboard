@@ -272,3 +272,62 @@ export const exportMultiDeviceToPDF = (groups: MultiDeviceGroup[], filename = "m
 
   doc.save(`${filename}_${new Date().toISOString().slice(0, 10)}.pdf`);
 };
+
+// --- Decommissioned (rebut) exports ---
+
+interface DecommissionedExportItem {
+  asset: string;
+  serial_number: string | null;
+  source: string; // libellé déjà résolu (Siège, Agences, …)
+  decommissioned_at: string;
+  traite: boolean;
+}
+
+const DECOMMISSIONED_HEADERS = ["Asset", "N° de série", "Onglet", "Date de décommission", "Traité"];
+
+const decommissionedRow = (item: DecommissionedExportItem, empty: string) => [
+  item.asset || empty,
+  item.serial_number || empty,
+  item.source || empty,
+  item.decommissioned_at ? new Date(item.decommissioned_at).toLocaleDateString("fr-FR") : empty,
+  item.traite ? "Oui" : "Non",
+];
+
+export const exportDecommissionedToCSV = (data: DecommissionedExportItem[], filename = "rebut") => {
+  const rows = data.map((item) => decommissionedRow(item, ""));
+
+  const BOM = "﻿";
+  const csvContent = BOM + [DECOMMISSIONED_HEADERS.join(";"), ...rows.map((r) => r.map((c) => `"${c}"`).join(";"))].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+export const exportDecommissionedToPDF = (data: DecommissionedExportItem[], filename = "rebut") => {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  doc.setFontSize(16);
+  doc.setTextColor(40);
+  doc.text("Matériels au rebut — Karavel", 14, 15);
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Exporté le ${new Date().toLocaleDateString("fr-FR")} — ${data.length} équipement${data.length !== 1 ? "s" : ""}`, 14, 22);
+
+  autoTable(doc, {
+    head: [DECOMMISSIONED_HEADERS],
+    body: data.map((item) => decommissionedRow(item, "—")),
+    startY: 28,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [20, 30, 45], textColor: [0, 210, 210], fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(`${filename}_${new Date().toISOString().slice(0, 10)}.pdf`);
+};

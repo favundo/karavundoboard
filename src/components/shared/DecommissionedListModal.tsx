@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, X, Check, Save } from "lucide-react";
+import { Trash2, X, Check, Save, FileSpreadsheet, FileText } from "lucide-react";
+import { exportDecommissionedToCSV, exportDecommissionedToPDF } from "@/lib/exportUtils";
 
 interface Props {
   open: boolean;
@@ -69,6 +70,16 @@ const DecommissionedListModal = ({ open, onClose }: Props) => {
   const getTraite = (id: string, currentTraite: boolean) =>
     pendingChanges[id] !== undefined ? pendingChanges[id] : currentTraite;
 
+  // On exporte ce qui est à l'écran, cases cochées non sauvegardées comprises.
+  const exportRows = () =>
+    items.map((item) => ({
+      asset: item.asset,
+      serial_number: item.serial_number,
+      source: SOURCE_LABELS[item.source] ?? item.source,
+      decommissioned_at: item.decommissioned_at,
+      traite: getTraite(item.id, item.traite),
+    }));
+
   if (!open) return null;
 
   return (
@@ -86,12 +97,30 @@ const DecommissionedListModal = ({ open, onClose }: Props) => {
               <p className="text-xs text-muted-foreground">{items.length} équipement{items.length !== 1 ? "s" : ""} au total</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportDecommissionedToCSV(exportRows())}
+              disabled={items.length === 0}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-secondary"
+              title="Exporter en CSV"
+            >
+              <FileSpreadsheet size={13} />CSV
+            </button>
+            <button
+              onClick={() => exportDecommissionedToPDF(exportRows())}
+              disabled={items.length === 0}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-secondary"
+              title="Exporter en PDF"
+            >
+              <FileText size={13} />PDF
+            </button>
+            <button
+              onClick={onClose}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Table */}
