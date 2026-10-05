@@ -9,6 +9,7 @@ import { AdminOnly } from '@/components/AdminOnly';
 import { StatTile } from './stats/StatTile';
 import { CallsBarChart } from './telephonie/CallsBarChart';
 import { CoverageStrip } from './telephonie/CoverageStrip';
+import { AvailabilityStrip } from './telephonie/AvailabilityStrip';
 import { formatDayKey, formatHourKey, formatWeekdayKey } from './telephonie/format';
 
 /** Périodes proposées. En jours, bornées à hier — le jour en cours est partiel. */
@@ -82,6 +83,15 @@ const SupportTelephonie = () => {
   };
 
   const worstHour = data ? worstBucket(data.byHour, 10) : undefined;
+
+  // Mêmes heures, dans le même ordre, que le graphique du dessus : c'est ce qui
+  // met chaque colonne d'agents en face de sa colonne d'appels.
+  const hourlyAvailability = useMemo(() => {
+    if (!data?.availability.available) return [];
+    const byHour = new Map(data.availability.byHour.map((h) => [h.hour, h]));
+    return data.byHour.map((b) => byHour.get(Number(b.key))
+      ?? { hour: Number(b.key), planned: null, connected: 0, reachable: 0, paused: 0 });
+  }, [data]);
 
   /**
    * Série journalière alignée sur le calendrier, et non sur les seuls jours où
@@ -261,6 +271,35 @@ const SupportTelephonie = () => {
               )}
             </div>
             <CallsBarChart data={data.byHour} palette={palette} formatKey={formatHourKey} height={240} />
+
+            {/* Agents réellement joignables, alignés sous les appels : un
+                créneau qui manque, est-ce personne de prévu, personne de
+                connecté, ou des connectés en pause ? */}
+            {data.availability.available ? (
+              <div className="mt-3 border-t border-border/60 pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Agents joignables par la file
+                </p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Moyenne sur {data.availability.days} jour{data.availability.days > 1 ? 's' : ''} relevé
+                  {data.availability.days > 1 ? 's' : ''} depuis le{' '}
+                  {new Date(`${data.availability.firstDay}T12:00:00`).toLocaleDateString('fr-FR')}.
+                  Un agent en pause, quel qu'en soit le motif, n'est jamais sollicité par la file.
+                  {data.availability.plannedDays === 0 && ' Le planning TSI ne couvre pas ces jours.'}
+                </p>
+                <AvailabilityStrip
+                  data={hourlyAvailability}
+                  palette={palette}
+                  formatKey={formatHourKey}
+                  showPlanned={data.availability.plannedDays > 0}
+                />
+              </div>
+            ) : (
+              <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                Disponibilité des agents non relevée sur cette période — l'historique des états
+                Axialys est relevé chaque nuit pour la veille. Ce n'est pas une ligne sans agent.
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">

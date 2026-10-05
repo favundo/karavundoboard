@@ -90,6 +90,35 @@ comprise : le filtre sur le groupe est appliqué à l'ingestion, jamais à
 l'affichage. Les agents de la ligne sont l'équipe TSI, **distincte** de
 `src/lib/technicians.ts`.
 
+### Disponibilité des agents (états Axialys)
+
+Bande « Agents joignables par la file » sous *Couverture par heure* : par heure,
+la moyenne des agents prévus au planning TSI, connectés, et joignables
+(connectés hors pause). Calcul dans `server/lib/axialysAvailability.js` (testé,
+`src/test/axialysAvailability.test.ts`), tables `axialys_agent_status` et
+`axialys_status_days`.
+
+**À l'inverse des appels, cet historique se rejoue** : `POST /vm/calls/status`
+respecte la période — mais exige `dt`/`dt_end` **et** `date`/`date_end`
+ensemble (J, J+1), sinon 400 « check: date ». **Une session n'apparaît qu'à la
+déconnexion** : le jour en cours rend « connecté 0 h ». D'où une passe de nuit
+sur la veille (`AXIALYS_STATUS_CRON`, défaut `20 3 * * *`), qui rattrape aussi
+les jours manqués des 7 derniers (`AXIALYS_STATUS_LOOKBACK`).
+
+Toute pause rend l'agent injoignable, quel qu'en soit le motif. Le motif
+(`infos`) est un code : `userN` = « Pause N+1 » du portail (vérifié le
+05/10/2026 : Pause Dej → `user6`) ; `user15` = « Indisponible », posé à chaque
+connexion et qu'il faut quitter à la main — un agent qui l'oublie est connecté
+toute la journée sans que rien ne sonne. **Rien n'est affiché par agent** : on
+mesure la ligne, pas les personnes (même principe que le rapport mensuel).
+Le détail par agent se lit avec `server/scripts/probe-axialys-status.js`.
+
+`axialys_status_days.fetched` (volume rendu avant filtre) distingue une journée
+sans agent d'une journée non relevée ; seuls les jours à `fetched > 0` entrent
+au dénominateur. Rattrapage d'une période (admin, vérifié côté serveur), sur le
+serveur :
+`curl -X POST 127.0.0.1:3001/api/axialys/status/ingest -H 'Remote-Groups: karinventaire-admin' -H 'Content-Type: application/json' -d '{"from":"2026-08-08","to":"2026-10-04"}'`
+
 ## Synchronisation de l'inventaire (ESET / OCS)
 
 `inventory_items.windows_version` ne se saisit plus à la main : elle est reprise

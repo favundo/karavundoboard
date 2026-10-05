@@ -23,6 +23,18 @@ export interface AxialysCoverageDay {
   techHours: number;
 }
 
+/** Une heure de la journée, en moyenne sur les jours relevés. Fractionnaire :
+ *  un agent connecté la moitié de l'heure compte pour ½. */
+export interface AxialysAvailabilityHour {
+  hour: number;
+  /** Planning TSI, au prorata. `null` si le planning ne couvre aucun jour relevé. */
+  planned: number | null;
+  connected: number;
+  /** Connectés hors pause — ceux que la file pouvait faire sonner. */
+  reachable: number;
+  paused: number;
+}
+
 export interface AxialysAgent {
   /** Identifiant Axialys. `null` sur une période rattrapée depuis un CSV : le
    *  portail n'exporte que le nom de l'agent. */
@@ -67,6 +79,19 @@ export interface AxialysStats {
    * bande au lieu d'afficher des zéros qui passeraient pour réels.
    */
   coverage: { available: boolean; days: AxialysCoverageDay[] };
+  /**
+   * Disponibilité réelle de la ligne heure par heure, d'après l'historique des
+   * états Axialys (sessions et pauses). Moyenne sur `days` jours relevés : un
+   * jour non relevé n'entre pas au dénominateur, il ne passe donc pas pour un
+   * jour sans personne. Agrégée — jamais par agent.
+   */
+  availability: {
+    available: boolean;
+    days: number;
+    plannedDays: number;
+    firstDay: string | null;
+    byHour: AxialysAvailabilityHour[];
+  };
   /** Rattrapage des manqués. Réservé aux administrateurs à l'affichage. */
   callbacks: {
     missed: number;

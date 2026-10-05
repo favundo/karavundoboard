@@ -1977,7 +1977,7 @@ async function axialysCoverage(from, to) {
 
   // Absence de planning n'est pas un effectif nul : on le dit, et l'interface
   // masque la bande plutôt que d'afficher des zéros qui passeraient pour réels.
-  if (error || !data?.data?.weeks) return { available: false, days: [] };
+  if (error || !data?.data?.weeks) return { available: false, days: [], shifts: [], plannedDays: [] };
 
   // « JJ/MM » → date pleine, résolue contre la période. Une seule année possible
   // tant que la période fait moins d'un an, ce qui est le cas des vues proposées.
@@ -1991,8 +1991,11 @@ async function axialysCoverage(from, to) {
   }
 
   const seen = new Map();   // `${jour}|${technicien}` → durée en heures
+  const shifts = [];        // { day, start, end } en heures locales, pour la vue horaire
+  const plannedDays = new Set();
   for (const week of data.data.weeks) {
     const dates = week?.dates || [];
+    for (const d of dates) if (index.has(d)) plannedDays.add(index.get(d));
     for (const tech of week?.technicians || []) {
       (tech.schedule || []).forEach((cell, i) => {
         const day = index.get(dates[i]);
@@ -2001,8 +2004,12 @@ async function axialysCoverage(from, to) {
         if (!m) return;                         // absence, ou cellule vide
         const key = `${day}|${tech.name}`;
         if (seen.has(key)) return;              // semaine dupliquée
-        const hours = (+m[3] + +m[4] / 60) - (+m[1] + +m[2] / 60);
-        if (hours > 0) seen.set(key, hours);
+        const start = +m[1] + +m[2] / 60;
+        const end   = +m[3] + +m[4] / 60;
+        if (end > start) {
+          seen.set(key, end - start);
+          shifts.push({ day, start, end });
+        }
       });
     }
   }
@@ -2022,7 +2029,7 @@ async function axialysCoverage(from, to) {
 
   // Un planning chargé mais sans aucune date dans la période vaut « pas de
   // donnée », pas « zéro technicien » — la distinction se voit à l'écran.
-  return { available: days.length > 0, days };
+  return { available: days.length > 0, days, shifts, plannedDays: [...plannedDays] };
 }
 
 /**
@@ -2050,8 +2057,9 @@ app.get('/api/axialys/stats', async (req, res) => {
       .order('call_date', { ascending: true });
 
     if (error) throw new Error(error.message);
-    const coverage = await axialysCoverage(from, to);
-    res.json({ ...computeAxialysStats(data || []), coverage });
+    const { shifts, plannedDays, ...coverage } = await axialysCoverage(from, to);
+    const availability = await axialysAvailability(from, to, shifts, plannedDays);
+    res.json({ ...computeAxialysStats(data || []), coverage, availability });
   } catch (err) {
     console.error('[axialys-stats]', err.message);
     res.status(500).json({ error: 'Erreur lecture des appels' });
@@ -2083,6 +2091,203 @@ if (AX_TOKEN) {
   // En error, pas en log : sans token l'onglet Téléphonie continue de répondre
   // avec les données déjà en base, et la panne ne se voit nulle part ailleurs.
   console.error('[axialys] AXIALYS_TOKEN absent — ingestion désactivée, aucune journée ne sera capturée');
+}
+
+// ─── Axialys — états des agents (sessions et pauses) ──────────────────────────
+//
+// Sert une seule question : combien d'agents la ligne pouvait-elle réellement
+// faire sonner, heure par heure ? Le planning dit qui était prévu ; un agent
+// connecté mais en pause n'est jamais sollicité par la file.
+//
+// À L'INVERSE DES APPELS, cet historique se rejoue : /vm/calls/status respecte
+// la période demandée (sondé le 05/10/2026, scripts/probe-axialys-status.js).
+// Mais une session n'apparaît qu'à la DÉCONNEXION — le jour en cours rend
+// « connecté 0 h 00 ». D'où une passe de nuit sur la veille, et pas d'ingestion
+// horaire : ce serait capturer des journées incomplètes.
+//
+// La forme des paramètres est encore une autre que celle des appels : `dt` ET
+// `date` sont exigés ensemble (J, J+1). L'un sans l'autre → 400 « check: date ».
+//
+// Calcul dans lib/axialysAvailability.js. Le motif de pause est stocké mais
+// n'entre pas dans le calcul, et rien n'est affiché par personne.
+
+const {
+  normalizeStatusRow, hourlyAvailability,
+} = require('./lib/axialysAvailability');
+
+const AX_STATUS_CRON = process.env.AXIALYS_STATUS_CRON || '20 3 * * *';
+// Jours rattrapés automatiquement par la passe de nuit, si l'une a manqué.
+const AX_STATUS_LOOKBACK = Number(process.env.AXIALYS_STATUS_LOOKBACK) || 7;
+
+const _axIsoDay = (d) => _axDay.format(d);
+const _axNextDay = (day) => {
+  const x = new Date(`${day}T00:00:00Z`);
+  x.setUTCDate(x.getUTCDate() + 1);
+  return x.toISOString().slice(0, 10);
+};
+
+/**
+ * Les id_op du support, faute d'annuaire : /vm/operators répond 401 avec notre
+ * token. On les lit dans axialys_calls, que l'ingestion des appels filtre déjà
+ * sur le groupe. Un agent qui n'a pris aucun appel en 120 jours n'y figure
+ * pas — il n'est alors pas non plus une capacité réelle de la ligne.
+ */
+async function axialysSupportOps() {
+  const since = new Date(Date.now() - 120 * 86400000).toISOString();
+  const { data, error } = await supabase
+    .from('axialys_calls')
+    .select('id_op')
+    .not('id_op', 'is', null)
+    .gte('call_date', since)
+    .order('call_date', { ascending: false })
+    .limit(1000);   // les plus récents suffisent à voir passer chaque agent
+  if (error) throw new Error(`axialys_calls : ${error.message}`);
+  return new Set((data || []).map(r => Number(r.id_op)));
+}
+
+/**
+ * Relève une journée close et la réécrit entièrement. Idempotent : rejouer un
+ * jour remplace ses lignes, il ne les double pas.
+ */
+async function ingestAxialysStatus(day, ops) {
+  if (!AX_TOKEN) throw new Error('AXIALYS_TOKEN non configuré');
+  const support = ops || await axialysSupportOps();
+  if (!support.size) throw new Error('aucun agent du support connu dans axialys_calls');
+
+  const end = _axNextDay(day);
+  const raw = await axialysPost('/vm/calls/status', { dt: day, dt_end: end, date: day, date_end: end });
+  const rows = [];
+  const seen = new Set();
+  for (const r of raw) {
+    if (!support.has(Number(r.id_op))) continue;
+    const row = normalizeStatusRow(r, day);
+    if (!row) continue;
+    const key = `${row.id_op}|${row.type}|${row.started_at}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(row);
+  }
+
+  // 0 rendu, c'est l'API qui n'a rien dit : on n'efface pas ce qu'on a, et le
+  // journal le garde à 0 pour que la passe suivante réessaie.
+  if (raw.length > 0) {
+    const { error: delErr } = await supabase.from('axialys_agent_status').delete().eq('day', day);
+    if (delErr) throw new Error(delErr.message);
+    if (rows.length) {
+      const { error } = await supabase.from('axialys_agent_status').insert(rows);
+      if (error) throw new Error(error.message);
+    }
+  }
+  const { error: logErr } = await supabase
+    .from('axialys_status_days')
+    .upsert({ day, fetched: raw.length, kept: rows.length, ingested_at: new Date().toISOString() });
+  if (logErr) throw new Error(logErr.message);
+
+  // Même règle que les appels : le total avant filtre dans la ligne de log,
+  // pour qu'une journée vide ne se confonde pas avec une API muette.
+  console.log(`[axialys-status] ${day} : ${rows.length} états du support sur ${raw.length} rendus`);
+  return { day, fetched: raw.length, kept: rows.length };
+}
+
+/**
+ * Passe de nuit : la veille, plus tout jour des AX_STATUS_LOOKBACK derniers qui
+ * n'a pas été relevé (ou relevé à vide) — une nuit ratée se rattrape seule.
+ */
+async function ingestAxialysStatusPending() {
+  const days = [];
+  for (let i = AX_STATUS_LOOKBACK; i >= 1; i--) days.push(_axIsoDay(new Date(Date.now() - i * 86400000)));
+  const { data, error } = await supabase
+    .from('axialys_status_days')
+    .select('day')
+    .in('day', days)
+    .gt('fetched', 0);
+  if (error) throw new Error(error.message);
+  const done = new Set((data || []).map(r => String(r.day)));
+  const ops = await axialysSupportOps();
+  const results = [];
+  for (const day of days.filter(d => !done.has(d))) {
+    try {
+      results.push(await ingestAxialysStatus(day, ops));
+    } catch (err) {
+      console.error(`[axialys-status] ${day} :`, err.message);
+      results.push({ day, error: err.message });
+    }
+  }
+  return results;
+}
+
+/** Lecture paginée : PostgREST plafonne à 1000 lignes par requête. */
+async function selectAll(build) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await build().range(from, from + 999);
+    if (error) throw new Error(error.message);
+    out.push(...(data || []));
+    if (!data || data.length < 1000) return out;
+  }
+}
+
+/** Disponibilité horaire moyenne sur les jours relevés de la période. */
+async function axialysAvailability(from, to, shifts, plannedDays) {
+  try {
+    const statusDays = await selectAll(() => supabase
+      .from('axialys_status_days').select('day')
+      .gte('day', from).lte('day', to).gt('fetched', 0).order('day'));
+    if (!statusDays.length) return { available: false, days: 0, plannedDays: 0, firstDay: null, byHour: [] };
+    const rows = await selectAll(() => supabase
+      .from('axialys_agent_status').select('type,started_at,duration')
+      .gte('day', from).lte('day', to).order('started_at'));
+    const days = statusDays.map(r => String(r.day));
+    return {
+      available: true,
+      firstDay: days[0],
+      ...hourlyAvailability({ rows, statusDays: days, shifts, plannedDays, tz: AX_TZ }),
+    };
+  } catch (err) {
+    // Table absente (migration pas encore passée) ou lecture en échec : la page
+    // téléphonie doit continuer de répondre, sans la bande.
+    console.error('[axialys-availability]', err.message);
+    return { available: false, days: 0, plannedDays: 0, firstDay: null, byHour: [] };
+  }
+}
+
+/**
+ * POST /api/axialys/status/ingest  { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
+ * Rattrapage d'une période, jour par jour. Admin, vérifié côté serveur.
+ * Sans corps : la passe de nuit (jours manquants de la semaine écoulée).
+ */
+app.post('/api/axialys/status/ingest', async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  const { from, to } = req.body || {};
+  try {
+    if (!from && !to) return res.json({ results: await ingestAxialysStatusPending() });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '') || from > to) {
+      return res.status(400).json({ error: 'from et to attendus au format YYYY-MM-DD, from ≤ to' });
+    }
+    const today = _axIsoDay(new Date());
+    const ops = await axialysSupportOps();
+    const results = [];
+    for (let day = from; day <= to; day = _axNextDay(day)) {
+      // Le jour en cours n'est pas clos : ses sessions ouvertes n'existent pas encore.
+      if (day >= today) break;
+      try {
+        results.push(await ingestAxialysStatus(day, ops));
+      } catch (err) {
+        results.push({ day, error: err.message });
+      }
+    }
+    res.json({ results });
+  } catch (err) {
+    console.error('[axialys-status-ingest]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+if (AX_TOKEN) {
+  cron.schedule(AX_STATUS_CRON, () => {
+    ingestAxialysStatusPending().catch(err => console.error('[axialys-status-cron]', err.message));
+  }, { timezone: AX_TZ });
+  console.log(`[axialys-status] relevé des états de la veille planifié « ${AX_STATUS_CRON} » (${AX_TZ})`);
 }
 
 // ─── Synchronisation de l'inventaire depuis ESET et OCS ───
