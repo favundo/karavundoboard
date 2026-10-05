@@ -79,23 +79,42 @@ const rowsOf = (json) => (Array.isArray(json) ? json : (json && Array.isArray(js
 const dayOf  = new Intl.DateTimeFormat('en-CA', { timeZone: AX_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 const fmtDur = (s) => `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, '0')}`;
 
+/** Lendemain d'une date « YYYY-MM-DD ». */
+const nextDay = (d) => {
+  const x = new Date(`${d}T00:00:00Z`);
+  x.setUTCDate(x.getUTCDate() + 1);
+  return x.toISOString().slice(0, 10);
+};
+
 /**
- * /vm/calls/status réclame `date` / `date_end` d'après la doc ; les appels, eux,
- * exigeaient `dt` / `dt_end`. On essaie dans cet ordre et on garde la première
- * variante acceptée, en disant laquelle.
+ * Premier passage (05/10/2026) : `date`/`date_end` seuls ET `dt`/`dt_end` égaux
+ * au même jour rendent tous deux 400 « check: dt,dt_end ». Le message ne dit
+ * donc pas « manquant » mais « invalide ». Or l'ingestion des appels, qui
+ * marche, envoie dt = J et dt_end = J+1 : deux dates différentes. On essaie
+ * cette forme d'abord, puis des dates-heures, et on garde la première acceptée
+ * en disant laquelle.
+ *
+ * Un 400 n'est PAS un refus de droits : le token est accepté, c'est la forme
+ * qui pèche. Seuls 401 / 403 disent « hors périmètre ».
  */
 async function fetchStatus(from, to) {
+  const end = nextDay(to);
   const variants = [
-    { date: from, date_end: to },
-    { date: from, date_end: to, dt: from, dt_end: to },
+    { dt: from, dt_end: end },
+    { dt: `${from} 00:00:00`, dt_end: `${to} 23:59:59` },
+    { dt: `${from}T00:00:00`, dt_end: `${to}T23:59:59` },
+    { dt: from, dt_end: end, date: from, date_end: end },
   ];
+  let lastStatus = null;
   for (const payload of variants) {
     const r = await axialys('POST', '/vm/calls/status', payload);
+    lastStatus = r.status;
     console.log(`  POST /vm/calls/status ${JSON.stringify(payload)} → HTTP ${r.status}`
       + (r.status !== 200 ? ` — ${r.raw.slice(0, 200)}` : ''));
-    if (r.status === 200) return rowsOf(r.json);
+    if (r.status === 200) return { rows: rowsOf(r.json) };
+    if (r.status === 401 || r.status === 403) break;   // inutile d'insister
   }
-  return null;
+  return { rows: null, status: lastStatus };
 }
 
 function summarize(rows, label) {
@@ -127,9 +146,11 @@ function summarize(rows, label) {
 
   // ── 1-2. Aujourd'hui ──
   console.log(`\n▶ Historique des états, aujourd'hui (${today})`);
-  const rows = await fetchStatus(today, today);
+  const { rows, status } = await fetchStatus(today, today);
   if (!rows) {
-    console.log('\n✗ /vm/calls/status refusé — le token n\'a pas ce périmètre. Voir avec Axialys.');
+    console.log(status === 401 || status === 403
+      ? '\n✗ /vm/calls/status refusé (droits) — le token n\'a pas ce périmètre. Voir avec Axialys.'
+      : '\n✗ /vm/calls/status : aucune forme de période acceptée (400). Le token passe, le format reste à trouver.');
   } else {
     summarize(rows, 'aujourd\'hui');
 
@@ -169,7 +190,7 @@ function summarize(rows, label) {
 
   // ── 3. Une période passée : historique rejouable ou jour courant seulement ? ──
   console.log(`\n▶ Période passée demandée : ${past} → ${past}`);
-  const old = await fetchStatus(past, past);
+  const { rows: old } = await fetchStatus(past, past);
   if (old) {
     summarize(old, 'passé');
     const days = new Set(old.map(r => r.date).filter(Boolean).map(d => dayOf.format(new Date(d))));
