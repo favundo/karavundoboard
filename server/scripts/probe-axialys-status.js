@@ -129,9 +129,25 @@ function summarize(rows, label) {
 }
 
 /**
- * Par agent du support : temps connecté, pauses par code de motif, post-appel.
- * `infos` d'une pause est un code (« user15 ») et non un libellé — les libellés
- * se lisent dans le portail, configuration des pauses. On les garde bruts ici.
+ * Libellés des motifs de pause, relevés dans le portail (configuration des
+ * pauses) le 05/10/2026. La numérotation part de ZÉRO : `userN` = « Pause N+1 »
+ * du portail — vérifié le 05/10/2026, un agent mis volontairement en Pause Dej
+ * (Pause 7) est sorti en `user6`. `user15` n'a pas de ligne dans le portail (il
+ * s'arrête à Pause 15) : c'est le statut de connexion « Indisponible », posé
+ * quelques secondes à chaque connexion mais aussi choisi à la main (51 min
+ * relevées). Liste commune à tout le compte Karavel.
+ */
+const PAUSE_LABELS = {
+  user0: 'Appel interne', user1: 'Coaching', user2: 'Formation', user3: 'Heure sup',
+  user4: 'Panne', user5: 'Pause', user6: 'Pause Dej', user7: 'Pause T',
+  user8: 'Relance', user9: 'Reunion', user10: 'Post Appel', user11: 'Appel WebRTC',
+  user12: 'Blocage Sup', user13: 'Nouveau Vendeur', user14: 'Admin Fram Signature',
+  user15: 'Indisponible',
+};
+const pauseLabel = (k) => (PAUSE_LABELS[k] ? `${k} ${PAUSE_LABELS[k]}` : k);
+
+/**
+ * Par agent du support : temps connecté, pauses par motif, post-appel.
  */
 function agentBreakdown(rows, support, label) {
   console.log(`\n▶ Agents du support, ${label}`);
@@ -159,7 +175,7 @@ function agentBreakdown(rows, support, label) {
       + `pause ${fmtDur(pause)}${a.login ? ` (${Math.round(pause / a.login * 100)} % du connecté)` : ''}, `
       + `post-appel ${fmtDur(a.catchup)} sur ${a.catchupN}`);
     for (const [k, b] of [...a.breaks].sort((x, y) => y[1].sec - x[1].sec)) {
-      console.log(`      ${k} : ${b.n} pause(s), total ${fmtDur(b.sec)}, la plus longue ${Math.round(b.max / 60)} min`);
+      console.log(`      ${pauseLabel(k)} : ${b.n} pause(s), total ${fmtDur(b.sec)}, la plus longue ${Math.round(b.max / 60)} min`);
     }
   }
 }
