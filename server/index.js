@@ -1447,13 +1447,18 @@ const supabase = createClient(
 );
 
 // ─── Technicians (mirrored from frontend) ────────────────
+// `axialys` : le nom sous lequel la personne apparaît dans Axialys (op_name,
+// « Abdelrahim TSI »), seul lien entre un login RT et un agent téléphonie —
+// l'API ne donne pas d'annuaire. Correspondance donnée par le responsable du
+// support le 05/10/2026. Sans ce champ, le rapport mensuel n'a pas de partie
+// téléphonie.
 const TECHNICIANS = {
-  nehad:         { label: 'Nehad',          email: 'nehad@karavel.com' },
-  zkarroum:      { label: 'Z. Karroum',     email: 'zkarroum@karavel.com' },
-  maabid:        { label: 'M. Abid',        email: 'maabid@karavel.com' },
-  cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com' },
-  rrinville:     { label: 'R. Rinville',    email: 'rrinville@karavel.com' },
-  'ext-favundo': { label: 'F. Avundo',      email: 'ext-favundo@karavel.com' },
+  nehad:         { label: 'Nehad',          email: 'nehad@karavel.com', firstName: 'Nehad', axialys: 'Abdelrahim' },
+  zkarroum:      { label: 'Z. Karroum',     email: 'zkarroum@karavel.com', firstName: 'Zahra' },
+  maabid:        { label: 'M. Abid',        email: 'maabid@karavel.com', firstName: 'Mahran', axialys: 'Mahran' },
+  cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com', firstName: 'Christy', axialys: 'Christy' },
+  rrinville:     { label: 'R. Rinville',    email: 'rrinville@karavel.com', firstName: 'Rémy', axialys: 'Remy' },
+  'ext-favundo': { label: 'F. Avundo',      email: 'ext-favundo@karavel.com', firstName: 'Frédéric' },
   blouis:        { label: 'B. Louis',       email: 'blouis@karavel.com' },
 };
 
@@ -2313,6 +2318,231 @@ if (process.env.ESET_USER || process.env.OCS_USER) {
   console.log(`[inv-sync] passe de nuit planifiée « ${SYNC_CRON} » (${SYNC_TZ})`);
 } else {
   console.error('[inv-sync] ni ESET ni OCS configurés — synchronisation désactivée');
+}
+
+// ─── Rapport mensuel des techniciens ─────────────────────────────────────────
+// Le premier jour ouvré du mois, chaque technicien reçoit ses chiffres du mois
+// précédent — tickets RT et téléphonie — et le responsable reçoit chaque mail en
+// copie cachée. Le calcul et la mise en forme sont dans lib/monthlyReport.js.
+//
+// La règle qui gouverne tout ce bloc : AUCUN MAIL PLUTÔT QU'UN MAIL FAUX. Un
+// rapport « 0 ticket résolu » parti parce que RT ne répondait pas serait lu
+// comme un mois vide par la personne concernée. Une source muette arrête donc
+// l'envoi entier ; la passe se rejoue à la main (POST /api/reports/monthly/send).
+
+const report = require('./lib/monthlyReport');
+
+const REPORT_TZ   = process.env.MONTHLY_REPORT_TZ   || 'Europe/Paris';
+// Tous les matins des trois premiers jours ; le code n'envoie que le premier
+// jour ouvré (le 1er novembre 2026 est un dimanche).
+const REPORT_CRON = process.env.MONTHLY_REPORT_CRON || '0 8 1-3 * *';
+// Les techniciens réguliers du support, seuls destinataires ET seuls comptés
+// dans la moyenne d'équipe (décision du 05/10/2026) : TECHNICIANS sert aussi au
+// planning et contient des renforts ponctuels qui fausseraient la moyenne.
+const REPORT_TECHS = (process.env.MONTHLY_REPORT_TECHS || 'nehad,maabid,rrinville,zkarroum,cananthakumar,ext-favundo')
+  .split(',').map(t => t.trim()).filter(id => TECHNICIANS[id]);
+// Premier mois couvert : septembre 2026, lancement de la notation de difficulté
+// et première capture téléphonie complète. Rien d'antérieur ne s'envoie, et le
+// rapport de ce mois-là ne se compare pas au précédent.
+const REPORT_FIRST_MONTH = process.env.MONTHLY_REPORT_FIRST_MONTH || '2026-09';
+// Destinataire de la copie cachée de chaque rapport. Vide = pas de copie.
+const REPORT_BCC  = process.env.MONTHLY_REPORT_BCC ?? 'ext-favundo@karavel.com';
+
+const _reportCache = new Map();   // mois → { at, reports } — l'aperçu ne relance pas RT à chaque clic
+
+/** Tickets clos de `month` et du mois précédent, notes de difficulté comprises. */
+async function fetchReportTickets(month) {
+  const prev = report.shiftMonth(month, -1);
+  // Une marge d'un jour de chaque côté : le filtre exact se fait sur le préfixe
+  // de Resolved dans aggregateTickets, sans dépendre de l'interprétation des
+  // bornes par RT.
+  const from = new Date(`${prev}-01T00:00:00Z`);
+  from.setUTCDate(from.getUTCDate() - 1);
+  const to = `${report.shiftMonth(month, 1)}-02`;
+  const queueClause = SCORE_QUEUES.map(q => `Queue = '${q.replace(/'/g, "\\'")}'`).join(' OR ');
+  const window = `(${queueClause}) AND Resolved > '${from.toISOString().slice(0, 10)}' AND Resolved < '${to}'`;
+
+  // parseRTTsv rend [] sur une réponse en erreur : sans ce contrôle, une panne
+  // RT produirait des rapports à zéro ticket.
+  const search = async (query, fields) => {
+    const text = await rtFieldSearch(query, fields);
+    if (!/^RT\/[\d.]+ 200/.test(text)) throw new Error(`RT a répondu : ${text.split('\n')[0].slice(0, 80)}`);
+    return parseRTTsv(text);
+  };
+
+  const rows = await search(`${window} AND (Status = 'resolved' OR Status = 'rejected')`,
+    'id,Owner,Queue,Status,Created,Resolved,Priority');
+  const difficulty = new Map();
+  for (const level of DIFFICULTY_LEVELS) {
+    // 'id,Owner' et pas 'id' seul : avec une colonne unique, l'en-tête RT vaut
+    // « id » sans tabulation, parseRTTsv ne le trouve pas et rend [] — toutes
+    // les notes disparaissaient sans la moindre erreur.
+    for (const t of await search(`${window} AND Status = 'resolved' AND '${DIFFICULTY_CF}' = '${level}'`, 'id,Owner')) {
+      difficulty.set(String(t.id), level);
+    }
+  }
+  return {
+    current:  report.aggregateTickets(rows, difficulty, month, priorityBonus),
+    previous: report.aggregateTickets(rows, difficulty, prev, priorityBonus),
+    rows:     rows.filter(t => (t.Resolved || '').startsWith(month)).length,
+  };
+}
+
+/** Appels du support sur `month` et le mois précédent, lus dans axialys_calls. */
+async function fetchReportCalls(month) {
+  const prev = report.shiftMonth(month, -1);
+  const from = `${prev}-01`;
+  const to   = `${report.shiftMonth(month, 1)}-02`;   // marge : on découpe en heure de Paris ensuite
+  const all = [];
+  // PostgREST plafonne à 1 000 lignes, et deux mois de ligne support s'en
+  // approchent : on pagine plutôt que de perdre la fin du mois sans le savoir.
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await supabase
+      .from('axialys_calls')
+      .select('id_appel,direction,call_date,status,op_name,duration_comm,post_appel,source')
+      .gte('call_date', `${from}T00:00:00Z`)
+      .lt('call_date', `${to}T00:00:00Z`)
+      .order('id_appel', { ascending: true })
+      .range(offset, offset + 999);
+    if (error) throw new Error(`axialys_calls : ${error.message}`);
+    all.push(...data);
+    if (data.length < 1000) break;
+  }
+  return {
+    current:  report.aggregateCalls(all, month, REPORT_TZ),
+    previous: report.aggregateCalls(all, prev, REPORT_TZ),
+  };
+}
+
+async function buildMonthlyReports(month, { force = false } = {}) {
+  if (month < REPORT_FIRST_MONTH) throw new Error(`Pas de rapport avant ${REPORT_FIRST_MONTH}`);
+  const cached = _reportCache.get(month);
+  if (cached && !force && Date.now() - cached.at < 10 * 60000) return cached.reports;
+
+  const tickets = await fetchReportTickets(month);
+  // Aucun ticket clos sur deux files en un mois n'arrive pas : c'est la requête
+  // ou RT qui a lâché.
+  if (!tickets.rows) throw new Error(`RT ne rend aucun ticket clos pour ${month} — envoi annulé`);
+  const calls = await fetchReportCalls(month);
+
+  const technicians = REPORT_TECHS.map(id => ({ id, ...TECHNICIANS[id] }));
+  const reports = report.buildReports({
+    month, technicians,
+    tickets: tickets.current, prevTickets: tickets.previous,
+    phone: calls.current, prevPhone: calls.previous,
+    firstMonth: REPORT_FIRST_MONTH,
+  });
+  _reportCache.set(month, { at: Date.now(), reports });
+  return reports;
+}
+
+/**
+ * Envoie les rapports de `month`. `only` restreint à un technicien ;
+ * `redirectTo` détourne tous les mails vers une seule adresse, sans copie
+ * cachée — pour relire les rapports avant de les laisser partir.
+ */
+async function sendMonthlyReports(month, { only = null, redirectTo = null, force = false } = {}) {
+  const reports = await buildMonthlyReports(month, { force });
+  const label = report.monthLabel(month);
+  const results = [];
+  for (const r of reports) {
+    if (only && r.tech.id !== only) continue;
+    if (r.empty) { results.push({ tech: r.tech.id, status: 'skipped', reason: 'aucune activité' }); continue; }
+    const to = redirectTo || r.tech.email;
+    // Pas de copie à soi-même : le responsable a aussi son propre rapport.
+    const bcc = !redirectTo && REPORT_BCC && REPORT_BCC !== to ? REPORT_BCC : undefined;
+    try {
+      await transporter.sendMail({
+        from: 'noreply@karavel.com',
+        to,
+        bcc,
+        subject: `${redirectTo ? `[TEST ${r.tech.id}] ` : ''}Votre mois de ${label} au support IT`,
+        text: report.renderReportText(r),
+        html: report.renderReportHtml(r),
+      });
+      results.push({ tech: r.tech.id, status: 'sent', to, bcc: bcc || null });
+    } catch (err) {
+      results.push({ tech: r.tech.id, status: 'error', error: err.message });
+    }
+  }
+  const count = (s) => results.filter(x => x.status === s).length;
+  console.log(`[monthly-report] ${label}${redirectTo ? ` (test → ${redirectTo})` : ''} — `
+    + `${count('sent')} envoyés, ${count('skipped')} sans activité, ${count('error')} en erreur`
+    + results.filter(x => x.status === 'error').map(x => ` · ${x.tech} : ${x.error}`).join(''));
+  return { month, results };
+}
+
+const isAdminRequest = (req) =>
+  (req.get('Remote-Groups') || '').split(',').map(g => g.trim()).includes(GROUP_ADMIN);
+const parseMonth = (v) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(String(v || '')) ? String(v) : null);
+const lastMonth = () => report.shiftMonth(report.localDate(new Date(), REPORT_TZ).day.slice(0, 7), -1);
+
+/**
+ * GET /api/reports/monthly/preview?month=YYYY-MM&tech=<uid>
+ * Le mail tel qu'il partirait, dans le navigateur. Réservé aux admins : il
+ * montre les chiffres d'un collègue.
+ */
+app.get('/api/reports/monthly/preview', async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  const month = req.query.month ? parseMonth(req.query.month) : lastMonth();
+  if (!month) return res.status(400).json({ error: 'Mois attendu au format YYYY-MM' });
+  try {
+    const reports = await buildMonthlyReports(month, { force: req.query.refresh === '1' });
+    const r = reports.find(x => x.tech.id === req.query.tech);
+    if (!r) {
+      // Sans technicien : le sommaire, pour choisir lequel regarder.
+      return res.type('html').send(`<!doctype html><meta charset="utf-8"><title>Rapports ${month}</title>
+        <body style="font-family:Arial;padding:20px"><h1>Rapports de ${report.monthLabel(month)}</h1><ul>
+        ${reports.map(x => `<li><a href="?month=${month}&tech=${encodeURIComponent(x.tech.id)}">${x.tech.label}</a>`
+          + `${x.empty ? ' — aucune activité, ne sera pas envoyé' : ''}</li>`).join('')}</ul></body>`);
+    }
+    res.type('html').send(report.renderReportHtml(r));
+  } catch (err) {
+    console.error('[monthly-report]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/reports/monthly/send  { month?, tech?, redirectTo? }
+ * Rejoue l'envoi : après une panne du cron, ou pour s'envoyer tous les rapports
+ * à soi (`redirectTo`) avant de laisser partir les vrais.
+ */
+app.post('/api/reports/monthly/send', async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  const { month: m, tech = null, redirectTo = null } = req.body || {};
+  const month = m ? parseMonth(m) : lastMonth();
+  if (!month) return res.status(400).json({ error: 'Mois attendu au format YYYY-MM' });
+  if (tech && !REPORT_TECHS.includes(tech)) return res.status(400).json({ error: `Pas de rapport pour : ${tech}` });
+  if (redirectTo && !/^[\w.+-]+@karavel\.com$/i.test(redirectTo)) {
+    return res.status(400).json({ error: 'redirectTo doit être une adresse @karavel.com' });
+  }
+  try {
+    res.json(await sendMonthlyReports(month, { only: tech, redirectTo, force: true }));
+  } catch (err) {
+    console.error('[monthly-report]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+if (process.env.MONTHLY_REPORT_DISABLED === '1') {
+  console.log('[monthly-report] désactivé (MONTHLY_REPORT_DISABLED=1)');
+} else if (!cron.validate(REPORT_CRON)) {
+  console.error(`[monthly-report] MONTHLY_REPORT_CRON invalide : « ${REPORT_CRON} » — envoi automatique désactivé`);
+} else {
+  cron.schedule(REPORT_CRON, async () => {
+    const today = report.localDate(new Date(), REPORT_TZ).day;
+    if (!report.isFirstWorkdayOfMonth(today)) return;
+    const month = report.shiftMonth(today.slice(0, 7), -1);
+    try {
+      await sendMonthlyReports(month, { force: true });
+    } catch (err) {
+      // Rien n'est parti : on le dit fort, l'envoi se rejoue à la main.
+      console.error(`[monthly-report] ${month} — AUCUN RAPPORT ENVOYÉ : ${err.message}`);
+    }
+  }, { timezone: REPORT_TZ });
+  console.log(`[monthly-report] planifié « ${REPORT_CRON} » (${REPORT_TZ}), premier jour ouvré uniquement`
+    + `${REPORT_BCC ? `, copie cachée à ${REPORT_BCC}` : ', sans copie cachée'}`);
 }
 
 // ─── Cron : rappel 24h avant ─────────────────────────────

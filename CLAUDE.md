@@ -199,6 +199,44 @@ La recherche OCS étant un `LIKE`, `dlelong` ramènerait `dlelong2` : la
 correspondance exacte sur l'uid est revérifiée côté serveur avant de rendre quoi
 que ce soit — le résultat sert à localiser une personne.
 
+## Rapport mensuel des techniciens
+
+Le premier jour ouvré du mois à 8 h, chaque technicien régulier
+(`MONTHLY_REPORT_TECHS` : nehad, maabid, rrinville, zkarroum, cananthakumar, ext-favundo — pas
+tout `TECHNICIANS`, qui sert aussi au planning) reçoit ses chiffres du mois précédent — tickets RT des
+files `sos` + `sos-agences`, et téléphonie — avec une copie cachée au
+responsable (`MONTHLY_REPORT_BCC`). Calcul et mise en forme dans
+`server/lib/monthlyReport.js` (testé, `src/test/monthlyReport.test.ts`), lecture
+des sources et envoi dans `index.js`.
+
+**Le rapport compare à la moyenne de l'équipe et au mois précédent, jamais à un
+collègue nommé ni par un rang** — décision du 05/10/2026. La moyenne ne compte
+que les techniciens réguliers actifs du mois ; un technicien sans activité ne reçoit rien.
+
+**Le lien RT ↔ Axialys est le champ `axialys` de `TECHNICIANS`** : le prénom
+sous lequel la personne apparaît dans `op_name` (`Abdelrahim` = nehad, `Mahran` =
+maabid). Sans lui, pas de partie téléphonie. Les manqués ne sont jamais
+attribués à un agent, seulement à la ligne.
+
+**Aucun mail plutôt qu'un mail faux :** une réponse RT non-200, ou zéro ticket
+clos sur le mois, annule tout l'envoi. Piège déjà rencontré : `rtFieldSearch`
+avec `fields=id` seul rend un en-tête sans tabulation, que `parseRTTsv` ne
+reconnaît pas — les notes de difficulté disparaissaient sans erreur. Toujours au
+moins deux colonnes.
+
+Rejouer ou relire (admin, vérifié côté serveur) :
+`GET /api/reports/monthly/preview?month=YYYY-MM[&tech=uid]` affiche le mail ;
+`POST /api/reports/monthly/send {month?, tech?, redirectTo?}` envoie —
+`redirectTo` détourne tous les rapports vers une adresse, sans copie cachée.
+
+**Premier mois : septembre 2026** (`MONTHLY_REPORT_FIRST_MONTH`). Avant, ni
+notes de difficulté ni téléphonie complète : rien d'antérieur ne s'envoie, et le
+rapport de septembre n'affiche aucune comparaison avec août.
+
+Variables : `MONTHLY_REPORT_BCC` (défaut `ext-favundo@karavel.com`, vide = pas de
+copie), `MONTHLY_REPORT_CRON` (défaut `0 8 1-3 * *`, le code ne garde que le
+premier jour ouvré), `MONTHLY_REPORT_TZ`, `MONTHLY_REPORT_DISABLED=1`.
+
 ## Key Utilities
 
 - `src/lib/parseInventory.ts` — parses Excel files with flexible French/English column name mapping
