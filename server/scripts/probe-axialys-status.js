@@ -99,11 +99,13 @@ const nextDay = (d) => {
  */
 async function fetchStatus(from, to) {
   const end = nextDay(to);
+  // Sondé le 05/10/2026 : seule la dernière forme passe — l'API valide `dt`
+  // ET `date`, et respecte alors la période (le 02/10 rendu le 05/10). Les
+  // autres restent pour le cas où Axialys changerait encore d'avis.
   const variants = [
+    { dt: from, dt_end: end, date: from, date_end: end },
     { dt: from, dt_end: end },
     { dt: `${from} 00:00:00`, dt_end: `${to} 23:59:59` },
-    { dt: `${from}T00:00:00`, dt_end: `${to}T23:59:59` },
-    { dt: from, dt_end: end, date: from, date_end: end },
   ];
   let lastStatus = null;
   for (const payload of variants) {
@@ -124,6 +126,42 @@ function summarize(rows, label) {
   console.log(`  ${label} : ${rows.length} lignes, jours rendus ${days[0] || '—'} → ${days[days.length - 1] || '—'}`);
   console.log(`  types : ${JSON.stringify(types)}`);
   console.log(`  agents distincts (id_op) : ${new Set(rows.map(r => r.id_op)).size}`);
+}
+
+/**
+ * Par agent du support : temps connecté, pauses par code de motif, post-appel.
+ * `infos` d'une pause est un code (« user15 ») et non un libellé — les libellés
+ * se lisent dans le portail, configuration des pauses. On les garde bruts ici.
+ */
+function agentBreakdown(rows, support, label) {
+  console.log(`\n▶ Agents du support, ${label}`);
+  const agents = new Map();
+  for (const r of rows) {
+    const name = support.get(Number(r.id_op));
+    if (!name) continue;
+    if (!agents.has(name)) agents.set(name, { login: 0, catchup: 0, catchupN: 0, calls: 0, breaks: new Map() });
+    const a = agents.get(name);
+    const sec = Number(r.duration) || 0;
+    if (r.type === 'login') a.login += sec;
+    else if (r.type === 'catchup') { a.catchup += sec; a.catchupN++; }
+    else if (r.type === 'call_in' || r.type === 'call_out') a.calls++;
+    else if (r.type === 'break') {
+      const k = typeof r.infos === 'object' ? JSON.stringify(r.infos) : String(r.infos || '(vide)');
+      const b = a.breaks.get(k) || { n: 0, sec: 0, max: 0 };
+      b.n++; b.sec += sec; b.max = Math.max(b.max, sec);
+      a.breaks.set(k, b);
+    }
+  }
+  if (!agents.size) { console.log('    aucune ligne'); return; }
+  for (const [name, a] of agents) {
+    const pause = [...a.breaks.values()].reduce((s, b) => s + b.sec, 0);
+    console.log(`  ${name} : connecté ${fmtDur(a.login)}, ${a.calls} appel(s), `
+      + `pause ${fmtDur(pause)}${a.login ? ` (${Math.round(pause / a.login * 100)} % du connecté)` : ''}, `
+      + `post-appel ${fmtDur(a.catchup)} sur ${a.catchupN}`);
+    for (const [k, b] of [...a.breaks].sort((x, y) => y[1].sec - x[1].sec)) {
+      console.log(`      ${k} : ${b.n} pause(s), total ${fmtDur(b.sec)}, la plus longue ${Math.round(b.max / 60)} min`);
+    }
+  }
 }
 
 (async () => {
@@ -171,21 +209,7 @@ function summarize(rows, label) {
       for (const r of breaks) console.log(`    ${JSON.stringify(r)}`);
     }
 
-    // ── 4. Temps de pause par agent et par motif ──
-    if (mine.length) {
-      console.log('\n▶ Pauses des agents du support, par motif (`infos`)');
-      const by = new Map();
-      for (const r of mine.filter(x => x.type === 'break')) {
-        const k = `${support.get(Number(r.id_op))} | ${typeof r.infos === 'object' ? JSON.stringify(r.infos) : r.infos}`;
-        const v = by.get(k) || { n: 0, sec: 0 };
-        v.n++; v.sec += Number(r.duration) || 0;
-        by.set(k, v);
-      }
-      for (const [k, v] of [...by].sort((a, b) => b[1].sec - a[1].sec)) {
-        console.log(`    ${k} : ${v.n} pause(s), ${fmtDur(v.sec)}`);
-      }
-      if (!by.size) console.log('    aucune pause aujourd\'hui');
-    }
+    if (mine.length) agentBreakdown(rows, support, 'aujourd\'hui');
   }
 
   // ── 3. Une période passée : historique rejouable ou jour courant seulement ? ──
@@ -193,6 +217,7 @@ function summarize(rows, label) {
   const { rows: old } = await fetchStatus(past, past);
   if (old) {
     summarize(old, 'passé');
+    agentBreakdown(old, support, past);
     const days = new Set(old.map(r => r.date).filter(Boolean).map(d => dayOf.format(new Date(d))));
     console.log(days.has(past)
       ? `  ✓ la période est respectée : l'historique des pauses est REJOUABLE.`
