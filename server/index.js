@@ -207,7 +207,7 @@ app.get('/api/eset/computer', async (req, res) => {
 
 // ─── OCS Inventory Proxy ──────────────────────────────────
 
-const { parseMonitors, findDock } = require('./lib/ocsMonitors');
+const { parseMonitors, findDisplayLink } = require('./lib/ocsMonitors');
 
 async function ocsFetch(path) {
   const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
@@ -458,11 +458,11 @@ app.get('/api/ocs/user/:uid', async (req, res) => {
       machines.push({
         ...hw,
         // Écrans branchés au dernier inventaire — lib/ocsMonitors.js dit ce
-        // que ça vaut. `dock` évite de lire « aucun écran » derrière un dock
-        // DisplayLink, que l'EDID ne traverse pas.
+        // que ça vaut. `displayLink` évite de lire « aucun écran » derrière un
+        // dock DisplayLink, que l'EDID ne traverse pas.
         monitors: external,
         builtInPanel: builtIn,
-        dock: findDock(entry.usbdevices, entry.devices),
+        displayLink: findDisplayLink(entry.videos, entry.softwares ?? entry.software),
         // Le réseau agences n'a pas de postes attribués : l'IP est le seul
         // indice de l'endroit où la personne se trouvait.
         agence: await agencyForIp(hw.ipAddress),

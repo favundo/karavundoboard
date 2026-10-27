@@ -11,8 +11,8 @@
  *
  * CE QUE ÇA VAUT : les écrans branchés AU DERNIER INVENTAIRE, pas ceux de la
  * personne. Et un écran derrière un dock DisplayLink n'est pas vu : le pilote
- * ne transmet pas l'EDID. D'où `dock`, cherché dans les périphériques USB, pour
- * qu'une liste vide ne passe pas pour « pas d'écran ».
+ * ne transmet pas l'EDID. D'où `findDisplayLink`, pour qu'une liste vide ne
+ * passe pas pour « pas d'écran ».
  */
 
 /** Séries que l'EDID rend quand l'écran n'en publie pas. */
@@ -46,17 +46,29 @@ function parseMonitors(list) {
   return { external, builtIn };
 }
 
-const DOCK_RE = /displaylink|dock/i;
+const DISPLAYLINK_RE = /displaylink/i;
 
-/** Nom du premier périphérique qui ressemble à un dock, ou null. */
-function findDock(...sections) {
-  for (const section of sections) {
-    for (const d of Array.isArray(section) ? section : []) {
-      const hit = Object.values(d ?? {}).find(v => typeof v === 'string' && DOCK_RE.test(v));
-      if (hit) return hit.trim();
-    }
+const firstMatch = (section) => {
+  for (const d of Array.isArray(section) ? section : []) {
+    const hit = Object.values(d ?? {}).find(v => typeof v === 'string' && DISPLAYLINK_RE.test(v));
+    if (hit) return hit.trim();
   }
   return null;
+};
+
+/**
+ * Indice de dock DisplayLink. `usbdevices` n'est PAS collecté par l'agent
+ * (vide sur les 3 machines sondées le 27/10/2026) : on lit donc
+ *   - `videos` : un dock branché apparaît comme carte graphique ;
+ *   - `software` : le pilote reste installé, docké ou non — l'indice le plus
+ *     stable, puisque l'inventaire peut tomber hors dock.
+ * @returns {{ connected: boolean, name: string } | null}
+ */
+function findDisplayLink(videos, software) {
+  const video = firstMatch(videos);
+  if (video) return { connected: true, name: video };
+  const soft = firstMatch(software);
+  return soft ? { connected: false, name: soft } : null;
 }
 
-module.exports = { parseMonitors, findDock };
+module.exports = { parseMonitors, findDisplayLink };

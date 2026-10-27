@@ -115,15 +115,16 @@ const printMonitors = (list) => {
     if (sect.length && !inline) printMonitors(sect);
 
     // Hypothèse à trancher : derrière un dock DisplayLink, l'EDID ne remonte
-    // pas. Le dock lui-même apparaît-il dans les périphériques, et sous quel nom ?
-    for (const name of ['usbdevices', 'devices']) {
-      const list = Array.isArray(e?.[name]) ? e[name] : [];
-      console.log(`   3. ${name} : ${list.length} entrée(s)${list[0] ? ` — champs : ${Object.keys(list[0]).join(', ')}` : ''}`);
-      for (const d of list.slice(0, 25)) {
-        const label = Object.values(d).filter(v => typeof v === 'string' && v.trim() && !/^\d+$/.test(v)).join(' | ');
-        console.log(`      ${/displaylink|dock/i.test(label) ? '➜' : '·'} ${label.slice(0, 140)}`);
-      }
-    }
+    // pas. `usbdevices` n'était collecté sur aucune des 3 machines sondées le 27/10/2026 : on
+    // cherche le dock comme carte graphique (videos) ou son pilote (logiciels).
+    const videos = Array.isArray(e?.videos) ? e.videos : [];
+    console.log(`   3. videos : ${videos.length}${videos[0] ? ` — champs : ${Object.keys(videos[0]).join(', ')}` : ''}`);
+    for (const v of videos) console.log(`      ${/displaylink/i.test(JSON.stringify(v)) ? '➜' : '·'} ${v.NAME ?? JSON.stringify(v).slice(0, 120)}`);
+    const softKey = ['softwares', 'software'].find(k => Array.isArray(e?.[k]));
+    const softs = softKey ? e[softKey] : [];
+    const hits = softs.filter(x => /displaylink|dock/i.test(JSON.stringify(x)));
+    console.log(`   4. ${softKey ?? 'software'} : ${softs.length} logiciel(s)${softs[0] ? ` — champs : ${Object.keys(softs[0]).join(', ')}` : ''}, ${hits.length} lié(s) à un dock`);
+    for (const x of hits) console.log(`      ➜ ${x.NAME ?? '?'} ${x.VERSION ?? ''} ${x.PUBLISHER ?? ''}`);
   }
   console.log('\n   Rappel : écrans branchés AU DERNIER INVENTAIRE, pas écrans attribués à la personne.\n');
 })().catch(err => { console.error(err.message); process.exit(1); });

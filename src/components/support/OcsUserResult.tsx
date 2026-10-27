@@ -65,8 +65,10 @@ const Monitors = ({ m }: { m: OcsUserMachine }) => {
     <p className="w-full pl-1 text-xs text-muted-foreground/70">
       <Monitor size={11} className="mr-1 inline" />
       Aucun écran externe vu au dernier inventaire
-      {m.dock
-        ? ` — dock détecté (${m.dock}) : les écrans qui y sont branchés ne remontent pas forcément.`
+      {m.displayLink
+        ? m.displayLink.connected
+          ? " — dock DisplayLink branché : ses écrans ne remontent pas dans OCS."
+          : " — pilote DisplayLink installé : les écrans d'un dock DisplayLink ne remontent pas dans OCS."
         : m.builtInPanel
           ? " — portable, peut-être hors dock ce jour-là."
           : "."}
