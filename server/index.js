@@ -207,6 +207,8 @@ app.get('/api/eset/computer', async (req, res) => {
 
 // ─── OCS Inventory Proxy ──────────────────────────────────
 
+const { parseMonitors, findDock } = require('./lib/ocsMonitors');
+
 async function ocsFetch(path) {
   const base = process.env.OCS_URL || 'http://gestion-desktop.in.karavel.com';
   const auth = Buffer.from(`${process.env.OCS_USER}:${process.env.OCS_PASS}`).toString('base64');
@@ -452,8 +454,15 @@ app.get('/api/ocs/user/:uid', async (req, res) => {
       // exige la correspondance exacte, sinon on désigne le mauvais poste — et
       // ici le résultat sert à localiser quelqu'un.
       if (shortUser(hw.userId) !== target) continue;
+      const { external, builtIn } = parseMonitors(entry.monitors);
       machines.push({
         ...hw,
+        // Écrans branchés au dernier inventaire — lib/ocsMonitors.js dit ce
+        // que ça vaut. `dock` évite de lire « aucun écran » derrière un dock
+        // DisplayLink, que l'EDID ne traverse pas.
+        monitors: external,
+        builtInPanel: builtIn,
+        dock: findDock(entry.usbdevices, entry.devices),
         // Le réseau agences n'a pas de postes attribués : l'IP est le seul
         // indice de l'endroit où la personne se trouvait.
         agence: await agencyForIp(hw.ipAddress),

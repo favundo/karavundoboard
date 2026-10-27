@@ -25,7 +25,23 @@ export interface OcsUserMachine {
   osName: string | null;
   manufacturer: string | null;
   model: string | null;
+  /**
+   * Écrans externes branchés au dernier inventaire (la dalle d'un portable est
+   * filtrée). Absent d'un serveur pas encore à jour.
+   */
+  monitors?: OcsMonitor[];
+  /** Une dalle intégrée a été vue : c'est un portable. */
+  builtInPanel?: boolean;
+  /** Périphérique ressemblant à un dock — un écran derrière un dock DisplayLink n'est pas vu. */
+  dock?: string | null;
   consoleUrl: string;
+}
+
+export interface OcsMonitor {
+  manufacturer: string | null;
+  model: string;
+  /** null quand l'EDID ne publie qu'un numéro factice. */
+  serial: string | null;
 }
 
 export interface OcsUser {

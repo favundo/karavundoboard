@@ -113,6 +113,17 @@ const printMonitors = (list) => {
     const sect = entries(s.data).flatMap(x => (Array.isArray(x?.monitors) ? x.monitors : x?.MANUFACTURER !== undefined ? [x] : []));
     console.log(`   2. /computer/${id}/monitors → HTTP ${s.status}, ${sect.length} écran(s)${s.raw ? ` — ${s.raw}` : ''}`);
     if (sect.length && !inline) printMonitors(sect);
+
+    // Hypothèse à trancher : derrière un dock DisplayLink, l'EDID ne remonte
+    // pas. Le dock lui-même apparaît-il dans les périphériques, et sous quel nom ?
+    for (const name of ['usbdevices', 'devices']) {
+      const list = Array.isArray(e?.[name]) ? e[name] : [];
+      console.log(`   3. ${name} : ${list.length} entrée(s)${list[0] ? ` — champs : ${Object.keys(list[0]).join(', ')}` : ''}`);
+      for (const d of list.slice(0, 25)) {
+        const label = Object.values(d).filter(v => typeof v === 'string' && v.trim() && !/^\d+$/.test(v)).join(' | ');
+        console.log(`      ${/displaylink|dock/i.test(label) ? '➜' : '·'} ${label.slice(0, 140)}`);
+      }
+    }
   }
   console.log('\n   Rappel : écrans branchés AU DERNIER INVENTAIRE, pas écrans attribués à la personne.\n');
 })().catch(err => { console.error(err.message); process.exit(1); });

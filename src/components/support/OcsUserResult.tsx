@@ -1,4 +1,4 @@
-import { ExternalLink, MapPin, MonitorSmartphone } from "lucide-react";
+import { ExternalLink, MapPin, Monitor, MonitorSmartphone } from "lucide-react";
 import { useOcsUser, looksLikeUid, type OcsUserMachine } from "@/hooks/useOcsUser";
 
 /**
@@ -40,6 +40,40 @@ const freshness = (d: Date | null) => {
   return `inventorié il y a ${days} jours (${date})`;
 };
 
+/**
+ * Écrans branchés au dernier inventaire. Une liste vide se dit, et se nuance :
+ * derrière un dock DisplayLink, l'EDID ne remonte pas — « aucun écran vu » n'y
+ * veut pas dire « aucun écran ».
+ */
+const Monitors = ({ m }: { m: OcsUserMachine }) => {
+  if (!m.monitors) return null;   // serveur pas encore à jour
+  if (m.monitors.length) {
+    return (
+      <ul className="w-full pl-1">
+        {m.monitors.map((s, i) => (
+          <li key={`${s.model}-${s.serial ?? i}`} className="flex items-baseline gap-2 text-xs text-muted-foreground">
+            <Monitor size={11} className="shrink-0 translate-y-0.5" />
+            <span className="text-foreground">{s.model}</span>
+            {s.manufacturer && <span>{s.manufacturer}</span>}
+            <span className="font-mono">{s.serial ? `S/N ${s.serial}` : "S/N non publié"}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <p className="w-full pl-1 text-xs text-muted-foreground/70">
+      <Monitor size={11} className="mr-1 inline" />
+      Aucun écran externe vu au dernier inventaire
+      {m.dock
+        ? ` — dock détecté (${m.dock}) : les écrans qui y sont branchés ne remontent pas forcément.`
+        : m.builtInPanel
+          ? " — portable, peut-être hors dock ce jour-là."
+          : "."}
+    </p>
+  );
+};
+
 const Machine = ({ m }: { m: OcsUserMachine }) => {
   const d = parseOcsDate(m.lastInventory);
   const stale = d ? Date.now() - d.getTime() > 14 * 86400000 : true;
@@ -74,6 +108,7 @@ const Machine = ({ m }: { m: OcsUserMachine }) => {
       >
         OCS <ExternalLink size={11} />
       </a>
+      <Monitors m={m} />
     </li>
   );
 };
@@ -114,7 +149,8 @@ export default function OcsUserResult({ query }: { query: string }) {
         Dernière session pour «&nbsp;<span className="font-mono">{data.uid}</span>&nbsp;».
         L'agence est déduite du sous-réseau de l'adresse, relevée à l'inventaire indiqué —
         ce n'est pas une position en direct, et une personne qui a changé d'agence depuis
-        apparaîtra encore à l'ancienne.
+        apparaîtra encore à l'ancienne. De même pour les écrans : ceux branchés à
+        cet inventaire, pas ceux attribués à la personne.
       </p>
       <ul>
         {data.machines.map((m) => <Machine key={m.id ?? m.name} m={m} />)}
