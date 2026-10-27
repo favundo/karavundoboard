@@ -14,7 +14,8 @@
  *   cd /opt/karavundoboard/server
  *   node scripts/export-ocs-monitors.js uids.txt > ecrans.csv
  *   node scripts/export-ocs-monitors.js mrolland ext-favundo > ecrans.csv
- * uids.txt : un uid par ligne (virgules, points-virgules et espaces acceptés).
+ * uids.txt : un uid par ligne (virgules, points-virgules et espaces acceptés ;
+ * une adresse mail est réduite à son uid, un en-tête « uid » est ignoré).
  */
 require('dotenv').config();
 const fs = require('fs');
@@ -35,7 +36,6 @@ if (!args.length) {
   process.exit(1);
 }
 const raw = args.length === 1 && fs.existsSync(args[0]) ? fs.readFileSync(args[0], 'utf8') : args.join(' ');
-const UIDS = [...new Set(raw.split(/[\s,;]+/).map(u => u.trim().toLowerCase()).filter(Boolean))];
 
 function ocsFetch(path) {
   const auth = Buffer.from(`${process.env.OCS_USER}:${process.env.OCS_PASS}`).toString('base64');
@@ -65,6 +65,8 @@ const entries = (data) => {
   return Array.isArray(data) ? data : Object.values(data);
 };
 const shortUser = (v) => String(v ?? '').trim().split(/[\\/]/).pop().split('@')[0].toLowerCase();
+// Une liste tirée d'un annuaire mêle souvent uid et adresses : « jdupont@karavel.com » → « jdupont ».
+const UIDS = [...new Set(raw.split(/[\s,;]+/).map(shortUser).filter(u => u && u !== 'uid'))];
 
 /** « 2026-10-27 15:42:41 » → « 27/10/2026 », lisible et triable dans Excel FR. */
 const frDate = (s) => {
