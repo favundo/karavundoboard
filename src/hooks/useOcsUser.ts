@@ -32,12 +32,6 @@ export interface OcsUserMachine {
   monitors?: OcsMonitor[];
   /** Une dalle intégrée a été vue : c'est un portable. */
   builtInPanel?: boolean;
-  /**
-   * Indice de dock DisplayLink, derrière lequel les écrans ne remontent pas :
-   * `connected` = vu comme carte graphique à l'inventaire, sinon seul le
-   * pilote est installé.
-   */
-  displayLink?: { connected: boolean; name: string } | null;
   consoleUrl: string;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMonitors, findDisplayLink } from '../../server/lib/ocsMonitors.js';
+import { parseMonitors } from '../../server/lib/ocsMonitors.js';
 
 // Relevés réels du 27/10/2026 (scripts/probe-ocs-monitors.js, mrolland).
 const DELL = { CAPTION: 'DELL E2724HS', DESCRIPTION: '', MANUFACTURER: 'Dell Computer Corp.', SERIAL: '88XKH14', TYPE: 'RGB color' };
@@ -36,22 +36,5 @@ describe('parseMonitors', () => {
 
   it('tolère une section absente', () => {
     expect(parseMonitors(undefined)).toEqual({ external: [], builtIn: false });
-  });
-});
-
-describe('findDisplayLink', () => {
-  it('dock branché : vu comme carte graphique', () => {
-    expect(findDisplayLink([{ NAME: 'Intel UHD' }, { NAME: 'DisplayLink USB Device' }], []))
-      .toEqual({ connected: true, name: 'DisplayLink USB Device' });
-  });
-
-  it('hors dock : seul le pilote est installé', () => {
-    expect(findDisplayLink([{ NAME: 'Intel UHD' }], [{ NAME: 'DisplayLink Graphics', PUBLISHER: 'DisplayLink Corp.' }]))
-      .toEqual({ connected: false, name: 'DisplayLink Graphics' });
-  });
-
-  it('rend null sans DisplayLink, ni un dock d’une autre techno', () => {
-    expect(findDisplayLink([{ NAME: 'Intel UHD' }], [{ NAME: 'Dell Dock Firmware' }])).toBeNull();
-    expect(findDisplayLink(undefined, undefined)).toBeNull();
   });
 });

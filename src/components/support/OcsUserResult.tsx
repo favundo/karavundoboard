@@ -42,8 +42,8 @@ const freshness = (d: Date | null) => {
 
 /**
  * Écrans branchés au dernier inventaire. Une liste vide se dit, et se nuance :
- * derrière un dock DisplayLink, l'EDID ne remonte pas — « aucun écran vu » n'y
- * veut pas dire « aucun écran ».
+ * un portable inventorié hors de son dock n'a aucun écran externe à remonter —
+ * « aucun écran vu » n'y veut pas dire « aucun écran ».
  */
 const Monitors = ({ m }: { m: OcsUserMachine }) => {
   if (!m.monitors) return null;   // serveur pas encore à jour
@@ -65,13 +65,7 @@ const Monitors = ({ m }: { m: OcsUserMachine }) => {
     <p className="w-full pl-1 text-xs text-muted-foreground/70">
       <Monitor size={11} className="mr-1 inline" />
       Aucun écran externe vu au dernier inventaire
-      {m.displayLink
-        ? m.displayLink.connected
-          ? " — dock DisplayLink branché : ses écrans ne remontent pas dans OCS."
-          : " — pilote DisplayLink installé : les écrans d'un dock DisplayLink ne remontent pas dans OCS."
-        : m.builtInPanel
-          ? " — portable, peut-être hors dock ce jour-là."
-          : "."}
+      {m.builtInPanel ? " — portable, sans doute hors dock à ce moment-là." : "."}
     </p>
   );
 };
