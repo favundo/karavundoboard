@@ -20,10 +20,18 @@ import SupportStats from "./components/support/SupportStats";
 import SupportTelephonie from "./components/support/SupportTelephonie";
 import FichePoste from "./pages/FichePoste";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { loadTechnicians, useAllTechnicians } from "./lib/technicians";
+
+// Une fois, avant le premier rendu : la liste fait foi en base (/gestion).
+loadTechnicians();
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Abonnement à la racine : les libellés lus hors composants
+  // (getTechnicianById) se rafraîchissent quand la liste arrive.
+  useAllTechnicians();
+  return (
   <ThemeProvider>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -55,6 +63,7 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
   </ThemeProvider>
-);
+  );
+};
 
 export default App;

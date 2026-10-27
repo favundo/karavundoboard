@@ -1446,21 +1446,100 @@ const supabase = createClient(
   process.env.SUPABASE_KEY,
 );
 
-// ─── Technicians (mirrored from frontend) ────────────────
+// ─── Technicians ─────────────────────────────────────────
+// Table `technicians`, gérée depuis /gestion. L'objet ci-dessous est mis à jour
+// EN PLACE au démarrage et après chaque écriture : le reste du fichier le lit
+// de façon synchrone (invitations, rapport mensuel). Les valeurs codées en dur
+// ne servent que de repli si la table est injoignable au démarrage.
+//
 // `axialys` : le nom sous lequel la personne apparaît dans Axialys (op_name,
 // « Abdelrahim TSI »), seul lien entre un login RT et un agent téléphonie —
 // l'API ne donne pas d'annuaire. Correspondance donnée par le responsable du
 // support le 05/10/2026. Sans ce champ, le rapport mensuel n'a pas de partie
 // téléphonie.
 const TECHNICIANS = {
-  nehad:         { label: 'Nehad',          email: 'nehad@karavel.com', firstName: 'Nehad', axialys: 'Abdelrahim' },
-  zkarroum:      { label: 'Z. Karroum',     email: 'zkarroum@karavel.com', firstName: 'Zahra' },
-  maabid:        { label: 'M. Abid',        email: 'maabid@karavel.com', firstName: 'Mahran', axialys: 'Mahran' },
-  cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com', firstName: 'Christy', axialys: 'Christy' },
-  rrinville:     { label: 'R. Rinville',    email: 'rrinville@karavel.com', firstName: 'Rémy', axialys: 'Remy' },
-  'ext-favundo': { label: 'F. Avundo',      email: 'ext-favundo@karavel.com', firstName: 'Frédéric' },
-  blouis:        { label: 'B. Louis',       email: 'blouis@karavel.com' },
+  nehad:         { label: 'Nehad',          email: 'nehad@karavel.com', firstName: 'Nehad', axialys: 'Abdelrahim', bgColor: '#3b82f6', monthlyReport: true, active: true },
+  zkarroum:      { label: 'Z. Karroum',     email: 'zkarroum@karavel.com', firstName: 'Zahra', bgColor: '#10b981', monthlyReport: true, active: true },
+  maabid:        { label: 'M. Abid',        email: 'maabid@karavel.com', firstName: 'Mahran', axialys: 'Mahran', bgColor: '#f59e0b', monthlyReport: true, active: true },
+  cananthakumar: { label: 'C. Ananthakumar', email: 'cananthakumar@karavel.com', firstName: 'Christy', axialys: 'Christy', bgColor: '#8b5cf6', monthlyReport: true, active: true },
+  rrinville:     { label: 'R. Rinville',    email: 'rrinville@karavel.com', firstName: 'Rémy', axialys: 'Remy', bgColor: '#ef4444', monthlyReport: true, active: true },
+  'ext-favundo': { label: 'F. Avundo',      email: 'ext-favundo@karavel.com', firstName: 'Frédéric', bgColor: '#ec4899', monthlyReport: true, active: true },
+  blouis:        { label: 'B. Louis',       email: 'blouis@karavel.com', bgColor: '#06b6d4', monthlyReport: false, active: true },
 };
+
+const techFromRow = (r) => ({
+  label: r.label, email: r.email, bgColor: r.bg_color,
+  firstName: r.first_name || undefined, axialys: r.axialys || undefined,
+  monthlyReport: r.monthly_report, active: r.active,
+});
+
+async function loadTechnicians() {
+  const { data, error } = await supabase.from('technicians').select('*').order('created_at');
+  if (error) throw new Error(`technicians : ${error.message}`);
+  // Une table vide est une migration non passée, pas une équipe dissoute.
+  if (!data.length) throw new Error('technicians : table vide');
+  for (const id of Object.keys(TECHNICIANS)) delete TECHNICIANS[id];
+  for (const r of data) TECHNICIANS[r.id] = techFromRow(r);
+  return data;
+}
+loadTechnicians()
+  .then(rows => console.log(`[technicians] ${rows.length} chargés depuis la base`))
+  .catch(err => console.error(`[technicians] ${err.message} — repli sur la liste codée en dur`));
+
+const techList = () => Object.entries(TECHNICIANS).map(([id, t]) => ({ id, ...t }));
+
+/** Liste complète, archivés compris : l'historique a besoin de leurs libellés. */
+app.get('/api/technicians', (_req, res) => res.json(techList()));
+
+// sAMAccountName : lettres, chiffres, point, tiret, souligné.
+const TECH_ID_RE = /^[a-z0-9][a-z0-9._-]{1,30}$/;
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/**
+ * POST /api/technicians — crée, ou réactive un technicien archivé portant le
+ * même uid. Admin, vérifié ici.
+ */
+app.post('/api/technicians', async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  const b = req.body || {};
+  const id = String(b.id || '').trim().toLowerCase();
+  const label = String(b.label || '').trim();
+  const email = String(b.email || '').trim().toLowerCase() || `${id}@karavel.com`;
+  if (!TECH_ID_RE.test(id)) return res.status(400).json({ error: 'Identifiant AD invalide (sAMAccountName attendu)' });
+  if (!label) return res.status(400).json({ error: 'Libellé obligatoire' });
+  if (!/^[^@\s]+@[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Adresse mail invalide' });
+  if (b.bgColor && !HEX_RE.test(b.bgColor)) return res.status(400).json({ error: 'Couleur attendue au format #rrggbb' });
+  if (TECHNICIANS[id]?.active) return res.status(409).json({ error: `${id} existe déjà` });
+
+  const row = {
+    id, label, email,
+    bg_color: b.bgColor || '#64748b',
+    first_name: String(b.firstName || '').trim() || null,
+    axialys: String(b.axialys || '').trim() || null,
+    monthly_report: !!b.monthlyReport,
+    active: true,
+  };
+  const { error } = await supabase.from('technicians').upsert(row, { onConflict: 'id' });
+  if (error) return res.status(500).json({ error: error.message });
+  await loadTechnicians().catch(err => console.error('[technicians]', err.message));
+  console.log(`[technicians] ${id} ajouté par ${req.get('Remote-User') || '?'}`);
+  res.status(201).json({ id, ...TECHNICIANS[id] });
+});
+
+/**
+ * DELETE /api/technicians/:id — archive (active = false). Les rendez-vous et
+ * les stats passés gardent libellé et couleur. Admin, vérifié ici.
+ */
+app.delete('/api/technicians/:id', async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: `Réservé au groupe ${GROUP_ADMIN}` });
+  const id = req.params.id;
+  if (!TECHNICIANS[id]) return res.status(404).json({ error: `${id} inconnu` });
+  const { error } = await supabase.from('technicians').update({ active: false }).eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  await loadTechnicians().catch(err => console.error('[technicians]', err.message));
+  console.log(`[technicians] ${id} archivé par ${req.get('Remote-User') || '?'}`);
+  res.json({ id, ...TECHNICIANS[id] });
+});
 
 const TYPE_LABELS = {
   changement_machine: 'Changement de machine',
@@ -2544,8 +2623,11 @@ const REPORT_CRON = process.env.MONTHLY_REPORT_CRON || '0 8 1-3 * *';
 // Les techniciens réguliers du support, seuls destinataires ET seuls comptés
 // dans la moyenne d'équipe (décision du 05/10/2026) : TECHNICIANS sert aussi au
 // planning et contient des renforts ponctuels qui fausseraient la moyenne.
-const REPORT_TECHS = (process.env.MONTHLY_REPORT_TECHS || 'nehad,maabid,rrinville,zkarroum,cananthakumar,ext-favundo')
-  .split(',').map(t => t.trim()).filter(id => TECHNICIANS[id]);
+// Case « rapport mensuel » de /gestion ; MONTHLY_REPORT_TECHS la remplace s'il
+// est posé. Fonction et non constante : la liste change sans redémarrage.
+const reportTechs = () => process.env.MONTHLY_REPORT_TECHS
+  ? process.env.MONTHLY_REPORT_TECHS.split(',').map(t => t.trim()).filter(id => TECHNICIANS[id])
+  : Object.keys(TECHNICIANS).filter(id => TECHNICIANS[id].active && TECHNICIANS[id].monthlyReport);
 // Premier mois couvert : septembre 2026, lancement de la notation de difficulté
 // et première capture téléphonie complète. Rien d'antérieur ne s'envoie, et le
 // rapport de ce mois-là ne se compare pas au précédent.
@@ -2630,7 +2712,7 @@ async function buildMonthlyReports(month, { force = false } = {}) {
   if (!tickets.rows) throw new Error(`RT ne rend aucun ticket clos pour ${month} — envoi annulé`);
   const calls = await fetchReportCalls(month);
 
-  const technicians = REPORT_TECHS.map(id => ({ id, ...TECHNICIANS[id] }));
+  const technicians = reportTechs().map(id => ({ id, ...TECHNICIANS[id] }));
   const reports = report.buildReports({
     month, technicians,
     tickets: tickets.current, prevTickets: tickets.previous,
@@ -2718,7 +2800,7 @@ app.post('/api/reports/monthly/send', async (req, res) => {
   const { month: m, tech = null, redirectTo = null } = req.body || {};
   const month = m ? parseMonth(m) : lastMonth();
   if (!month) return res.status(400).json({ error: 'Mois attendu au format YYYY-MM' });
-  if (tech && !REPORT_TECHS.includes(tech)) return res.status(400).json({ error: `Pas de rapport pour : ${tech}` });
+  if (tech && !reportTechs().includes(tech)) return res.status(400).json({ error: `Pas de rapport pour : ${tech}` });
   if (redirectTo && !/^[\w.+-]+@karavel\.com$/i.test(redirectTo)) {
     return res.status(400).json({ error: 'redirectTo doit être une adresse @karavel.com' });
   }

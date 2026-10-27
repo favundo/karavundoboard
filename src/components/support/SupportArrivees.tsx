@@ -11,7 +11,7 @@ import {
   useArriveesWorkflow, useUpdateArriveeWorkflow, type ArriveeWorkflow,
 } from '@/hooks/useArriveesWorkflow';
 import { sendMdp, closeArrivee } from '@/lib/arriveesApi';
-import { TECHNICIANS } from '@/lib/technicians';
+import { useTechnicians, getTechnicianById } from '@/lib/technicians';
 
 const RT_BASE = 'http://rt.in.karavel.com';
 const CLOSED_STATUSES = new Set(['resolved', 'rejected', 'deleted']);
@@ -90,6 +90,7 @@ function ArriveeRow({
   onPatch: (patch: Partial<Omit<ArriveeWorkflow, 'ticket_rt'>>) => void;
 }) {
   const qc = useQueryClient();
+  const technicians = useTechnicians();
   const [mdp, setMdp] = useState('');
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -223,9 +224,12 @@ function ArriveeRow({
           className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
         >
           <option value="">—</option>
-          {TECHNICIANS.map(t => (
+          {technicians.map(t => (
             <option key={t.id} value={t.id}>{t.label}</option>
           ))}
+          {wf.technicien && !technicians.some(t => t.id === wf.technicien) && (
+            <option value={wf.technicien}>{getTechnicianById(wf.technicien)?.label ?? wf.technicien} (archivé)</option>
+          )}
         </select>
       </td>
       {/* Clôture */}

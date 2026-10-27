@@ -231,8 +231,9 @@ que ce soit — le résultat sert à localiser une personne.
 ## Rapport mensuel des techniciens
 
 Le premier jour ouvré du mois à 8 h, chaque technicien régulier
-(`MONTHLY_REPORT_TECHS` : nehad, maabid, rrinville, zkarroum, cananthakumar, ext-favundo — pas
-tout `TECHNICIANS`, qui sert aussi au planning) reçoit ses chiffres du mois précédent — tickets RT des
+(case « rapport mensuel » de `/gestion`, colonne `technicians.monthly_report` —
+pas tous les techniciens, la table sert aussi au planning ; `MONTHLY_REPORT_TECHS`
+la remplace s'il est posé) reçoit ses chiffres du mois précédent — tickets RT des
 files `sos` + `sos-agences`, et téléphonie — avec une copie cachée au
 responsable (`MONTHLY_REPORT_BCC`). Calcul et mise en forme dans
 `server/lib/monthlyReport.js` (testé, `src/test/monthlyReport.test.ts`), lecture
@@ -265,6 +266,21 @@ rapport de septembre n'affiche aucune comparaison avec août.
 Variables : `MONTHLY_REPORT_BCC` (défaut `ext-favundo@karavel.com`, vide = pas de
 copie), `MONTHLY_REPORT_CRON` (défaut `0 8 1-3 * *`, le code ne garde que le
 premier jour ouvré), `MONTHLY_REPORT_TZ`, `MONTHLY_REPORT_DISABLED=1`.
+
+## Techniciens
+
+Table `technicians` (migration `20261027000000_add_technicians.sql`), gérée
+depuis `/gestion` (`src/components/gestion/TechniciansManager.tsx`). `id` = login
+AD. Écritures via `POST` / `DELETE /api/technicians`, admin **vérifié côté
+serveur**. **Supprimer = archiver** (`active = false`) : le technicien quitte les
+listes de choix et le rapport mensuel, mais rendez-vous et stats passés gardent
+son libellé et sa couleur.
+
+Front : `src/lib/technicians.ts` tient un registre chargé au démarrage
+(`loadTechnicians()` dans `App.tsx`) ; `useTechnicians()` (actifs) pour les
+listes, `getTechnicianById()` (archivés compris) pour l'affichage. Serveur :
+l'objet `TECHNICIANS` est rechargé en place après chaque écriture. Les listes
+codées en dur des deux côtés ne sont qu'un repli si la base est injoignable.
 
 ## Key Utilities
 

@@ -13,7 +13,7 @@ import {
   type SupportAppointment,
   type AppointmentInsert,
 } from '@/hooks/useSupportAppointments';
-import { TECHNICIANS, getTechnicianById } from '@/lib/technicians';
+import { useTechnicians, getTechnicianById } from '@/lib/technicians';
 import { sendAppointmentEmail } from '@/lib/emailApi';
 import AppointmentModal from './AppointmentModal';
 import CloseModal from './CloseModal';
@@ -57,6 +57,7 @@ const messages = {
 };
 
 const SupportCalendar = () => {
+  const technicians = useTechnicians();
   const { data: appointments = [], isLoading, refetch } = useSupportAppointments();
   const createAppt = useCreateAppointment();
   const updateAppt = useUpdateAppointment();
@@ -185,7 +186,7 @@ const SupportCalendar = () => {
         >
           Tous
         </button>
-        {TECHNICIANS.map((t) => (
+        {technicians.map((t) => (
           <button
             key={t.id}
             onClick={() => setFilterTech(filterTech === t.id ? 'all' : t.id)}

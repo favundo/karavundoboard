@@ -1,5 +1,6 @@
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/LogoutButton";
+import TechniciansManager from "@/components/gestion/TechniciansManager";
 
 const Gestion = () => (
   <div className="min-h-screen bg-background flex flex-col">
@@ -7,13 +8,10 @@ const Gestion = () => (
       <ThemeToggle />
       <LogoutButton />
     </header>
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Gestion du site</h1>
-        <p className="text-muted-foreground text-lg">Zone reservee aux gens serieux. Ou pas.</p>
-        <p className="text-muted-foreground/60 mt-1 text-sm">(Les fonctionnalites arrivent, promis — on cherche juste ou on a mis les cles.)</p>
-      </div>
-    </div>
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <h1 className="text-3xl font-bold text-foreground mb-6">Gestion du site</h1>
+      <TechniciansManager />
+    </main>
   </div>
 );
 

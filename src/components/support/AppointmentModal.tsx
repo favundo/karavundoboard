@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, CalendarPlus, Trash2 } from 'lucide-react';
-import { TECHNICIANS } from '@/lib/technicians';
+import { useTechnicians, getTechnicianById } from '@/lib/technicians';
 import { useMeAsTechnician } from '@/hooks/useMe';
 import { isBusinessDay } from '@/lib/frenchHolidays';
 import { useServices } from '@/hooks/useSupportAppointments';
@@ -52,7 +52,8 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
   // Le technicien connecté prend la main sur le premier de la liste : c'est lui
   // qui planifie, dans l'écrasante majorité des cas.
   const meTech = useMeAsTechnician();
-  const defaultTech = meTech?.id ?? TECHNICIANS[0].id;
+  const technicians = useTechnicians();
+  const defaultTech = meTech?.id ?? technicians[0]?.id ?? '';
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -216,9 +217,14 @@ const AppointmentModal = ({ open, onClose, onSubmit, onDelete, existing }: Props
                 onChange={(e) => setTechnicien(e.target.value)}
                 className={inputCls}
               >
-                {TECHNICIANS.map((t) => (
+                {technicians.map((t) => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
+                {/* Un rendez-vous passé dont le technicien a été archivé ne doit
+                    pas changer de main en silence à l'enregistrement. */}
+                {technicien && !technicians.some((t) => t.id === technicien) && (
+                  <option value={technicien}>{getTechnicianById(technicien)?.label ?? technicien} (archivé)</option>
+                )}
               </select>
             </div>
 
