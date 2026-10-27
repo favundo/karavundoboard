@@ -228,6 +228,16 @@ La recherche OCS étant un `LIKE`, `dlelong` ramènerait `dlelong2` : la
 correspondance exacte sur l'uid est revérifiée côté serveur avant de rendre quoi
 que ce soit — le résultat sert à localiser une personne.
 
+**Les écrans** de chaque machine s'affichent dans le même volet : section
+`monitors` du détail `/computer/{id}`, déjà lu — aucune requête en plus. La
+dalle des portables (ni modèle ni série) est filtrée dans
+`server/lib/ocsMonitors.js` (testé, `src/test/ocsMonitors.test.ts`). Ce sont les
+écrans branchés **au dernier inventaire** : les docks du parc (Dell WD15 / WD25)
+sont en DisplayPort Alt Mode et laissent passer l'EDID — vérifié le 27/10/2026,
+deux P2725H et leurs séries sur un portable docké. Un portable sans écran
+externe a donc été inventorié hors dock. `usbdevices` n'est pas collecté par
+l'agent ; `server/scripts/probe-ocs-monitors.js <uid>` rejoue le relevé.
+
 ## Rapport mensuel des techniciens
 
 Le premier jour ouvré du mois à 8 h, chaque technicien régulier
